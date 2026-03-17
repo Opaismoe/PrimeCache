@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.local
+
+# Data & logs (Docker volumes)
+data/
+logs/
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS
+.DS_Store

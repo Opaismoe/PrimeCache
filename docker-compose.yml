@@ -1,0 +1,25 @@
+services:
+  cache-warmer:
+    build: .
+    environment:
+      - BROWSERLESS_WS_URL=ws://browserless:3000/chromium/playwright
+      - BROWSERLESS_TOKEN=dev-token
+      - API_KEY=dev-api-key
+      - DB_PATH=/app/data/warmer.db
+      - CONFIG_PATH=/app/config/config.yaml
+      - LOG_LEVEL=debug
+      - PORT=3000
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config/config.yaml
+    ports:
+      - "3000:3000"
+    depends_on:
+      - browserless
+
+  browserless:
+    image: ghcr.io/browserless/chromium:latest
+    environment:
+      - TOKEN=dev-token
+    ports:
+      - "3001:3000"

@@ -1,0 +1,56 @@
+---
+description: TDD workflow enforcement. Apply to all code changes — tests must be written before implementation.
+globs:
+alwaysApply: true
+---
+# TDD — Test-Driven Development
+
+**Tests are written before implementation. No exceptions.**
+
+## The workflow (mirrors .ai/todo.md states)
+
+1. **init** — define the unit's interface (types, function signatures, empty exports). No logic.
+2. **test** — write tests that call the real interface and assert correct behaviour. Run them: they must **fail** for the right reason (not a compile error — a meaningful assertion failure).
+3. **code** — write the minimum implementation to make the tests pass. Do not write code that has no test.
+4. **review** — refactor, check edge cases, confirm all tests still pass.
+5. **done** — update `.ai/todo.md` status to `[x] done`.
+
+## Hard rules
+
+- **Never write implementation before tests.** If you are about to create a non-trivial function, stop — write the test file first.
+- **A failing test is required before coding.** If tests pass before you write any code, the tests are wrong.
+- **One unit at a time.** Follow the order in `.ai/todo.md`. Do not jump ahead.
+- **Tests must use the real module interface.** No testing internal implementation details; test inputs and outputs.
+- **Update `.ai/todo.md`** when a status changes. The source of truth for what is in progress lives there.
+
+## Test file conventions
+
+- Test files live alongside source: `src/config/env.test.ts` next to `src/config/env.ts`
+- Use **Vitest** (preferred for this stack) or Jest
+- Describe blocks mirror the module name; `it()` blocks state behaviour in plain English:
+  ```typescript
+  describe('env', () => {
+    it('exits process when a required variable is missing', () => { ... })
+    it('applies default value for PORT when not set', () => { ... })
+  })
+  ```
+
+## What to test (per module type)
+
+| Module | Test focus |
+|--------|-----------|
+| `config/env.ts` | Missing vars exit, defaults applied, type coercion |
+| `config/urls.ts` | Valid YAML parses, Zod errors on bad schema |
+| `db/queries/` | Insert returns id, select returns correct shape, errors propagate |
+| `browser/cookieConsent.ts` | Each strategy finds mock DOM element, returns `found: false` when absent |
+| `browser/stealth.ts` | Events emitted, timing within bounds |
+| `warmer/visitor.ts` | Returns VisitResult, context always closed (finally), errors captured |
+| `warmer/runner.ts` | Partial failure status, DB records written, delays applied |
+| `api/` routes | HTTP status codes, auth rejection, response shape |
+
+## Mocking rules
+
+- Mock **external I/O** only: Browserless WS connection, SQLite file, filesystem reads.
+- Never mock the module under test.
+- Prefer **in-memory SQLite** (`:memory:`) over mocking the DB layer.
+- Use `vi.mock()` / `jest.mock()` for Playwright's `chromium.connect` in browser tests.

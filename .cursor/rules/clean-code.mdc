@@ -1,0 +1,36 @@
+---
+description: Clean code guidelines. Apply when writing or reviewing any code.
+globs:
+alwaysApply: true
+---
+# Clean Code Guidelines
+
+## Constants over magic numbers
+Replace hard-coded values with named constants. Keep them at the top of the file or in a dedicated constants module.
+
+## Meaningful names
+Variables, functions, and types should reveal purpose. Avoid abbreviations unless universally understood (`url`, `ms`, `id` are fine; `tmp`, `x`, `data` are not).
+
+## Smart comments
+Don't comment what the code does — make it self-documenting. Comment *why* when logic is non-obvious (e.g., why a specific wait strategy is used for a CMP).
+
+## Single responsibility
+Each function does one thing. If a function needs a comment to explain what it does, split it.
+
+## DRY
+Extract repeated logic into helpers. The stealth simulation utilities and consent detection strategies are prime examples.
+
+## Error messages
+Error messages must be actionable. Include the value that caused the error:
+```typescript
+// Good
+throw new Error(`Unknown group "${groupName}" — check config.yaml`)
+// Bad
+throw new Error('Invalid group')
+```
+
+## No silent failures
+Never swallow errors without logging. In `visitor.ts`, catch errors and include them in `VisitResult.error` — but always log them too.
+
+## Cleanup
+Always clean up resources (browser contexts, DB connections) in `finally` blocks, not just in the happy path.

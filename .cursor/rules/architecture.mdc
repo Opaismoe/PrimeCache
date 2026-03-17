@@ -1,0 +1,66 @@
+---
+description: Project architecture and conventions for the cache-warmer Node.js/TypeScript service. Apply when writing or reviewing any code in this project.
+globs: src/**/*.ts
+alwaysApply: true
+---
+# Cache Warmer — Architecture Guide
+
+## Overview
+Node.js 22 + TypeScript service that connects to a Browserless instance to warm cache by simulating real user visits. Deployed on Coolify via Docker.
+
+## Layer Structure
+```
+src/
+├── index.ts            # boot: migrations → Fastify → scheduler
+├── config/             # env.ts (Zod), urls.ts (config.yaml parser + watcher)
+├── browser/            # connection.ts, context.ts, stealth.ts, cookieConsent.ts
+├── warmer/             # runner.ts (group), visitor.ts (single URL → VisitResult)
+├── scheduler/          # node-cron jobs per URL group
+├── db/                 # Knex singleton, migrations, query helpers
+├── api/                # Fastify server + routes (health, runs, trigger, webhook)
+└── utils/              # pino logger, userAgents pool
+```
+
+## Key Conventions
+
+### Browserless connection
+Always connect via Playwright **native** WS protocol — never use `connectOverCDP` unless explicitly debugging:
+```typescript
+// correct
+const browser = await chromium.connect(`${BROWSERLESS_WS_URL}?token=${BROWSERLESS_TOKEN}`)
+// avoid
+const browser = await chromium.connectOverCDP(...)
+```
+
+### Browser contexts
+- Create a **fresh BrowserContext per URL visit** for isolation (cookies, storage, network)
+- Always call `context.close()` in a `finally` block — never leak contexts
+
+### Config validation
+- All env vars validated via Zod in `src/config/env.ts` at startup
+- If required var is missing → process exits with descriptive error immediately
+- `config.yaml` validated via Zod schema in `src/config/urls.ts`
+
+### API key auth
+- Protected routes use a Fastify `preHandler` hook that checks `X-API-Key` header
+- Only `/health` is unprotected
+- The key is compared using `timingSafeEqual` to prevent timing attacks
+
+### Logging
+- Always use the pino child logger (`logger.child({ runId, url })`) — never `console.log`
+- Every visit logs: `url`, `statusCode`, `ttfb_ms`, `loadTime_ms`, `consentFound`
+
+### Error handling
+- `visitor.ts` catches all errors per URL and returns `VisitResult` with `error` field set
+- A single URL failure must not abort the entire group run
+- `runner.ts` sets run status to `partial_failure` if some visits failed, `failed` if all failed
+
+### Database
+- All DB operations go through query helpers in `src/db/queries/`
+- Run Knex migrations at startup before starting API or scheduler
+- SQLite file lives at `DB_PATH` env var (volume-mounted in Docker)
+
+## Webhook trigger
+`POST /webhook/warm` body: `{ "group": "homepage" }` or `{ "group": "all" }`
+- Responds immediately with `{ runIds: [...], queued: true }`
+- Actual warming runs async (do not await in the route handler)
