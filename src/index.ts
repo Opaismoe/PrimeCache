@@ -8,7 +8,7 @@ import { env } from './config/env'
 
 async function main() {
   // 1. Load and validate config
-  const config = loadConfig(env.CONFIG_PATH)
+  let config = loadConfig(env.CONFIG_PATH)
   logger.info({ groups: config.groups.length }, 'config loaded')
 
   // 2. Run DB migrations — must complete before anything else starts
@@ -16,7 +16,7 @@ async function main() {
   logger.info('migrations complete')
 
   // 3. Start API server
-  const server = await buildServer({ db, config })
+  const server = await buildServer({ db, getConfig: () => config })
   await server.listen({ port: env.PORT, host: '0.0.0.0' })
   logger.info({ port: env.PORT }, 'API server listening')
 
@@ -25,6 +25,7 @@ async function main() {
 
   // 5. Watch config for live changes
   const stopWatcher = watchConfig(env.CONFIG_PATH, (newConfig) => {
+    config = newConfig
     logger.info('config reloaded — re-registering cron jobs')
     registerJobs(newConfig.groups, db)
   })

@@ -10,10 +10,10 @@ import { runGroup } from '../warmer/runner'
 
 interface ServerDeps {
   db: Knex
-  config: Config
+  getConfig: () => Config
 }
 
-export async function buildServer({ db, config }: ServerDeps): Promise<FastifyInstance> {
+export async function buildServer({ db, getConfig }: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
 
   // ── Health (no auth) ──────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ export async function buildServer({ db, config }: ServerDeps): Promise<FastifyIn
     // POST /trigger
     protected_.post('/trigger', async (request: any, reply: any) => {
       const { group: groupName } = request.body as { group: string }
-      const group = config.groups.find((g) => g.name === groupName)
+      const group = getConfig().groups.find((g) => g.name === groupName)
       if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` })
       const runId = await runGroup(db, group)
       return { runId }
@@ -65,10 +65,11 @@ export async function buildServer({ db, config }: ServerDeps): Promise<FastifyIn
     // POST /webhook/warm
     protected_.post('/webhook/warm', async (request: any, reply: any) => {
       const { group: groupName } = request.body as { group: string }
+      const groups = getConfig().groups
       const targets =
         groupName === 'all'
-          ? config.groups
-          : config.groups.filter((g) => g.name === groupName)
+          ? groups
+          : groups.filter((g) => g.name === groupName)
 
       if (!targets.length) return reply.code(400).send({ error: `Unknown group "${groupName}"` })
 
@@ -85,7 +86,7 @@ export async function buildServer({ db, config }: ServerDeps): Promise<FastifyIn
     })
 
     // GET /config
-    protected_.get('/config', async () => ({ groups: config.groups }))
+    protected_.get('/config', async () => ({ groups: getConfig().groups }))
   })
 
   return app
