@@ -48,4 +48,11 @@ describe('createContext', () => {
     }
     expect(locales.size).toBeGreaterThan(1)
   })
+
+  it('sets a custom userAgent when provided', async () => {
+    const { createContext } = await import('./context')
+    await createContext(mockBrowser as any, 'TerraCache/1.0.0')
+    const options = mockBrowser.newContext.mock.calls.at(-1)![0]
+    expect(options.userAgent).toBe('TerraCache/1.0.0')
+  })
 })
