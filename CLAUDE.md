@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git workflow
+- Branch per feature: `feature/<name>` or `fix/<name>` — never commit directly to `main`
+- Small, focused commits — one logical change per commit
+- Conventional Commits: `feat(scope): summary`, `fix(scope): summary`, `test(scope): summary`, `chore: summary`
+- Commit after tests pass, commit after implementation passes, commit after each bug fix — not all at once
+
 ## Development workflow (TDD — enforced)
 
 All work follows the states in `.ai/todo.md`: **init → test → code → review → done**.
