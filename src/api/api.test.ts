@@ -27,7 +27,7 @@ let app: FastifyInstance
 beforeEach(async () => {
   vi.resetModules()
   const { buildServer } = await import('./server')
-  app = await buildServer({ db: {} as any, config: mockConfig })
+  app = await buildServer({ db: {} as any, getConfig: () => mockConfig })
   await app.ready()
 })
 
