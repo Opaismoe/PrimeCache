@@ -12,3 +12,7 @@ export async function up(knex: Knex) {
     t.integer('failure_count')
   })
 }
+
+export async function down(knex: Knex) {
+  await knex.schema.dropTableIfExists('runs')
+}
