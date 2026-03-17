@@ -15,7 +15,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - browserless
+      browserless:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
       interval: 30s
@@ -29,4 +30,10 @@ services:
       - TOKEN=dev-token
     ports:
       - "3001:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/json/version"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
