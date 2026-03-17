@@ -1,0 +1,55 @@
+---
+description: Git branching, commit, and workflow conventions. Apply whenever making code changes or managing git history.
+globs:
+alwaysApply: true
+---
+# Git Workflow
+
+## Branching
+- `main` — production-ready code only. Never commit directly to main.
+- Branch per feature/fix: `feature/<short-description>`, `fix/<short-description>`
+- Branch from `main`, merge back to `main` via PR.
+- Keep branches short-lived — one logical piece of work per branch.
+
+## Commits — small and focused
+- **One logical change per commit.** A commit should do exactly one thing.
+- Never bundle unrelated changes (e.g. a bug fix + a refactor + a new feature in one commit).
+- Commit frequently — after each passing test, after each module is complete.
+- A good rule of thumb: if you can't summarise the commit in ~50 characters, it's too big.
+
+## Commit message format (Conventional Commits)
+```
+<type>(<scope>): <short summary>
+
+[optional body — why, not what]
+```
+
+**Types:**
+| Type | Use for |
+|------|---------|
+| `feat` | New feature or module |
+| `fix` | Bug fix |
+| `test` | Adding or fixing tests |
+| `refactor` | Restructuring without behaviour change |
+| `chore` | Config, tooling, deps, CI |
+| `docs` | Documentation only |
+
+**Examples:**
+```
+feat(db): add runs and visits query helpers
+test(config): add env validation edge case tests
+fix(db): order runs by id desc to handle same-millisecond inserts
+chore: add down() migrations for knex rollback support
+```
+
+## When to commit (during development)
+Following the TDD workflow in `.ai/todo.md`:
+- After tests are written and failing → `test(<scope>): add <module> tests`
+- After implementation makes tests pass → `feat(<scope>): implement <module>`
+- After a bug is caught and fixed → `fix(<scope>): <what was wrong>`
+
+## Pull Requests
+- One PR per feature branch.
+- PR title follows the same Conventional Commits format.
+- Link PR to the relevant todo item in `.ai/todo.md`.
+- Squash-merge to keep main history clean.
