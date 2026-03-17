@@ -13,15 +13,30 @@ export async function runGroup(db: Knex, group: WarmGroup): Promise<number> {
   log.info({ totalUrls: group.urls.length }, 'warm run started')
 
   const results = []
+  const visited = new Set<string>()
+  const queue: Array<{ url: string; depth: number }> = group.urls.map((url) => ({ url, depth: 0 }))
+  const maxDepth = group.options.crawl ? (group.options.crawl_depth ?? 0) : 0
 
-  for (let i = 0; i < group.urls.length; i++) {
-    const url = group.urls[i]
-    log.info({ url }, 'visiting')
+  while (queue.length > 0) {
+    const { url, depth } = queue.shift()!
+
+    if (visited.has(url)) continue
+    visited.add(url)
+
+    log.info({ url, depth }, 'visiting')
     const result = await visitUrl(url, group.options)
     results.push(result)
 
-    // Delay between URLs (skip after last one)
-    if (i < group.urls.length - 1) {
+    // Enqueue discovered links if within depth limit
+    if (group.options.crawl && depth < maxDepth) {
+      for (const link of result.discoveredLinks) {
+        if (!visited.has(link)) {
+          queue.push({ url: link, depth: depth + 1 })
+        }
+      }
+    }
+
+    if (queue.length > 0) {
       await randomDelay(env.BETWEEN_URLS_MIN_MS, env.BETWEEN_URLS_MAX_MS)
     }
   }
@@ -45,7 +60,7 @@ export async function runGroup(db: Knex, group: WarmGroup): Promise<number> {
     'partial_failure'
 
   await finalizeRun(db, runId, { status, successCount, failureCount })
-  log.info({ status, successCount, failureCount }, 'warm run finished')
+  log.info({ status, successCount, failureCount, totalVisited: results.length }, 'warm run finished')
 
   return runId
 }
