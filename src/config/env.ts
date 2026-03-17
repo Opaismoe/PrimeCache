@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { z } from 'zod'
 
 // Treat empty strings as undefined so .default() values apply
