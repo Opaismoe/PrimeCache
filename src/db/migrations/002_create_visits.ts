@@ -15,3 +15,7 @@ export async function up(knex: Knex) {
     t.datetime('visited_at').notNullable()
   })
 }
+
+export async function down(knex: Knex) {
+  await knex.schema.dropTableIfExists('visits')
+}

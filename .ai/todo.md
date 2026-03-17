@@ -164,6 +164,6 @@
 
 ## 10. Deploy
 
-- [ ] init Dockerfile verified with `docker build`
-- [ ] init docker-compose local smoke test (health check passes, webhook responds)
+- [x] init Dockerfile verified with `docker build`
+- [x] init docker-compose local smoke test (health check passes, `/health` responds with `{"status":"ok"}`)
 - [ ] init Coolify deploy + volumes configured
