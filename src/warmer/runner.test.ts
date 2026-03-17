@@ -17,6 +17,7 @@ vi.mock('./visitor', () => ({
     consentStrategy: 'cookiebot',
     error: null,
     visitedAt: new Date(),
+    discoveredLinks: [],
   }),
 }))
 
@@ -40,14 +41,14 @@ describe('runGroup', () => {
 
   it('returns a numeric runId', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false, crawl: false } })
     expect(typeof runId).toBe('number')
     expect(runId).toBeGreaterThan(0)
   })
 
   it('creates a run record in the DB', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false, crawl: false } })
     const run = await db('runs').where({ id: runId }).first()
     expect(run).toBeTruthy()
     expect(run.group_name).toBe('homepage')
@@ -56,7 +57,7 @@ describe('runGroup', () => {
 
   it('sets status to completed when all visits succeed', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false, crawl: false } })
     const run = await db('runs').where({ id: runId }).first()
     expect(run.status).toBe('completed')
     expect(run.success_count).toBe(2)
@@ -66,11 +67,11 @@ describe('runGroup', () => {
   it('sets status to partial_failure when some visits fail', async () => {
     const { visitUrl } = await import('./visitor')
     vi.mocked(visitUrl)
-      .mockResolvedValueOnce({ url: 'https://a.com/', finalUrl: null, statusCode: 200, ttfbMs: 80, loadTimeMs: 400, consentFound: false, consentStrategy: null, error: null, visitedAt: new Date() })
-      .mockResolvedValueOnce({ url: 'https://b.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date() })
+      .mockResolvedValueOnce({ url: 'https://a.com/', finalUrl: null, statusCode: 200, ttfbMs: 80, loadTimeMs: 400, consentFound: false, consentStrategy: null, error: null, visitedAt: new Date(), discoveredLinks: [] })
+      .mockResolvedValueOnce({ url: 'https://b.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date(), discoveredLinks: [] })
 
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false, crawl: false } })
     const run = await db('runs').where({ id: runId }).first()
     expect(run.status).toBe('partial_failure')
     expect(run.success_count).toBe(1)
@@ -79,18 +80,105 @@ describe('runGroup', () => {
 
   it('sets status to failed when all visits fail', async () => {
     const { visitUrl } = await import('./visitor')
-    vi.mocked(visitUrl).mockResolvedValue({ url: 'https://fail.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date() })
+    vi.mocked(visitUrl).mockResolvedValue({ url: 'https://fail.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date(), discoveredLinks: [] })
 
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://fail.com/'], options: { scrollToBottom: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://fail.com/'], options: { scrollToBottom: false, crawl: false } })
     const run = await db('runs').where({ id: runId }).first()
     expect(run.status).toBe('failed')
   })
 
   it('inserts a visit record per URL', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false, crawl: false } })
     const visits = await db('visits').where({ run_id: runId })
     expect(visits).toHaveLength(2)
+  })
+
+  it('crawls discovered links up to crawl_depth', async () => {
+    const { visitUrl } = await import('./visitor')
+    vi.mocked(visitUrl).mockImplementation(async (url) => ({
+      url,
+      finalUrl: url,
+      statusCode: 200,
+      ttfbMs: 10,
+      loadTimeMs: 100,
+      consentFound: false,
+      consentStrategy: null,
+      error: null,
+      visitedAt: new Date(),
+      discoveredLinks: url === 'https://example.com/'
+        ? ['https://example.com/about', 'https://example.com/contact']
+        : [],
+    }))
+
+    const { runGroup } = await import('./runner')
+    const runId = await runGroup(db, {
+      name: 'crawl-group',
+      schedule: '* * * * *',
+      urls: ['https://example.com/'],
+      options: { scrollToBottom: false, crawl: true, crawl_depth: 1 },
+    })
+
+    const visits = await db('visits').where({ run_id: runId })
+    expect(visits).toHaveLength(3) // seed + 2 discovered
+    const visitedUrls = visits.map((v: any) => v.url)
+    expect(visitedUrls).toContain('https://example.com/')
+    expect(visitedUrls).toContain('https://example.com/about')
+    expect(visitedUrls).toContain('https://example.com/contact')
+  })
+
+  it('does not visit the same URL twice during a crawl', async () => {
+    const { visitUrl } = await import('./visitor')
+    // Seed returns a link that points back to itself
+    vi.mocked(visitUrl).mockResolvedValue({
+      url: 'https://example.com/', finalUrl: 'https://example.com/', statusCode: 200, ttfbMs: 10, loadTimeMs: 100,
+      consentFound: false, consentStrategy: null, error: null, visitedAt: new Date(),
+      discoveredLinks: ['https://example.com/'],  // circular
+    })
+
+    const { runGroup } = await import('./runner')
+    const runId = await runGroup(db, {
+      name: 'dedup-group',
+      schedule: '* * * * *',
+      urls: ['https://example.com/'],
+      options: { scrollToBottom: false, crawl: true, crawl_depth: 2 },
+    })
+
+    const visits = await db('visits').where({ run_id: runId })
+    expect(visits).toHaveLength(1)
+  })
+
+  it('stops at crawl_depth and does not follow deeper links', async () => {
+    const { visitUrl } = await import('./visitor')
+    vi.mocked(visitUrl).mockImplementation(async (url) => ({
+      url,
+      finalUrl: url,
+      statusCode: 200,
+      ttfbMs: 10,
+      loadTimeMs: 100,
+      consentFound: false,
+      consentStrategy: null,
+      error: null,
+      visitedAt: new Date(),
+      discoveredLinks:
+        url === 'https://example.com/'      ? ['https://example.com/depth1'] :
+        url === 'https://example.com/depth1' ? ['https://example.com/depth2'] :
+        [],
+    }))
+
+    const { runGroup } = await import('./runner')
+    const runId = await runGroup(db, {
+      name: 'depth-group',
+      schedule: '* * * * *',
+      urls: ['https://example.com/'],
+      options: { scrollToBottom: false, crawl: true, crawl_depth: 1 },
+    })
+
+    const visits = await db('visits').where({ run_id: runId })
+    // depth 0 (seed) + depth 1 = 2 pages, depth2 not visited
+    expect(visits).toHaveLength(2)
+    const urls = visits.map((v: any) => v.url)
+    expect(urls).not.toContain('https://example.com/depth2')
   })
 })

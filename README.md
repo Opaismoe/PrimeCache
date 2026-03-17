@@ -57,7 +57,12 @@ groups:
     schedule: "0 * * * *"     # every hour
     urls:
       - https://example.com/products
+    options:
+      crawl: true
+      crawl_depth: 2           # follow links up to 2 levels deep
 ```
+
+**Crawl mode** — when `crawl: true`, the warmer visits the configured URLs and then follows all same-origin links it discovers, up to `crawl_depth` levels. Duplicate URLs are never visited twice within a single run. This is useful for warming an entire section of a site without listing every page manually.
 
 **3. Start the stack:**
 

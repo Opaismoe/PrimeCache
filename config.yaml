@@ -1,14 +1,21 @@
 groups:
-  - name: homepage
+  # - name: homepage
+  #   schedule: "*/15 * * * *"
+  #   urls:
+  #     - https://example.com/
+  #     - https://example.com/nl/
+  #   options:
+  #     scrollToBottom: true
+  #     waitForSelector: "main"
+
+  # - name: product-pages
+  #   schedule: "0 * * * *"
+  #   urls:
+  #     - https://example.com/products
+  - name: newvi-test
     schedule: "*/15 * * * *"
     urls:
-      - https://example.com/
-      - https://example.com/nl/
+      - https://newvi.ingthink.com/
     options:
       scrollToBottom: true
       waitForSelector: "main"
-
-  - name: product-pages
-    schedule: "0 * * * *"
-    urls:
-      - https://example.com/products
