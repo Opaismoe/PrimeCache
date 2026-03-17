@@ -332,9 +332,9 @@ Use in-memory SQLite for tests:
 const testDb = knex({ client: 'better-sqlite3', connection: ':memory:', useNullAsDefault: true })
 ```
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -363,9 +363,9 @@ export async function getBrowser(): Promise<Browser> {
 
 **Important**: Reconnect with exponential backoff (try after 1s, 2s, 4s, 8s, 16s — then give up). On `SIGTERM` / `SIGINT` call `browser.close()`.
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -389,9 +389,9 @@ export async function createContext(browser: Browser): Promise<BrowserContext> {
 }
 ```
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -416,9 +416,9 @@ export async function simulateReading(page: Page): Promise<void>
 // waits 3000-8000ms
 ```
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -447,9 +447,9 @@ type ConsentResult = {
 }
 ```
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -483,9 +483,9 @@ Visit flow:
 8. `simulateReading(page)`
 9. `context.close()` — always in `finally`
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -505,9 +505,9 @@ Flow:
    - `partial_failure` — some visits failed
    - `failed` — all visits failed
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 

@@ -39,74 +39,74 @@
 
 ## 3. Utils
 
-- [ ] init `src/utils/logger.ts` — pino instance with pretty dev / JSON prod
-- [ ] test `src/utils/logger.ts` — child logger carries context fields
-- [ ] code `src/utils/logger.ts`
-- [ ] review `src/utils/logger.ts`
+- [x] init `src/utils/logger.ts` — pino instance with pretty dev / JSON prod
+- [x] test `src/utils/logger.ts` — child logger carries context fields
+- [x] code `src/utils/logger.ts`
+- [x] review `src/utils/logger.ts`
 
-- [ ] init `src/utils/userAgents.ts` — curated Chrome UA pool
-- [ ] test `src/utils/userAgents.ts` — returns valid UA string, rotates across calls
-- [ ] code `src/utils/userAgents.ts`
-- [ ] review `src/utils/userAgents.ts`
+- [x] init `src/utils/userAgents.ts` — curated Chrome UA pool
+- [x] test `src/utils/userAgents.ts` — returns valid UA string, rotates across calls
+- [x] code `src/utils/userAgents.ts`
+- [x] review `src/utils/userAgents.ts`
 
 ---
 
 ## 4. Database
 
-- [ ] init `src/db/client.ts` — Knex singleton
-- [ ] init `src/db/migrations/001_create_runs.ts`
-- [ ] init `src/db/migrations/002_create_visits.ts`
-- [ ] test `src/db/` — migrations run, tables created, rollback works
-- [ ] code `src/db/client.ts` + migrations
-- [ ] review `src/db/`
+- [x] init `src/db/client.ts` — Knex singleton
+- [x] init `src/db/migrations/001_create_runs.ts`
+- [x] init `src/db/migrations/002_create_visits.ts`
+- [x] test `src/db/` — migrations run, tables created, rollback works
+- [x] code `src/db/client.ts` + migrations
+- [x] review `src/db/`
 
-- [ ] init `src/db/queries/runs.ts` — insert/select run records
-- [ ] test `src/db/queries/runs.ts` — insert returns id, select returns correct shape
-- [ ] code `src/db/queries/runs.ts`
-- [ ] review `src/db/queries/runs.ts`
+- [x] init `src/db/queries/runs.ts` — insert/select run records
+- [x] test `src/db/queries/runs.ts` — insert returns id, select returns correct shape
+- [x] code `src/db/queries/runs.ts`
+- [x] review `src/db/queries/runs.ts`
 
-- [ ] init `src/db/queries/visits.ts` — insert/select visit records
-- [ ] test `src/db/queries/visits.ts` — bulk insert, query by run_id, error field persisted
-- [ ] code `src/db/queries/visits.ts`
-- [ ] review `src/db/queries/visits.ts`
+- [x] init `src/db/queries/visits.ts` — insert/select visit records
+- [x] test `src/db/queries/visits.ts` — bulk insert, query by run_id, error field persisted
+- [x] code `src/db/queries/visits.ts`
+- [x] review `src/db/queries/visits.ts`
 
 ---
 
 ## 5. Browser layer
 
-- [ ] init `src/browser/connection.ts` — Browserless WS singleton + reconnect
-- [ ] test `src/browser/connection.ts` — reconnects on disconnect, clean shutdown on SIGTERM
-- [ ] code `src/browser/connection.ts`
-- [ ] review `src/browser/connection.ts`
+- [x] init `src/browser/connection.ts` — Browserless WS singleton + reconnect
+- [x] test `src/browser/connection.ts` — reconnects on disconnect, clean shutdown on SIGTERM
+- [x] code `src/browser/connection.ts`
+- [x] review `src/browser/connection.ts`
 
-- [ ] init `src/browser/context.ts` — BrowserContext factory (UA, viewport, locale, stealth)
-- [ ] test `src/browser/context.ts` — context has correct UA, viewport in range, locale header set
-- [ ] code `src/browser/context.ts`
-- [ ] review `src/browser/context.ts`
+- [x] init `src/browser/context.ts` — BrowserContext factory (UA, viewport, locale, stealth)
+- [x] test `src/browser/context.ts` — context has correct UA, viewport in range, locale header set
+- [x] code `src/browser/context.ts`
+- [x] review `src/browser/context.ts`
 
-- [ ] init `src/browser/stealth.ts` — mouse movement, scroll, dwell time simulation
-- [ ] test `src/browser/stealth.ts` — mouse events emitted, scroll increments within bounds, dwell within range
-- [ ] code `src/browser/stealth.ts`
-- [ ] review `src/browser/stealth.ts`
+- [x] init `src/browser/stealth.ts` — mouse movement, scroll, dwell time simulation
+- [x] test `src/browser/stealth.ts` — mouse events emitted, scroll increments within bounds, dwell within range
+- [x] code `src/browser/stealth.ts`
+- [x] review `src/browser/stealth.ts`
 
-- [ ] init `src/browser/cookieConsent.ts` — CMP detection + dismissal
-- [ ] test `src/browser/cookieConsent.ts` — each strategy returns `found: true` on mock DOM, returns `found: false` when no banner, shadow DOM pierce works
-- [ ] code `src/browser/cookieConsent.ts`
-- [ ] review `src/browser/cookieConsent.ts`
+- [x] init `src/browser/cookieConsent.ts` — CMP detection + dismissal
+- [x] test `src/browser/cookieConsent.ts` — each strategy returns `found: true` on mock DOM, returns `found: false` when no banner, shadow DOM pierce works
+- [x] code `src/browser/cookieConsent.ts`
+- [x] review `src/browser/cookieConsent.ts`
 
 ---
 
 ## 6. Warmer
 
-- [ ] init `src/warmer/visitor.ts` — single URL visit → VisitResult
-- [ ] test `src/warmer/visitor.ts` — returns statusCode + ttfb, consent result included, error captured without throwing, context always closed
-- [ ] code `src/warmer/visitor.ts`
-- [ ] review `src/warmer/visitor.ts`
+- [x] init `src/warmer/visitor.ts` — single URL visit → VisitResult
+- [x] test `src/warmer/visitor.ts` — returns statusCode + ttfb, consent result included, error captured without throwing, context always closed
+- [x] code `src/warmer/visitor.ts`
+- [x] review `src/warmer/visitor.ts`
 
-- [ ] init `src/warmer/runner.ts` — group run orchestration + DB writes
-- [ ] test `src/warmer/runner.ts` — run record created, all URLs visited, partial failure status set correctly, between-URL delay applied
-- [ ] code `src/warmer/runner.ts`
-- [ ] review `src/warmer/runner.ts`
+- [x] init `src/warmer/runner.ts` — group run orchestration + DB writes
+- [x] test `src/warmer/runner.ts` — run record created, all URLs visited, partial failure status set correctly, between-URL delay applied
+- [x] code `src/warmer/runner.ts`
+- [x] review `src/warmer/runner.ts`
 
 ---
 
