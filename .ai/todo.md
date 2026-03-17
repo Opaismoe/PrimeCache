@@ -112,53 +112,53 @@
 
 ## 7. Scheduler
 
-- [ ] init `src/scheduler/index.ts` — node-cron jobs per URL group
-- [ ] test `src/scheduler/index.ts` — jobs registered with correct cron expression, config reload registers new jobs
-- [ ] code `src/scheduler/index.ts`
-- [ ] review `src/scheduler/index.ts`
+- [x] init `src/scheduler/index.ts` — node-cron jobs per URL group
+- [x] test `src/scheduler/index.ts` — jobs registered with correct cron expression, config reload registers new jobs
+- [x] code `src/scheduler/index.ts`
+- [x] review `src/scheduler/index.ts`
 
 ---
 
 ## 8. API
 
-- [ ] init `src/api/server.ts` — Fastify instance + API key preHandler
-- [ ] test `src/api/server.ts` — 401 without key, 401 with wrong key, passes with correct key, `/health` requires no key
-- [ ] code `src/api/server.ts`
-- [ ] review `src/api/server.ts`
+- [x] init `src/api/server.ts` — Fastify instance + API key preHandler
+- [x] test `src/api/server.ts` — 401 without key, 401 with wrong key, passes with correct key, `/health` requires no key
+- [x] code `src/api/server.ts`
+- [x] review `src/api/server.ts`
 
-- [ ] init `src/api/routes/health.ts` — `GET /health`
-- [ ] test `src/api/routes/health.ts` — returns 200 `{ status: 'ok' }`
-- [ ] code `src/api/routes/health.ts`
-- [ ] review `src/api/routes/health.ts`
+- [x] init `src/api/routes/health.ts` — `GET /health`
+- [x] test `src/api/routes/health.ts` — returns 200 `{ status: 'ok' }`
+- [x] code `src/api/routes/health.ts`
+- [x] review `src/api/routes/health.ts`
 
-- [ ] init `src/api/routes/runs.ts` — `GET /runs`, `GET /runs/:id`, `GET /runs/latest`
-- [ ] test `src/api/routes/runs.ts` — pagination works, 404 on unknown id, latest returns one per group
-- [ ] code `src/api/routes/runs.ts`
-- [ ] review `src/api/routes/runs.ts`
+- [x] init `src/api/routes/runs.ts` — `GET /runs`, `GET /runs/:id`, `GET /runs/latest`
+- [x] test `src/api/routes/runs.ts` — pagination works, 404 on unknown id, latest returns one per group
+- [x] code `src/api/routes/runs.ts`
+- [x] review `src/api/routes/runs.ts`
 
-- [ ] init `src/api/routes/trigger.ts` — `POST /trigger`
-- [ ] test `src/api/routes/trigger.ts` — unknown group returns 400, known group returns runId, run executes async
-- [ ] code `src/api/routes/trigger.ts`
-- [ ] review `src/api/routes/trigger.ts`
+- [x] init `src/api/routes/trigger.ts` — `POST /trigger`
+- [x] test `src/api/routes/trigger.ts` — unknown group returns 400, known group returns runId, run executes async
+- [x] code `src/api/routes/trigger.ts`
+- [x] review `src/api/routes/trigger.ts`
 
-- [ ] init `src/api/routes/webhook.ts` — `POST /webhook/warm`
-- [ ] test `src/api/routes/webhook.ts` — `{ group: "all" }` triggers all groups, responds immediately with runIds, unknown group returns 400
-- [ ] code `src/api/routes/webhook.ts`
-- [ ] review `src/api/routes/webhook.ts`
+- [x] init `src/api/routes/webhook.ts` — `POST /webhook/warm`
+- [x] test `src/api/routes/webhook.ts` — `{ group: "all" }` triggers all groups, responds immediately with runIds, unknown group returns 400
+- [x] code `src/api/routes/webhook.ts`
+- [x] review `src/api/routes/webhook.ts`
 
-- [ ] init `src/api/routes/config.ts` — `GET /config`
-- [ ] test `src/api/routes/config.ts` — returns current parsed URL groups
-- [ ] code `src/api/routes/config.ts`
-- [ ] review `src/api/routes/config.ts`
+- [x] init `src/api/routes/config.ts` — `GET /config`
+- [x] test `src/api/routes/config.ts` — returns current parsed URL groups
+- [x] code `src/api/routes/config.ts`
+- [x] review `src/api/routes/config.ts`
 
 ---
 
 ## 9. Entry point
 
-- [ ] init `src/index.ts` — boot sequence: migrations → API → scheduler
-- [ ] test `src/index.ts` — boot order enforced (migrations before API), SIGTERM triggers clean shutdown
-- [ ] code `src/index.ts`
-- [ ] review `src/index.ts`
+- [x] init `src/index.ts` — boot sequence: migrations → API → scheduler
+- [x] test `src/index.ts` — boot order enforced (migrations before API), SIGTERM triggers clean shutdown
+- [x] code `src/index.ts`
+- [x] review `src/index.ts`
 
 ---
 

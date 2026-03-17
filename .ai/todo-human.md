@@ -534,9 +534,9 @@ export function registerJobs(groups: WarmGroup[]): void {
 }
 ```
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -555,9 +555,9 @@ protectedRoutes.addHook('preHandler', async (request, reply) => {
 })
 ```
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
@@ -567,16 +567,16 @@ protectedRoutes.addHook('preHandler', async (request, reply) => {
 ```json
 { "status": "ok", "uptime": 123.4 }
 ```
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 **`GET /runs?limit=20&offset=0`** — paginated run history
 **`GET /runs/latest`** — one run per group, most recent
 **`GET /runs/:id`** — run + all its visit records
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 **`POST /trigger`** — trigger a group run manually:
 ```json
@@ -585,9 +585,9 @@ protectedRoutes.addHook('preHandler', async (request, reply) => {
 // response
 { "runId": 42 }
 ```
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 **`POST /webhook/warm`** — same as trigger but also accepts `"all"` to warm every group:
 ```json
@@ -598,17 +598,17 @@ protectedRoutes.addHook('preHandler', async (request, reply) => {
 ```
 Responds immediately — warming runs in the background.
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 **`GET /config`** — returns the current parsed URL config:
 ```json
 { "groups": [{ "name": "homepage", "schedule": "*/15 * * * *", "urls": [...] }] }
 ```
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
