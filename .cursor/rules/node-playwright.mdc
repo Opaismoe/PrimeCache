@@ -1,0 +1,64 @@
+---
+description: Playwright + Browserless patterns specific to this cache warmer project.
+globs: src/browser/**/*.ts,src/warmer/**/*.ts
+alwaysApply: false
+---
+# Playwright + Browserless Patterns
+
+## Connection
+Connect via Playwright native protocol — provides better isolation than CDP:
+```typescript
+import { chromium } from 'playwright-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+chromium.use(StealthPlugin())
+
+const browser = await chromium.connect(
+  `${env.BROWSERLESS_WS_URL}?token=${env.BROWSERLESS_TOKEN}`
+)
+```
+
+## Contexts
+Create one `BrowserContext` per URL visit. This gives isolated cookies, storage, and network:
+```typescript
+const context = await browser.newContext({
+  viewport: { width: 1440, height: 900 },
+  userAgent: pickRandomUA(),
+  locale: 'nl-NL',
+  extraHTTPHeaders: { 'Accept-Language': 'nl-NL,nl;q=0.9,en;q=0.8' }
+})
+try {
+  const page = await context.newPage()
+  // ... visit
+} finally {
+  await context.close()
+}
+```
+
+## Wait strategy
+Use `networkidle` for cache warming — ensures all sub-resources are also fetched:
+```typescript
+await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 })
+```
+
+## Cookie consent timing
+Wait 500–1000ms after clicking a consent button before continuing. CMPs often fire XHR requests after accept that re-render the page:
+```typescript
+await consentButton.click()
+await page.waitForTimeout(500 + Math.random() * 500)
+```
+
+## Reconnect pattern
+The `getBrowser()` function in `connection.ts` must handle reconnects. If `browser.isConnected()` returns false, reconnect with exponential backoff before returning.
+
+## TTFB capture
+Capture Time-to-First-Byte via the response event, not after `goto` returns:
+```typescript
+let ttfb: number | null = null
+const startTime = Date.now()
+page.on('response', (response) => {
+  if (response.url() === url && !ttfb) {
+    ttfb = Date.now() - startTime
+  }
+})
+await page.goto(url, { waitUntil: 'networkidle' })
+```

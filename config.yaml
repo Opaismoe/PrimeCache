@@ -1,0 +1,14 @@
+groups:
+  - name: homepage
+    schedule: "*/15 * * * *"
+    urls:
+      - https://example.com/
+      - https://example.com/nl/
+    options:
+      scrollToBottom: true
+      waitForSelector: "main"
+
+  - name: product-pages
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/products

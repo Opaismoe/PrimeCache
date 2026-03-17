@@ -1,0 +1,46 @@
+---
+description: TypeScript conventions for this project. Apply when writing or reviewing TypeScript code.
+globs: src/**/*.ts
+alwaysApply: false
+---
+# TypeScript Conventions
+
+## Strict mode
+`tsconfig.json` uses `"strict": true`. Never use `any` — use `unknown` and narrow it, or define a proper type.
+
+## Zod for runtime validation
+Use Zod for all external data (env vars, config files, API request bodies). Never trust `process.env` directly:
+```typescript
+// env.ts pattern
+import { z } from 'zod'
+const EnvSchema = z.object({
+  API_KEY: z.string().min(16),
+  PORT: z.coerce.number().default(3000),
+})
+export const env = EnvSchema.parse(process.env)
+```
+
+## Async/await
+- Always use `async/await` — never raw `.then()/.catch()` chains
+- Use `try/finally` to ensure cleanup (e.g., `context.close()`)
+
+## Type definitions
+- Define result types as interfaces in the same file as the function that produces them
+- Export types that are used across modules; keep internal types unexported
+
+## Imports
+- Use ES module imports (`import ... from ...`) — no `require()`
+- Group: node builtins → external packages → internal modules
+
+## Naming
+- `PascalCase` for types/interfaces/classes
+- `camelCase` for variables, functions, parameters
+- `SCREAMING_SNAKE_CASE` for true constants (values that never change)
+
+## Fastify typing
+Type route schemas using Fastify generics:
+```typescript
+fastify.post<{ Body: { group: string } }>('/webhook/warm', {
+  schema: { body: { type: 'object', properties: { group: { type: 'string' } }, required: ['group'] } }
+}, async (request, reply) => { ... })
+```
