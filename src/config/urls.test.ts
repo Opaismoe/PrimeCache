@@ -81,4 +81,39 @@ groups:
   it('throws on invalid YAML syntax', () => {
     expect(() => parseConfig('groups: [invalid: yaml: {')).toThrow()
   })
+
+  it('accepts crawl: true with crawl_depth', () => {
+    const yaml = `
+groups:
+  - name: crawl-test
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/
+    options:
+      crawl: true
+      crawl_depth: 2
+`
+    const config = parseConfig(yaml)
+    expect(config.groups[0].options.crawl).toBe(true)
+    expect(config.groups[0].options.crawl_depth).toBe(2)
+  })
+
+  it('throws when crawl is true but crawl_depth is missing', () => {
+    const yaml = `
+groups:
+  - name: crawl-test
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/
+    options:
+      crawl: true
+`
+    expect(() => parseConfig(yaml)).toThrow()
+  })
+
+  it('defaults crawl to false when omitted', () => {
+    const config = parseConfig(VALID_YAML)
+    expect(config.groups[0].options.crawl).toBe(false)
+    expect(config.groups[0].options.crawl_depth).toBeUndefined()
+  })
 })

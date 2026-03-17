@@ -16,7 +16,7 @@ const group = (name: string, schedule: string) => ({
   name,
   schedule,
   urls: ['https://example.com/'],
-  options: { scrollToBottom: false as const },
+  options: { scrollToBottom: false as const, crawl: false as const },
 })
 
 describe('scheduler', () => {
