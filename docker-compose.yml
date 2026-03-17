@@ -4,7 +4,7 @@ services:
     environment:
       - BROWSERLESS_WS_URL=ws://browserless:3000/chromium/playwright
       - BROWSERLESS_TOKEN=dev-token
-      - API_KEY=dev-api-key
+      - API_KEY=dev-api-key-local-only
       - DB_PATH=/app/data/warmer.db
       - CONFIG_PATH=/app/config/config.yaml
       - LOG_LEVEL=debug
@@ -16,6 +16,12 @@ services:
       - "3000:3000"
     depends_on:
       - browserless
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
   browserless:
     image: ghcr.io/browserless/chromium:latest
@@ -23,3 +29,4 @@ services:
       - TOKEN=dev-token
     ports:
       - "3001:3000"
+    restart: unless-stopped
