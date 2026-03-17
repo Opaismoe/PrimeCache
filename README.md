@@ -80,54 +80,60 @@ All endpoints except `/health` require the `X-API-Key` header.
 
 ### Health
 
+```bash
+curl http://localhost:3000/health
+# {"status":"ok","uptime":42}
 ```
-GET /health
-```
+
 No auth required. Used as the Coolify/Docker health check.
 
-### Trigger a run
+### Trigger a run (synchronous)
 
-```
-POST /trigger
-X-API-Key: <your-api-key>
-Content-Type: application/json
+Runs immediately and waits until complete, then returns the run ID.
 
-{ "group": "homepage" }
-```
-
-Runs synchronously and returns the run ID when complete.
-
-```json
-{ "runId": 42 }
+```bash
+curl -X POST http://localhost:3000/trigger \
+  -H "X-API-Key: <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"group": "homepage"}'
+# {"runId": 42}
 ```
 
 ### Webhook (async)
 
-```
-POST /webhook/warm
-X-API-Key: <your-api-key>
-Content-Type: application/json
-
-{ "group": "homepage" }
-// or
-{ "group": "all" }
-```
-
 Responds immediately while warming runs in the background. Use `"all"` to warm every configured group at once.
 
-```json
-{ "queued": true, "runIds": [-1] }
+```bash
+curl -X POST http://localhost:3000/webhook/warm \
+  -H "X-API-Key: <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"group": "homepage"}'
+# {"queued": true, "runIds": [-1]}
+```
+
+Watch it run in the logs:
+
+```bash
+docker compose logs -f cache-warmer
 ```
 
 ### Run history
 
-```
-GET /runs?limit=20&offset=0
-GET /runs/latest          # one result per group
-GET /runs/:id             # includes per-URL visit details
+```bash
+# All runs (paginated)
+curl http://localhost:3000/runs \
+  -H "X-API-Key: <your-api-key>"
+
+# Latest run per group
+curl http://localhost:3000/runs/latest \
+  -H "X-API-Key: <your-api-key>"
+
+# Single run with per-URL visit details
+curl http://localhost:3000/runs/1 \
+  -H "X-API-Key: <your-api-key>"
 ```
 
-**Example run response (`GET /runs/1`):**
+**Example response for `GET /runs/1`:**
 
 ```json
 {
@@ -159,9 +165,9 @@ Run `status` values: `running` · `completed` · `partial_failure` · `failed`
 
 ### Config inspection
 
-```
-GET /config
-X-API-Key: <your-api-key>
+```bash
+curl http://localhost:3000/config \
+  -H "X-API-Key: <your-api-key>"
 ```
 
 Returns the currently loaded URL groups.
