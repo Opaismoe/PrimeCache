@@ -647,9 +647,9 @@ async function main() {
 main()
 ```
 
-- [ ] Tests written + failing
-- [ ] Code written + tests passing
-- [ ] Done
+- [x] Tests written + failing
+- [x] Code written + tests passing
+- [x] Done
 
 ---
 
