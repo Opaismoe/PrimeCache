@@ -8,5 +8,6 @@ export const db = knex({
   useNullAsDefault: true,
   migrations: {
     directory: path.join(__dirname, 'migrations'),
+    loadExtensions: ['.js'],
   },
 })
