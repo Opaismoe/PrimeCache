@@ -15,6 +15,7 @@ export interface VisitResult {
   consentStrategy: string | null
   error: string | null
   visitedAt: Date
+  discoveredLinks: string[]
 }
 
 export async function visitUrl(
@@ -51,7 +52,23 @@ export async function visitUrl(
     const finalUrl = page.url()
     const loadTimeMs = Date.now() - start
 
-    logger.info({ url, finalUrl, ttfbMs, loadTimeMs, consentFound: consentResult.found }, 'visit complete')
+    // Extract same-origin links when crawl is enabled
+    let discoveredLinks: string[] = []
+    if (options.crawl) {
+      const baseOrigin = new URL(url).origin
+      const hrefs: string[] = await page.evaluate(() =>
+        Array.from(document.querySelectorAll('a[href]'))
+          .map((a) => (a as HTMLAnchorElement).href)
+          .filter((h) => h.startsWith('http'))
+      )
+      discoveredLinks = [...new Set(
+        hrefs
+          .filter((h) => new URL(h).origin === baseOrigin)
+          .map((h) => { const u = new URL(h); u.hash = ''; return u.toString() })
+      )]
+    }
+
+    logger.info({ url, finalUrl, ttfbMs, loadTimeMs, consentFound: consentResult.found, discoveredLinks: discoveredLinks.length }, 'visit complete')
 
     return {
       url,
@@ -63,6 +80,7 @@ export async function visitUrl(
       consentStrategy: consentResult.strategy,
       error: null,
       visitedAt: new Date(),
+      discoveredLinks,
     }
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err)
@@ -77,6 +95,7 @@ export async function visitUrl(
       consentStrategy: null,
       error,
       visitedAt: new Date(),
+      discoveredLinks: [],
     }
   } finally {
     await context?.close()

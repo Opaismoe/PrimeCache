@@ -18,7 +18,7 @@ vi.mock('../db/queries/visits', () => ({
 
 const mockConfig = {
   groups: [
-    { name: 'homepage', schedule: '*/15 * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false } },
+    { name: 'homepage', schedule: '*/15 * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false, crawl: false } },
   ],
 }
 

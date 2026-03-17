@@ -17,11 +17,10 @@ vi.mock('../browser/cookieConsent', () => ({
   dismissCookieConsent: vi.fn().mockResolvedValue({ found: true, strategy: 'cookiebot', durationMs: 50 }),
 }))
 
-function makeMockPage(statusCode = 200) {
+function makeMockPage(statusCode = 200, links: string[] = []) {
   const page: any = {
     on: vi.fn((event, handler) => {
       if (event === 'response') {
-        // Immediately fire with a matching response
         handler({ url: () => 'https://example.com/', status: () => statusCode })
       }
     }),
@@ -29,6 +28,7 @@ function makeMockPage(statusCode = 200) {
     url: vi.fn().mockReturnValue('https://example.com/'),
     waitForSelector: vi.fn().mockResolvedValue(undefined),
     waitForTimeout: vi.fn().mockResolvedValue(undefined),
+    evaluate: vi.fn().mockResolvedValue(links),
   }
   return page
 }
@@ -53,7 +53,7 @@ describe('visitUrl', () => {
 
   it('returns a VisitResult with statusCode and url', async () => {
     const { visitUrl } = await import('./visitor')
-    const result = await visitUrl('https://example.com/', { scrollToBottom: false })
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
     expect(result.url).toBe('https://example.com/')
     expect(result.statusCode).toBe(200)
     expect(result.error).toBeNull()
@@ -61,7 +61,7 @@ describe('visitUrl', () => {
 
   it('includes consent result in VisitResult', async () => {
     const { visitUrl } = await import('./visitor')
-    const result = await visitUrl('https://example.com/', { scrollToBottom: false })
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
     expect(result.consentFound).toBe(true)
     expect(result.consentStrategy).toBe('cookiebot')
   })
@@ -74,14 +74,14 @@ describe('visitUrl', () => {
     vi.mocked(createContext).mockResolvedValue(ctx as any)
 
     const { visitUrl } = await import('./visitor')
-    const result = await visitUrl('https://example.com/', { scrollToBottom: false })
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
     expect(ctx.close).toHaveBeenCalledOnce()
     expect(result.error).toContain('Navigation timeout')
   })
 
   it('captures loadTimeMs', async () => {
     const { visitUrl } = await import('./visitor')
-    const result = await visitUrl('https://example.com/', { scrollToBottom: false })
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
     expect(typeof result.loadTimeMs).toBe('number')
     expect(result.loadTimeMs).toBeGreaterThanOrEqual(0)
   })
@@ -90,8 +90,30 @@ describe('visitUrl', () => {
     const { createContext } = await import('../browser/context')
     vi.mocked(createContext).mockRejectedValue(new Error('Browserless unreachable'))
     const { visitUrl } = await import('./visitor')
-    const result = await visitUrl('https://example.com/', { scrollToBottom: false })
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
     expect(result.error).toBeTruthy()
     expect(result.statusCode).toBeNull()
+  })
+
+  it('returns empty discoveredLinks when crawl is false', async () => {
+    const { visitUrl } = await import('./visitor')
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
+    expect(result.discoveredLinks).toEqual([])
+  })
+
+  it('returns discovered same-origin links when crawl is true', async () => {
+    const { createContext } = await import('../browser/context')
+    const page = makeMockPage(200, [
+      'https://example.com/about',
+      'https://example.com/contact',
+      'https://other.com/external',  // different origin — should be filtered
+    ])
+    vi.mocked(createContext).mockResolvedValue(makeMockContext(page) as any)
+
+    const { visitUrl } = await import('./visitor')
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: true, crawl_depth: 2 })
+    expect(result.discoveredLinks).toContain('https://example.com/about')
+    expect(result.discoveredLinks).toContain('https://example.com/contact')
+    expect(result.discoveredLinks).not.toContain('https://other.com/external')
   })
 })
