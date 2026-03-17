@@ -8,10 +8,11 @@ const GroupOptionsSchema = z.object({
   waitForSelector:  z.string().optional(),
   crawl:            z.boolean().default(false),
   crawl_depth:      z.number().int().min(1).max(10).optional(),
+  userAgent:        z.string().optional(),
 }).refine(
   (opts) => !opts.crawl || opts.crawl_depth !== undefined,
   { message: 'crawl_depth is required when crawl is true' },
-).default({ scrollToBottom: false, crawl: false })
+).default({ scrollToBottom: false, crawl: false, userAgent: undefined })
 
 const GroupSchema = z.object({
   name:     z.string().min(1, 'Group name is required'),

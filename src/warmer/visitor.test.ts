@@ -116,4 +116,12 @@ describe('visitUrl', () => {
     expect(result.discoveredLinks).toContain('https://example.com/contact')
     expect(result.discoveredLinks).not.toContain('https://other.com/external')
   })
+
+  it('passes custom userAgent to createContext', async () => {
+    const { createContext } = await import('../browser/context')
+    const { visitUrl } = await import('./visitor')
+    const customUA = 'TerraCache/1.0.0'
+    await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false, userAgent: customUA })
+    expect(vi.mocked(createContext)).toHaveBeenCalledWith(expect.anything(), customUA)
+  })
 })

@@ -27,7 +27,7 @@ export async function visitUrl(
 
   try {
     const browser = await getBrowser()
-    context = await createContext(browser)
+    context = await createContext(browser, options.userAgent)
     const page = await context.newPage()
 
     // Capture TTFB from the first matching response
