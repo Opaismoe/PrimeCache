@@ -1,0 +1,29 @@
+import cron, { type ScheduledTask } from 'node-cron'
+import type { Knex } from 'knex'
+import { runGroup } from '../warmer/runner'
+import { logger } from '../utils/logger'
+import { env } from '../config/env'
+import type { WarmGroup } from '../config/urls'
+
+const jobs: ScheduledTask[] = []
+
+export function registerJobs(groups: WarmGroup[], db: Knex): void {
+  // Tear down existing jobs first
+  jobs.forEach((j) => j.destroy())
+  jobs.length = 0
+
+  for (const group of groups) {
+    const task = cron.schedule(
+      group.schedule,
+      () => {
+        logger.info({ group: group.name }, 'cron triggered warm run')
+        runGroup(db, group).catch((err) =>
+          logger.error({ group: group.name, err }, 'scheduled run failed'),
+        )
+      },
+      { timezone: env.TIMEZONE },
+    )
+    jobs.push(task)
+    logger.info({ group: group.name, schedule: group.schedule }, 'cron job registered')
+  }
+}
