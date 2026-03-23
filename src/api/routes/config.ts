@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { writeFileSync, renameSync } from 'node:fs'
+import { writeFileSync } from 'node:fs'
 import yaml from 'js-yaml'
 import { env } from '../../config/env'
 import { ConfigSchema } from '../../config/urls'
@@ -11,9 +11,7 @@ export const putConfigRoute: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ error: 'Invalid config', issues: result.error.issues })
     }
     const yamlContent = yaml.dump(result.data)
-    const tmpPath = env.CONFIG_PATH + '.tmp'
-    writeFileSync(tmpPath, yamlContent, 'utf-8')
-    renameSync(tmpPath, env.CONFIG_PATH)
+    writeFileSync(env.CONFIG_PATH, yamlContent, 'utf-8')
     return { ok: true }
   })
 }
