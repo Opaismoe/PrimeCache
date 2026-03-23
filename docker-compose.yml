@@ -3,12 +3,13 @@ services:
     build: .
     environment:
       - BROWSERLESS_WS_URL=ws://browserless:3000/chromium/playwright
-      - BROWSERLESS_TOKEN=dev-token
-      - API_KEY=dev-api-key-local-only
+      - BROWSERLESS_TOKEN=${BROWSERLESS_TOKEN}
+      - API_KEY=${API_KEY}
       - DB_PATH=/app/data/warmer.db
       - CONFIG_PATH=/app/config/config.yaml
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
       - PORT=3000
+      - TIMEZONE=${TIMEZONE:-Europe/Amsterdam}
     volumes:
       - ./data:/app/data
       - ./config.yaml:/app/config/config.yaml
@@ -27,11 +28,11 @@ services:
   browserless:
     image: ghcr.io/browserless/chromium:latest
     environment:
-      - TOKEN=dev-token
+      - TOKEN=${BROWSERLESS_TOKEN}
     ports:
       - "3001:3000"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/pressure?token=dev-token"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/pressure?token=${BROWSERLESS_TOKEN}"]
       interval: 5s
       timeout: 3s
       retries: 10
