@@ -356,9 +356,10 @@ function renderConfigList() {
     if (delBtn) {
       const i = Number(delBtn.dataset.delete)
       if (!confirm(`Delete group "${configGroups[i].name}"?`)) return
-      configGroups.splice(i, 1)
+      const removed = configGroups.splice(i, 1)
       const ok = await saveConfig()
       if (ok) { toast('Group deleted', 'success'); renderConfigList() }
+      else { configGroups.splice(i, 0, ...removed) }
     }
   })
 }
@@ -466,11 +467,10 @@ async function saveConfig() {
   const body = await res.json()
   const errEl = document.getElementById('form-errors')
   if (errEl && body.issues) {
-    errEl.innerHTML = body.issues.map((iss) =>
-      `<p class="error">${esc(iss.message)}</p>`
-    ).join('')
+    errEl.innerHTML = body.issues.map((iss) => `<p class="error">${esc(iss.message)}</p>`).join('')
   } else {
-    toast(body.error || 'Save failed', 'fail')
+    const msg = body.issues?.[0]?.message ?? body.error ?? 'Save failed'
+    toast(msg, 'fail')
   }
   return false
 }
