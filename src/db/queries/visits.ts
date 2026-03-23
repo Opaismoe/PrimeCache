@@ -25,6 +25,26 @@ export interface VisitRow {
   visited_at: string
 }
 
+export async function insertVisit(
+  db: Knex,
+  runId: number,
+  visit: VisitInput,
+): Promise<number> {
+  const [id] = await db('visits').insert({
+    run_id: runId,
+    url: visit.url,
+    status_code: visit.statusCode,
+    final_url: visit.finalUrl,
+    ttfb_ms: visit.ttfbMs,
+    load_time_ms: visit.loadTimeMs,
+    consent_found: visit.consentFound ? 1 : 0,
+    consent_strategy: visit.consentStrategy,
+    error: visit.error,
+    visited_at: new Date().toISOString(),
+  })
+  return id as number
+}
+
 export async function insertVisits(
   db: Knex,
   runId: number,

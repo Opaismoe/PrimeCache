@@ -16,6 +16,10 @@ vi.mock('../db/queries/runs', () => ({
   getRuns: vi.fn().mockResolvedValue([]),
   getRunById: vi.fn().mockResolvedValue(null),
   getLatestPerGroup: vi.fn().mockResolvedValue([]),
+  finalizeRun: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('../warmer/registry', () => ({
+  cancelRun: vi.fn().mockReturnValue(true),
 }))
 vi.mock('../db/queries/visits', () => ({
   getVisitsByRunId: vi.fn().mockResolvedValue([]),
@@ -235,5 +239,44 @@ describe('PUT /config', () => {
       body: JSON.stringify(validConfigBody),
     })
     expect(res.statusCode).toBe(401)
+  })
+})
+
+// ── POST /runs/:id/cancel ─────────────────────────────────────────────────────
+
+describe('POST /runs/:id/cancel', () => {
+  it('returns 404 for unknown run', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/runs/99999/cancel',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    })
+    expect(res.statusCode).toBe(404)
+  })
+
+  it('returns 400 when run is not running', async () => {
+    const { getRunById } = await import('../db/queries/runs')
+    vi.mocked(getRunById).mockResolvedValueOnce({
+      id: 1, group_name: 'homepage', started_at: '', ended_at: '',
+      status: 'completed', total_urls: 1, success_count: 1, failure_count: 0,
+    } as any)
+    const res = await app.inject({
+      method: 'POST', url: '/runs/1/cancel',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    })
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('returns 200 and cancels a running run', async () => {
+    const { getRunById } = await import('../db/queries/runs')
+    vi.mocked(getRunById).mockResolvedValueOnce({
+      id: 1, group_name: 'homepage', started_at: '', ended_at: null,
+      status: 'running', total_urls: 1, success_count: null, failure_count: null,
+    } as any)
+    const res = await app.inject({
+      method: 'POST', url: '/runs/1/cancel',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().ok).toBe(true)
   })
 })
