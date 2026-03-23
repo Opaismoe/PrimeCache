@@ -12,6 +12,7 @@ RUN npm install -g pnpm
 COPY package*.json ./
 RUN pnpm install --prod
 COPY --from=builder /app/dist ./dist
+COPY public ./public
 VOLUME ["/app/data", "/app/config"]
 EXPOSE 3000
 ENTRYPOINT ["dumb-init", "--"]
