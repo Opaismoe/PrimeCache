@@ -207,3 +207,33 @@ tr.row-error td { background: rgba(239,68,68,0.06); }
 
 /* ── Error cell ───────────────────────────────────────────────────────────── */
 .error-msg { color: var(--red); font-size: 0.8rem; font-family: monospace; word-break: break-all; }
+
+/* ── Cron builder ─────────────────────────────────────────────────────────── */
+.cron-builder { display: flex; flex-direction: column; gap: 0.5rem; }
+.cron-builder > select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius); padding: 0.5rem 0.75rem; font-size: 0.9rem; outline: none;
+}
+.cron-builder > select:focus { border-color: var(--accent); }
+.cron-params {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  padding: 0.6rem 0.75rem; background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.88rem;
+}
+.cron-params input[type=number], .cron-params input[type=time], .cron-params input[type=text] {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 0.3rem 0.5rem; font-size: 0.88rem;
+  font-family: inherit; outline: none;
+}
+.cron-params input[type=number] { width: 68px; }
+.cron-params input[type=text] { width: 180px; font-family: monospace; }
+.cron-params input:focus { border-color: var(--accent); }
+.cron-preview { font-size: 0.8rem; color: var(--text-muted); }
+.cron-preview code { font-family: monospace; color: var(--accent-hover); letter-spacing: 0.02em; }
+.dow-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.dow-label {
+  display: flex; align-items: center; gap: 0.3rem; font-size: 0.82rem;
+  cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 4px;
+  border: 1px solid var(--border); user-select: none;
+}
+.dow-label:has(input:checked) { background: rgba(99,102,241,0.15); border-color: var(--accent); color: var(--accent-hover); }

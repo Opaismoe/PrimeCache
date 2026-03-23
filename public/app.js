@@ -364,6 +364,53 @@ function renderConfigList() {
   })
 }
 
+// ── Cron helpers ───────────────────────────────────────────────────────────────
+function pad2(n) { return String(n).padStart(2, '0') }
+
+function parseCron(expr) {
+  if (!expr) return { type: 'interval-min', minN: 15 }
+  const parts = expr.trim().split(/\s+/)
+  if (parts.length !== 5) return { type: 'custom', raw: expr }
+  const [min, hr, dom, mon, dow] = parts
+  if (/^\*\/(\d+)$/.test(min) && hr === '*' && dom === '*' && mon === '*' && dow === '*')
+    return { type: 'interval-min', minN: parseInt(min.slice(2)) }
+  if (/^\*\/(\d+)$/.test(hr) && dom === '*' && mon === '*' && dow === '*')
+    return { type: 'interval-hr', hrN: parseInt(hr.slice(2)), atMin: parseInt(min) || 0 }
+  if (/^\d+$/.test(min) && /^\d+$/.test(hr) && dom === '*' && mon === '*' && dow === '*')
+    return { type: 'daily', h: parseInt(hr), m: parseInt(min) }
+  if (/^\d+$/.test(min) && /^\d+$/.test(hr) && dom === '*' && mon === '*' && dow !== '*')
+    return { type: 'weekly', h: parseInt(hr), m: parseInt(min), days: dow.split(',').map(Number) }
+  return { type: 'custom', raw: expr }
+}
+
+function getCronValue() {
+  const type = document.getElementById('f-cron-type')?.value
+  if (type === 'interval-min') {
+    const n = Math.max(1, parseInt(document.getElementById('f-cron-min-n').value) || 15)
+    return `*/${n} * * * *`
+  }
+  if (type === 'interval-hr') {
+    const n = Math.max(1, parseInt(document.getElementById('f-cron-hr-n').value) || 1)
+    const m = Math.min(59, Math.max(0, parseInt(document.getElementById('f-cron-hr-min').value) || 0))
+    return `${m} */${n} * * *`
+  }
+  if (type === 'daily') {
+    const [h, m] = (document.getElementById('f-cron-daily-time').value || '00:00').split(':')
+    return `${parseInt(m)} ${parseInt(h)} * * *`
+  }
+  if (type === 'weekly') {
+    const [h, m] = (document.getElementById('f-cron-weekly-time').value || '00:00').split(':')
+    const days = [...document.querySelectorAll('.f-dow:checked')].map((el) => el.value).join(',') || '*'
+    return `${parseInt(m)} ${parseInt(h)} * * ${days}`
+  }
+  return document.getElementById('f-cron-raw')?.value.trim() ?? ''
+}
+
+function updateCronPreview() {
+  const el = document.getElementById('cron-preview-val')
+  if (el) el.textContent = getCronValue()
+}
+
 function renderGroupForm(group, index) {
   editingIndex = index
   const isNew = index === -1
@@ -381,9 +428,39 @@ function renderGroupForm(group, index) {
           <label for="f-name">Name *</label>
           <input type="text" id="f-name" value="${esc(g.name)}" placeholder="homepage">
         </div>
-        <div class="form-field">
-          <label for="f-schedule">Schedule (cron) *</label>
-          <input type="text" id="f-schedule" value="${esc(g.schedule)}" placeholder="*/15 * * * *">
+        <div class="form-field full">
+          <label>Schedule *</label>
+          <div class="cron-builder" id="cron-builder">
+            <select id="f-cron-type">
+              <option value="interval-min">Every N minutes</option>
+              <option value="interval-hr">Every N hours</option>
+              <option value="daily">Daily at a fixed time</option>
+              <option value="weekly">Weekly on specific days</option>
+              <option value="custom">Custom cron expression</option>
+            </select>
+            <div id="cron-params-interval-min" class="cron-params">
+              Every <input type="number" id="f-cron-min-n" min="1" max="59" value="15"> minutes
+            </div>
+            <div id="cron-params-interval-hr" class="cron-params hidden">
+              Every <input type="number" id="f-cron-hr-n" min="1" max="23" value="1"> hours,
+              at minute <input type="number" id="f-cron-hr-min" min="0" max="59" value="0">
+            </div>
+            <div id="cron-params-daily" class="cron-params hidden">
+              At <input type="time" id="f-cron-daily-time" value="00:00">
+            </div>
+            <div id="cron-params-weekly" class="cron-params hidden" style="flex-direction:column;align-items:flex-start;gap:0.6rem">
+              At <input type="time" id="f-cron-weekly-time" value="00:00"> on:
+              <div class="dow-row">
+                ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((d, i) =>
+                  `<label class="dow-label"><input type="checkbox" class="f-dow" value="${i + 1}"> ${d}</label>`
+                ).join('')}
+              </div>
+            </div>
+            <div id="cron-params-custom" class="cron-params hidden">
+              <input type="text" id="f-cron-raw" placeholder="*/15 * * * *">
+            </div>
+            <div class="cron-preview">Cron expression: <code id="cron-preview-val"></code></div>
+          </div>
         </div>
         <div class="form-field full">
           <label for="f-urls">URLs * <span style="font-weight:400">(one per line)</span></label>
@@ -424,11 +501,47 @@ function renderGroupForm(group, index) {
     document.getElementById('crawl-depth-field').style.display = e.target.checked ? '' : 'none'
   })
 
+  // ── Cron builder init ────────────────────────────────────────────────────
+  const cronState = parseCron(g.schedule)
+  const cronTypeEl = document.getElementById('f-cron-type')
+  cronTypeEl.value = cronState.type
+
+  function showCronParams(type) {
+    document.querySelectorAll('.cron-params').forEach((el) => el.classList.add('hidden'))
+    document.getElementById(`cron-params-${type}`)?.classList.remove('hidden')
+  }
+  showCronParams(cronState.type)
+
+  if (cronState.type === 'interval-min') {
+    document.getElementById('f-cron-min-n').value = cronState.minN
+  } else if (cronState.type === 'interval-hr') {
+    document.getElementById('f-cron-hr-n').value = cronState.hrN
+    document.getElementById('f-cron-hr-min').value = cronState.atMin
+  } else if (cronState.type === 'daily') {
+    document.getElementById('f-cron-daily-time').value = pad2(cronState.h) + ':' + pad2(cronState.m)
+  } else if (cronState.type === 'weekly') {
+    document.getElementById('f-cron-weekly-time').value = pad2(cronState.h) + ':' + pad2(cronState.m)
+    cronState.days.forEach((d) => {
+      const el = document.querySelector(`.f-dow[value="${d}"]`)
+      if (el) el.checked = true
+    })
+  } else if (cronState.type === 'custom') {
+    document.getElementById('f-cron-raw').value = cronState.raw
+  }
+
+  updateCronPreview()
+
+  cronTypeEl.addEventListener('change', () => {
+    showCronParams(cronTypeEl.value)
+    updateCronPreview()
+  })
+  document.getElementById('cron-builder').addEventListener('input', updateCronPreview)
+
   document.getElementById('btn-cancel-group').addEventListener('click', renderConfigList)
 
   document.getElementById('btn-save-group').addEventListener('click', async () => {
     const name     = document.getElementById('f-name').value.trim()
-    const schedule = document.getElementById('f-schedule').value.trim()
+    const schedule = getCronValue()
     const rawUrls  = document.getElementById('f-urls').value.trim()
     const urls     = rawUrls.split('\n').map((u) => u.trim()).filter(Boolean)
     const scrollToBottom = document.getElementById('f-scroll').checked
