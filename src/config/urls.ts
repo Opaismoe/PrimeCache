@@ -21,7 +21,7 @@ const GroupSchema = z.object({
   options:  GroupOptionsSchema,
 })
 
-const ConfigSchema = z.object({
+export const ConfigSchema = z.object({
   groups: z.array(GroupSchema).min(1, 'At least one group is required'),
 })
 
