@@ -6,9 +6,10 @@ import type { Knex } from 'knex'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
 import type { Config } from '../config/urls'
-import { getRuns, getRunById, getLatestPerGroup } from '../db/queries/runs'
+import { getRuns, getRunById, getLatestPerGroup, finalizeRun } from '../db/queries/runs'
 import { getVisitsByRunId } from '../db/queries/visits'
 import { runGroup } from '../warmer/runner'
+import { cancelRun } from '../warmer/registry'
 import { putConfigRoute } from './routes/config'
 
 interface ServerDeps {
@@ -92,6 +93,21 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       }
 
       return { queued: true, runIds }
+    })
+
+    // POST /runs/:id/cancel — must be before /runs/:id
+    protected_.post('/runs/:id/cancel', async (request: any, reply: any) => {
+      const id = Number(request.params.id)
+      const run = await getRunById(db, id)
+      if (!run) return reply.code(404).send({ error: 'Run not found' })
+      if (run.status !== 'running') return reply.code(400).send({ error: 'Run is not in running state' })
+      cancelRun(id)
+      await finalizeRun(db, id, {
+        status: 'cancelled',
+        successCount: run.success_count ?? 0,
+        failureCount: run.failure_count ?? 0,
+      })
+      return { ok: true }
     })
 
     // GET /config

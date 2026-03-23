@@ -128,4 +128,20 @@ describe('visits queries', () => {
     const visits = await getVisitsByRunId(db, runId)
     expect(visits[0].error).toBe('Navigation timeout')
   })
+
+  it('insertVisit inserts a single visit and returns the row id', async () => {
+    const { insertRun } = await import('./queries/runs')
+    const { insertVisit, getVisitsByRunId } = await import('./queries/visits')
+
+    const runId = await insertRun(db, { groupName: 'homepage', totalUrls: 1 })
+    const visitId = await insertVisit(db, runId, {
+      url: 'https://single.com', statusCode: 200, finalUrl: 'https://single.com',
+      ttfbMs: 50, loadTimeMs: 300, consentFound: false, consentStrategy: null, error: null,
+    })
+    expect(typeof visitId).toBe('number')
+    expect(visitId).toBeGreaterThan(0)
+    const visits = await getVisitsByRunId(db, runId)
+    expect(visits).toHaveLength(1)
+    expect(visits[0].url).toBe('https://single.com')
+  })
 })

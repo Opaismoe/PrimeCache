@@ -5,7 +5,7 @@ export interface RunRow {
   group_name: string
   started_at: string
   ended_at: string | null
-  status: 'running' | 'completed' | 'partial_failure' | 'failed'
+  status: 'running' | 'completed' | 'partial_failure' | 'failed' | 'cancelled'
   total_urls: number | null
   success_count: number | null
   failure_count: number | null

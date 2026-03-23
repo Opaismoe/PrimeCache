@@ -80,6 +80,7 @@ function showView(name) {
 }
 
 function route() {
+  stopRunDetailPoll()
   const hash = location.hash.replace('#', '') || 'dashboard'
   if (hash.startsWith('run-detail/')) {
     const id = hash.split('/')[1]
@@ -250,8 +251,64 @@ async function renderHistory(offset = 0, group = historyGroup) {
 }
 
 // ── Run detail ─────────────────────────────────────────────────────────────────
+let runDetailPollTimer = null
+
+function stopRunDetailPoll() {
+  clearInterval(runDetailPollTimer)
+  runDetailPollTimer = null
+}
+
+function buildRunDetailHTML(run) {
+  const visits = run.visits ?? []
+  const isRunning = run.status === 'running'
+  const dur = run.ended_at && run.started_at
+    ? ms(new Date(run.ended_at) - new Date(run.started_at))
+    : isRunning ? '…' : '—'
+  const totalVisits = visits.length
+  const failedVisits = visits.filter((v) => v.error).length
+  const withTtfb = visits.filter((v) => v.ttfb_ms != null)
+  const avgTtfb = withTtfb.length ? withTtfb.reduce((a, v) => a + v.ttfb_ms, 0) / withTtfb.length : null
+
+  return `
+    <a href="#history" class="back-link">← Back to History</a>
+    <div class="view-header">
+      <h1>Run #${run.id} — ${esc(run.group_name)}</h1>
+      <div style="display:flex;gap:0.75rem;align-items:center">
+        ${statusBadge(run.status)}
+        ${isRunning ? `<button class="btn btn-sm btn-danger" id="btn-cancel-run" data-id="${run.id}">Stop</button>` : ''}
+      </div>
+    </div>
+    <div class="metrics-row">
+      <div class="metric-card"><div class="metric-label">Started</div><div class="metric-value" style="font-size:0.95rem">${fmt(run.started_at)}</div></div>
+      <div class="metric-card"><div class="metric-label">Duration</div><div class="metric-value">${dur}</div></div>
+      <div class="metric-card"><div class="metric-label">Visited</div><div class="metric-value">${totalVisits}${run.total_urls ? ` / ${run.total_urls}` : ''}</div></div>
+      <div class="metric-card"><div class="metric-label">Errors</div><div class="metric-value" style="color:${failedVisits ? 'var(--red)' : 'var(--green)'}">${failedVisits}</div></div>
+      ${avgTtfb != null ? `<div class="metric-card"><div class="metric-label">Avg TTFB</div><div class="metric-value">${ms(Math.round(avgTtfb))}</div></div>` : ''}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>URL</th><th>HTTP</th><th>TTFB</th><th>Load</th><th>Error</th>
+        </tr></thead>
+        <tbody>
+          ${visits.length ? visits.map((v, i) => `
+            <tr class="${v.error ? 'row-error' : ''}">
+              <td>${i + 1}</td>
+              <td style="word-break:break-all;max-width:320px">${esc(v.url)}</td>
+              <td>${v.status_code ?? '—'}</td>
+              <td>${ms(v.ttfb_ms)}</td>
+              <td>${ms(v.load_time_ms)}</td>
+              <td>${v.error ? `<span class="error-msg">${esc(v.error)}</span>` : '—'}</td>
+            </tr>`).join('')
+            : `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">${isRunning ? 'Waiting for first visit…' : 'No visits recorded.'}</td></tr>`}
+        </tbody>
+      </table>
+    </div>`
+}
+
 async function renderRunDetail(id) {
   showView('run-detail')
+  stopRunDetailPoll()
   const view = views['run-detail']
   view.innerHTML = `<a href="#history" class="back-link">← Back to History</a><p class="empty">Loading…</p>`
 
@@ -261,49 +318,42 @@ async function renderRunDetail(id) {
     view.innerHTML = `<a href="#history" class="back-link">← Back to History</a><p class="empty">Run not found.</p>`
     return
   }
+
   const run = await res.json()
-  const visits = run.visits ?? []
+  view.innerHTML = buildRunDetailHTML(run)
+  attachCancelButton(view, id)
 
-  const dur = run.finished_at && run.started_at
-    ? ms(new Date(run.finished_at) - new Date(run.started_at))
-    : '—'
+  if (run.status === 'running') {
+    runDetailPollTimer = setInterval(async () => {
+      const r = await api('GET', `/runs/${id}`)
+      if (!r) return
+      const updated = await r.json()
+      view.innerHTML = buildRunDetailHTML(updated)
+      attachCancelButton(view, id)
+      if (updated.status !== 'running') stopRunDetailPoll()
+    }, 2000)
+  }
+}
 
-  const totalVisits = visits.length
-  const failedVisits = visits.filter((v) => v.error).length
-  const avgTtfb = visits.filter((v) => v.ttfb_ms != null).reduce((a, v, _, arr) => a + v.ttfb_ms / arr.length, 0)
-
-  view.innerHTML = `
-    <a href="#history" class="back-link">← Back to History</a>
-    <div class="view-header">
-      <h1>Run #${run.id} — ${esc(run.group_name)}</h1>
-      ${statusBadge(run.status)}
-    </div>
-    <div class="metrics-row">
-      <div class="metric-card"><div class="metric-label">Started</div><div class="metric-value" style="font-size:0.95rem">${fmt(run.started_at)}</div></div>
-      <div class="metric-card"><div class="metric-label">Duration</div><div class="metric-value">${dur}</div></div>
-      <div class="metric-card"><div class="metric-label">URLs visited</div><div class="metric-value">${totalVisits}</div></div>
-      <div class="metric-card"><div class="metric-label">Errors</div><div class="metric-value" style="color:${failedVisits ? 'var(--red)' : 'var(--green)'}">${failedVisits}</div></div>
-      ${totalVisits ? `<div class="metric-card"><div class="metric-label">Avg TTFB</div><div class="metric-value">${ms(Math.round(avgTtfb))}</div></div>` : ''}
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>#</th><th>URL</th><th>Status</th><th>TTFB</th><th>Load</th><th>Error</th>
-        </tr></thead>
-        <tbody>
-          ${visits.length ? visits.map((v, i) => `
-            <tr class="${v.error ? 'row-error' : ''}">
-              <td>${i + 1}</td>
-              <td style="word-break:break-all;max-width:320px">${esc(v.url)}</td>
-              <td>${v.http_status ?? '—'}</td>
-              <td>${ms(v.ttfb_ms)}</td>
-              <td>${ms(v.load_ms)}</td>
-              <td>${v.error ? `<span class="error-msg">${esc(v.error)}</span>` : '—'}</td>
-            </tr>`).join('')
-            : `<tr><td colspan="6" class="empty">No visits recorded.</td></tr>`}
-        </tbody>
-      </table>
-    </div>`
+function attachCancelButton(view, id) {
+  const btn = view.querySelector('#btn-cancel-run')
+  if (!btn) return
+  btn.addEventListener('click', async () => {
+    btn.disabled = true
+    btn.textContent = 'Stopping…'
+    const res = await api('POST', `/runs/${id}/cancel`)
+    if (res?.ok) {
+      toast('Run cancelled', 'success')
+      stopRunDetailPoll()
+      // Refresh once to show cancelled status
+      const r = await api('GET', `/runs/${id}`)
+      if (r) { const updated = await r.json(); view.innerHTML = buildRunDetailHTML(updated) }
+    } else {
+      toast('Could not cancel run', 'fail')
+      btn.disabled = false
+      btn.textContent = 'Stop'
+    }
+  })
 }
 
 // ── Config ─────────────────────────────────────────────────────────────────────

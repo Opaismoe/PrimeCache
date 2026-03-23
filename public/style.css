@@ -94,6 +94,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
 [data-status="partial_failure"] { background: rgba(249,115,22,0.15); color: var(--orange); }
 [data-status="running"]         { background: rgba(59,130,246,0.15); color: var(--blue);   }
 [data-status="pending"]         { background: rgba(234,179,8,0.15);  color: var(--yellow); }
+[data-status="cancelled"]       { background: rgba(124,141,181,0.15); color: var(--text-muted); }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
 .btn {
