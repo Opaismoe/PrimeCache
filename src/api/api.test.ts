@@ -4,6 +4,12 @@ import type { FastifyInstance } from 'fastify'
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright')
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token')
 vi.stubEnv('API_KEY', 'supersecretapikey1234')
+vi.stubEnv('CONFIG_PATH', '/tmp/test-config.yaml')
+
+vi.mock('node:fs', () => ({
+  writeFileSync: vi.fn(),
+  renameSync: vi.fn(),
+}))
 
 vi.mock('../warmer/runner', () => ({ runGroup: vi.fn().mockResolvedValue(42) }))
 vi.mock('../scheduler/index', () => ({ registerJobs: vi.fn() }))
@@ -154,5 +160,71 @@ describe('GET /config', () => {
     expect(res.statusCode).toBe(200)
     expect(res.json().groups).toHaveLength(1)
     expect(res.json().groups[0].name).toBe('homepage')
+  })
+})
+
+// ── PUT /config ───────────────────────────────────────────────────────────────
+
+const validConfigBody = {
+  groups: [{
+    name: 'homepage',
+    schedule: '*/15 * * * *',
+    urls: ['https://example.com/'],
+    options: { scrollToBottom: false, crawl: false },
+  }],
+}
+
+describe('PUT /config', () => {
+  it('returns 200 and { ok: true } on valid payload', async () => {
+    const res = await app.inject({
+      method: 'PUT', url: '/config',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify(validConfigBody),
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().ok).toBe(true)
+  })
+
+  it('returns 400 when groups array is missing', async () => {
+    const res = await app.inject({
+      method: 'PUT', url: '/config',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().issues).toBeDefined()
+  })
+
+  it('returns 400 when a URL is invalid', async () => {
+    const res = await app.inject({
+      method: 'PUT', url: '/config',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        groups: [{ ...validConfigBody.groups[0], urls: ['not-a-url'] }],
+      }),
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().issues).toBeDefined()
+  })
+
+  it('returns 400 when crawl is true but crawl_depth is missing', async () => {
+    const res = await app.inject({
+      method: 'PUT', url: '/config',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        groups: [{ ...validConfigBody.groups[0], options: { scrollToBottom: false, crawl: true } }],
+      }),
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().issues).toBeDefined()
+  })
+
+  it('returns 401 without API key', async () => {
+    const res = await app.inject({
+      method: 'PUT', url: '/config',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(validConfigBody),
+    })
+    expect(res.statusCode).toBe(401)
   })
 })

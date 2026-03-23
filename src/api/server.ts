@@ -7,6 +7,7 @@ import type { Config } from '../config/urls'
 import { getRuns, getRunById, getLatestPerGroup } from '../db/queries/runs'
 import { getVisitsByRunId } from '../db/queries/visits'
 import { runGroup } from '../warmer/runner'
+import { putConfigRoute } from './routes/config'
 
 interface ServerDeps {
   db: Knex
@@ -87,6 +88,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
     // GET /config
     protected_.get('/config', async () => ({ groups: getConfig().groups }))
+
+    // PUT /config
+    protected_.register(putConfigRoute)
   })
 
   return app
