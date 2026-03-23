@@ -1,5 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify'
+import fastifyStatic from '@fastify/static'
 import { timingSafeEqual } from 'crypto'
+import path from 'path'
 import type { Knex } from 'knex'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
@@ -16,6 +18,12 @@ interface ServerDeps {
 
 export async function buildServer({ db, getConfig }: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
+
+  // ── Static files ─────────────────────────────────────────────────────────
+  await app.register(fastifyStatic, {
+    root: path.join(__dirname, '..', '..', 'public'),
+    prefix: '/',
+  })
 
   // ── Health (no auth) ──────────────────────────────────────────────────────
   app.get('/health', async () => ({ status: 'ok', uptime: process.uptime() }))

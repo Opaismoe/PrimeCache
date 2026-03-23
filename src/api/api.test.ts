@@ -41,6 +41,16 @@ afterEach(async () => {
   await app.close()
 })
 
+// ── / (static files) ─────────────────────────────────────────────────────────
+
+describe('GET /', () => {
+  it('returns 200 with HTML content', async () => {
+    const res = await app.inject({ method: 'GET', url: '/' })
+    expect(res.statusCode).toBe(200)
+    expect(res.headers['content-type']).toMatch(/text\/html/)
+  })
+})
+
 // ── /health ──────────────────────────────────────────────────────────────────
 
 describe('GET /health', () => {
