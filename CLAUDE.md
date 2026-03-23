@@ -28,6 +28,13 @@ pnpm build         # tsc → dist/
 pnpm start         # node dist/index.js (production)
 pnpm typecheck     # tsc --noEmit
 pnpm lint          # eslint src/
+pnpm test          # vitest run (single pass)
+pnpm test:watch    # vitest (watch mode)
+```
+
+Run a single test file:
+```bash
+pnpm test src/warmer/runner.test.ts
 ```
 
 Docker:
@@ -35,6 +42,21 @@ Docker:
 docker-compose up          # local dev (includes local Browserless)
 docker-compose up --build  # rebuild image
 ```
+
+## Environment variables
+
+Required (no defaults):
+- `BROWSERLESS_WS_URL` — e.g. `ws://localhost:3000/chromium/playwright`
+- `BROWSERLESS_TOKEN` — any non-empty string for local Browserless
+- `API_KEY` — minimum 16 characters
+
+Optional (defaults shown):
+- `DB_PATH=/app/data/warmer.db`
+- `CONFIG_PATH=/app/config/config.yaml`
+- `PORT=3000`
+- `LOG_LEVEL=info` (trace|debug|info|warn|error)
+- `TIMEZONE=Europe/Amsterdam`
+- `BETWEEN_URLS_MIN_MS=2000` / `BETWEEN_URLS_MAX_MS=5000`
 
 ## Architecture
 
@@ -62,6 +84,32 @@ Create one `BrowserContext` per URL visit for full isolation (cookies, storage).
 ### Config loading
 - `src/config/env.ts` — Zod-parses `process.env` at startup. Hard exit if any required var is missing.
 - `src/config/urls.ts` — Parses and Zod-validates `config.yaml`. Uses chokidar to watch for file changes and hot-reloads the scheduler without restarting the process.
+
+`config.yaml` group options:
+```yaml
+options:
+  scrollToBottom: true        # scroll to page bottom after load
+  waitForSelector: "main"     # wait for CSS selector before measuring
+  crawl: true                 # BFS crawl — discover and visit internal links
+  crawl_depth: 2              # required when crawl: true; max 10
+  userAgent: "MyBot/1.0"      # override the rotating user agent for this group
+```
+
+### API routes
+
+All routes except `GET /health` require `X-API-Key` header.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Liveness check — no auth |
+| GET | `/runs` | Paginated run history (`?limit=20&offset=0`) |
+| GET | `/runs/latest` | Latest run per group |
+| GET | `/runs/:id` | Run detail with visits |
+| POST | `/trigger` | **Synchronous** — runs group, returns `{ runId }` when done |
+| POST | `/webhook/warm` | **Async** — fires runs and responds immediately; `group: "all"` runs every group |
+| GET | `/config` | Current loaded config |
+
+`POST /trigger` and `POST /webhook/warm` both take `{ "group": "<name>" }` as JSON body.
 
 ### API authentication
 All routes except `GET /health` require `X-API-Key` header. Auth is implemented as a Fastify `preHandler` hook scoped to a protected plugin — not per-route. Comparison uses `timingSafeEqual`.
