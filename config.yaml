@@ -12,10 +12,13 @@ groups:
   #   schedule: "0 * * * *"
   #   urls:
   #     - https://example.com/products
-  - name: newvi-test
-    schedule: "*/15 * * * *"
+  - name: Terralemon
+    schedule: "0 * * * *"
     urls:
-      - https://newvi.ingthink.com/
+      - https://terralemon.nl/
     options:
       scrollToBottom: true
       waitForSelector: "main"
+      crawl: true
+      crawl_depth: 2
+      userAgent: "TerraCache/1.0.0"
