@@ -8,7 +8,6 @@ vi.stubEnv('CONFIG_PATH', '/tmp/test-config.yaml')
 
 vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
-  renameSync: vi.fn(),
 }))
 
 vi.mock('../warmer/runner', () => ({ runGroup: vi.fn().mockResolvedValue(42) }))
