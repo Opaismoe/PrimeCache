@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getRuns, getConfig, deleteRuns } from '../lib/api';
+import { getRuns, getConfig, deleteRuns, cancelRun } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
 import { Spinner } from '../components/Spinner';
@@ -47,6 +47,11 @@ function HistoryPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() });
       navigate({ search: { page: 1, group } });
     },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) => cancelRun(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() }),
   });
 
   const groups = config?.groups.map((g) => g.name) ?? [];
@@ -108,6 +113,7 @@ function HistoryPage() {
                   <TableHead>Duration</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Results</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -136,6 +142,21 @@ function HistoryPage() {
                         </span>
                       ) : (
                         '—'
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {run.status === 'running' && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={cancelMutation.isPending && cancelMutation.variables === run.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            cancelMutation.mutate(run.id);
+                          }}
+                        >
+                          Stop
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
