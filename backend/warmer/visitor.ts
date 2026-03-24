@@ -1,4 +1,4 @@
-import { getBrowser } from '../browser/connection'
+import { getBrowser, resetBrowser } from '../browser/connection'
 import { createContext } from '../browser/context'
 import { dismissCookieConsent } from '../browser/cookieConsent'
 import { simulateMouseMovement, simulateScroll, simulateReading } from '../browser/stealth'
@@ -99,5 +99,6 @@ export async function visitUrl(
     }
   } finally {
     await context?.close()
+    await resetBrowser()
   }
 }
