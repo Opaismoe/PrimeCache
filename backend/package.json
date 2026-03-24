@@ -1,5 +1,5 @@
 {
-  "name": "cache-warmer-backend",
+  "name": "primecache-backend",
   "private": true,
   "version": "1.0.0",
   "scripts": {

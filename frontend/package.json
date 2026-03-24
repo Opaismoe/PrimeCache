@@ -1,5 +1,5 @@
 {
-  "name": "cache-warmer-frontend",
+  "name": "primecache-frontend",
   "private": true,
   "version": "0.0.1",
   "type": "module",
