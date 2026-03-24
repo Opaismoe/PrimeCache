@@ -30,6 +30,14 @@ export async function visitUrl(
     context = await createContext(browser, options.userAgent)
     const page = await context.newPage()
 
+    // Inject localStorage entries before the page loads (runs as init script)
+    if (options.localStorage && Object.keys(options.localStorage).length > 0) {
+      const entries = options.localStorage
+      await page.addInitScript((kv: Record<string, unknown>) => {
+        for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v as string)
+      }, entries as Record<string, unknown>)
+    }
+
     // Capture TTFB from the first matching response
     let ttfbMs: number | null = null
     page.on('response', (response) => {
