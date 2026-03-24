@@ -6,6 +6,8 @@ import { queryKeys } from '../lib/queryKeys';
 import { GroupForm } from '../components/GroupForm';
 import { Spinner } from '../components/Spinner';
 import { describeCron } from '../lib/cronUtils';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import type { Config, Group } from '../lib/types';
 
 export const Route = createFileRoute('/config')({
@@ -49,7 +51,7 @@ function ConfigPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <Spinner className="text-gray-400" />
+        <Spinner className="text-muted-foreground" />
       </div>
     );
   }
@@ -59,63 +61,61 @@ function ConfigPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Config</h1>
         {!formMode && (
-          <button
-            onClick={() => setFormMode({ mode: 'add' })}
-            className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
-          >
-            Add group
-          </button>
+          <Button onClick={() => setFormMode({ mode: 'add' })}>Add group</Button>
         )}
       </div>
 
       {formMode && (
-        <div className="mb-6 rounded-lg border border-gray-700 bg-gray-900 p-5">
-          <h2 className="mb-4 font-medium text-white">
-            {formMode.mode === 'add'
-              ? 'New group'
-              : `Edit: ${config?.groups[formMode.index]?.name}`}
-          </h2>
-          <GroupForm
-            initial={formMode.mode === 'edit' ? config?.groups[formMode.index] : undefined}
-            onSave={handleSave}
-            onCancel={() => setFormMode(null)}
-          />
-        </div>
+        <Card className="mb-6">
+          <CardContent className="pt-5">
+            <h2 className="mb-4 font-medium">
+              {formMode.mode === 'add'
+                ? 'New group'
+                : `Edit: ${config?.groups[formMode.index]?.name}`}
+            </h2>
+            <GroupForm
+              initial={formMode.mode === 'edit' ? config?.groups[formMode.index] : undefined}
+              onSave={handleSave}
+              onCancel={() => setFormMode(null)}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {!config?.groups.length ? (
-        <p className="text-gray-400">No groups configured.</p>
+        <p className="text-muted-foreground">No groups configured.</p>
       ) : (
         <div className="flex flex-col gap-3">
           {config.groups.map((group, i) => (
-            <div
-              key={group.name}
-              className="flex items-start justify-between rounded-lg border border-gray-800 bg-gray-900 p-4"
-            >
-              <div>
-                <h3 className="font-medium text-white">{group.name}</h3>
-                <p className="text-sm text-gray-400">{describeCron(group.schedule)}</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  {group.urls.length} URL{group.urls.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFormMode({ mode: 'edit', index: i })}
-                  disabled={formMode !== null}
-                  className="rounded border border-gray-700 px-3 py-1.5 text-sm text-gray-300 hover:bg-gray-800 disabled:opacity-40"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(i)}
-                  disabled={saveConfig.isPending}
-                  className="rounded border border-red-800 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950/50 disabled:opacity-40"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+            <Card key={group.name}>
+              <CardContent className="flex items-start justify-between pt-4">
+                <div>
+                  <h3 className="font-medium">{group.name}</h3>
+                  <p className="text-sm text-muted-foreground">{describeCron(group.schedule)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {group.urls.length} URL{group.urls.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormMode({ mode: 'edit', index: i })}
+                    disabled={formMode !== null}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleDelete(i)}
+                    disabled={saveConfig.isPending}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
