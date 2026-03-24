@@ -24,10 +24,10 @@ RUN apk add --no-cache dumb-init
 RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/
-RUN pnpm install --prod --filter cache-warmer-backend --shamefully-hoist
-COPY --from=builder /app/dist ./dist
+RUN pnpm install --prod --filter cache-warmer-backend
+COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/frontend/dist ./frontend/dist
 VOLUME ["/app/data", "/app/config"]
 EXPOSE 3000
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["node", "backend/dist/index.js"]
