@@ -1,10 +1,10 @@
 groups:
   - name: Terralemon
-    schedule: '*/60 * * * *'
+    schedule: '*/15 * * * *'
     urls:
       - https://terralemon.nl
     options:
-      scrollToBottom: false
+      scrollToBottom: true
       waitForSelector: main
       crawl: true
       crawl_depth: 1
