@@ -24,7 +24,7 @@ export function ApiKeyModal({ onSave }: Props) {
         <DialogHeader>
           <DialogTitle>API Key required</DialogTitle>
           <DialogDescription>
-            Enter your API key to access the Cache Warmer dashboard.
+            Enter your API key to access the PrimeCache dashboard.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 pt-2">
