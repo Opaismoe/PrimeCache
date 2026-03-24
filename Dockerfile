@@ -1,18 +1,32 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm install -g pnpm && pnpm install
-COPY . .
-RUN pnpm build
+RUN npm install -g pnpm
+
+# Copy workspace manifests for layer caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+RUN pnpm install
+
+# Copy source (node_modules and dist excluded via .dockerignore)
+COPY backend ./backend
+COPY frontend ./frontend
+
+# Build backend (outputs to /app/dist via outDir: "../dist")
+RUN cd backend && pnpm build
+
+# Build frontend (outputs to /app/frontend/dist)
+RUN cd frontend && pnpm build
 
 FROM node:22-alpine
 WORKDIR /app
 RUN apk add --no-cache dumb-init
 RUN npm install -g pnpm
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY backend/package.json ./backend/
 RUN pnpm install --prod
 COPY --from=builder /app/dist ./dist
-COPY public ./public
+COPY --from=builder /app/frontend/dist ./frontend/dist
 VOLUME ["/app/data", "/app/config"]
 EXPOSE 3000
 ENTRYPOINT ["dumb-init", "--"]
