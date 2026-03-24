@@ -20,9 +20,9 @@ interface ServerDeps {
 export async function buildServer({ db, getConfig }: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
 
-  // ── Static files ─────────────────────────────────────────────────────────
+  // ── Static files (React SPA) ──────────────────────────────────────────────
   await app.register(fastifyStatic, {
-    root: path.join(__dirname, '..', '..', 'public'),
+    root: path.join(__dirname, '..', '..', 'frontend', 'dist'),
     prefix: '/',
   })
 
@@ -134,6 +134,11 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
     // PUT /config
     protected_.register(putConfigRoute)
+  })
+
+  // SPA catch-all: serve index.html for any unmatched non-API path
+  app.setNotFoundHandler((_request, reply: any) => {
+    reply.sendFile('index.html')
   })
 
   return app
