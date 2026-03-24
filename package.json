@@ -1,13 +1,13 @@
 {
-  "name": "cache-warmer",
+  "name": "primecache",
   "private": true,
   "packageManager": "pnpm@10.32.0",
   "scripts": {
-    "dev": "pnpm --filter cache-warmer-backend dev",
-    "build": "pnpm --filter cache-warmer-backend build && pnpm --filter cache-warmer-frontend build",
-    "start": "pnpm --filter cache-warmer-backend start",
-    "test": "pnpm --filter cache-warmer-backend test",
-    "test:watch": "pnpm --filter cache-warmer-backend test:watch",
+    "dev": "pnpm --filter primecache-backend dev",
+    "build": "pnpm --filter primecache-backend build && pnpm --filter primecache-frontend build",
+    "start": "pnpm --filter primecache-backend start",
+    "test": "pnpm --filter primecache-backend test",
+    "test:watch": "pnpm --filter primecache-backend test:watch",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   }
