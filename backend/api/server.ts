@@ -22,7 +22,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
   // ── Static files (React SPA) ──────────────────────────────────────────────
   await app.register(fastifyStatic, {
-    root: path.join(__dirname, '..', '..', 'frontend', 'dist'),
+    root: path.join(__dirname, '..', '..', '..', 'frontend', 'dist'),
     prefix: '/',
   })
 
