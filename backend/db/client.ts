@@ -7,7 +7,12 @@ export const db = knex({
   connection: { filename: env.DB_PATH },
   useNullAsDefault: true,
   migrations: {
-    directory: path.join(__dirname, 'migrations'),
+    // Always use compiled .js migrations so the same DB works in both dev and prod.
+    // ts-node:  __dirname = backend/db/  → ../../dist/db/migrations  = <root>/dist/db/migrations
+    // compiled: __dirname = dist/db/     → migrations                = <root>/dist/db/migrations
+    directory: __filename.endsWith('.ts')
+      ? path.join(__dirname, '..', '..', 'dist', 'db', 'migrations')
+      : path.join(__dirname, 'migrations'),
     loadExtensions: ['.js'],
   },
 })
