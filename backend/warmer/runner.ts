@@ -69,7 +69,9 @@ async function _executeRun(runId: number, db: Knex, group: WarmGroup): Promise<v
       }
 
       if (queue.length > 0 && !signal.aborted) {
-        await randomDelay(env.BETWEEN_URLS_MIN_MS, env.BETWEEN_URLS_MAX_MS)
+        const minMs = group.options.delayMinMs ?? env.BETWEEN_URLS_MIN_MS
+        const maxMs = group.options.delayMaxMs ?? env.BETWEEN_URLS_MAX_MS
+        await randomDelay(minMs, maxMs)
       }
     }
   } finally {
