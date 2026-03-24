@@ -78,6 +78,28 @@ describe('runs queries', () => {
     expect(rows).toHaveLength(2)
     expect(rows.map((r: { group_name: string }) => r.group_name).sort()).toEqual(['homepage', 'products'])
   })
+
+  it('deleteRuns deletes all runs and their visits', async () => {
+    const { insertRun, deleteRuns, getRuns } = await import('./queries/runs')
+    const { insertVisit, getVisitsByRunId } = await import('./queries/visits')
+    const runId = await insertRun(db, { groupName: 'homepage', totalUrls: 1 })
+    await insertVisit(db, runId, { url: 'https://a.com', statusCode: 200, finalUrl: null, ttfbMs: 10, loadTimeMs: 100, consentFound: false, consentStrategy: null, error: null })
+    const deleted = await deleteRuns(db)
+    expect(deleted).toBe(1)
+    expect(await getRuns(db, { limit: 10, offset: 0 })).toHaveLength(0)
+    expect(await getVisitsByRunId(db, runId)).toHaveLength(0)
+  })
+
+  it('deleteRuns with group filter only deletes matching group', async () => {
+    const { insertRun, deleteRuns, getRuns } = await import('./queries/runs')
+    await insertRun(db, { groupName: 'homepage', totalUrls: 1 })
+    await insertRun(db, { groupName: 'products', totalUrls: 1 })
+    const deleted = await deleteRuns(db, { group: 'homepage' })
+    expect(deleted).toBe(1)
+    const remaining = await getRuns(db, { limit: 10, offset: 0 })
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0].group_name).toBe('products')
+  })
 })
 
 // --- visits queries ---
