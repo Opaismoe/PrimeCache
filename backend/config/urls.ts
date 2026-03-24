@@ -9,6 +9,7 @@ const GroupOptionsSchema = z.object({
   crawl:            z.boolean().default(false),
   crawl_depth:      z.number().int().min(1).max(10).optional(),
   userAgent:        z.string().optional(),
+  localStorage:     z.record(z.string(), z.string()).optional(),
 }).refine(
   (opts) => !opts.crawl || opts.crawl_depth !== undefined,
   { message: 'crawl_depth is required when crawl is true' },
