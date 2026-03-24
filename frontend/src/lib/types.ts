@@ -36,6 +36,10 @@ export interface GroupOptions {
   crawl_depth?: number;
   userAgent?: string;
   localStorage?: Record<string, string>;
+  navigationTimeout?: number;
+  waitUntil?: 'networkidle' | 'load' | 'domcontentloaded';
+  delayMinMs?: number;
+  delayMaxMs?: number;
 }
 
 export interface Group {
