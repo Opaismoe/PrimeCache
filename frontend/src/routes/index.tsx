@@ -6,6 +6,9 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Spinner } from '../components/Spinner';
 import { describeCron } from '../lib/cronUtils';
 import { formatDate } from '../lib/formatters';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Link } from '@tanstack/react-router';
 import type { Run } from '../lib/types';
 
 export const Route = createFileRoute('/')({
@@ -37,7 +40,7 @@ function DashboardPage() {
   if (configLoading || runsLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Spinner className="text-gray-400" />
+        <Spinner className="text-muted-foreground" />
       </div>
     );
   }
@@ -49,11 +52,11 @@ function DashboardPage() {
       <h1 className="mb-6 text-xl font-semibold">Dashboard</h1>
 
       {!config?.groups.length ? (
-        <p className="text-gray-400">
+        <p className="text-muted-foreground">
           No groups configured yet.{' '}
-          <a href="/config" className="text-blue-400 hover:underline">
+          <Link to="/config" className="text-primary hover:underline">
             Add a group
-          </a>
+          </Link>
           .
         </p>
       ) : (
@@ -62,42 +65,42 @@ function DashboardPage() {
             const latest = latestByGroup.get(group.name);
             const isTriggering = trigger.isPending && trigger.variables === group.name;
             return (
-              <div
-                key={group.name}
-                className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900 p-4"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h2 className="font-medium text-white">{group.name}</h2>
-                    <p className="text-xs text-gray-400">{describeCron(group.schedule)}</p>
+              <Card key={group.name} className="flex flex-col gap-3">
+                <CardHeader className="pb-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="font-medium">{group.name}</h2>
+                      <p className="text-xs text-muted-foreground">{describeCron(group.schedule)}</p>
+                    </div>
+                    {latest && <StatusBadge status={latest.status} />}
                   </div>
-                  {latest && <StatusBadge status={latest.status} />}
-                </div>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3 pt-0">
+                  {latest ? (
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>Last run: {formatDate(latest.started_at)}</span>
+                      {latest.success_count !== null && (
+                        <span>
+                          <span className="text-green-500">{latest.success_count} ok</span>
+                          {latest.failure_count ? (
+                            <span className="ml-1 text-destructive">{latest.failure_count} failed</span>
+                          ) : null}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No runs yet</p>
+                  )}
 
-                {latest ? (
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                    <span>Last run: {formatDate(latest.started_at)}</span>
-                    {latest.success_count !== null && (
-                      <span>
-                        <span className="text-green-400">{latest.success_count} ok</span>
-                        {latest.failure_count ? (
-                          <span className="ml-1 text-red-400">{latest.failure_count} failed</span>
-                        ) : null}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-500">No runs yet</p>
-                )}
-
-                <button
-                  onClick={() => trigger.mutate(group.name)}
-                  disabled={trigger.isPending}
-                  className="mt-auto rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-                >
-                  {isTriggering ? 'Starting…' : 'Run now'}
-                </button>
-              </div>
+                  <Button
+                    onClick={() => trigger.mutate(group.name)}
+                    disabled={trigger.isPending}
+                    className="mt-auto"
+                  >
+                    {isTriggering ? 'Starting…' : 'Run now'}
+                  </Button>
+                </CardContent>
+              </Card>
             );
           })}
         </div>

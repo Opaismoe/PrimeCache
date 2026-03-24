@@ -3,7 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cache Warmer</title>
+    <title>PrimeCache</title>
+    <script>
+      const theme = localStorage.getItem('theme');
+      if (theme !== 'light') document.documentElement.classList.add('dark');
+    </script>
   </head>
   <body>
     <div id="root"></div>

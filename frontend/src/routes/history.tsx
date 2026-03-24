@@ -5,6 +5,16 @@ import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
 import { Spinner } from '../components/Spinner';
 import { formatDate, formatDuration } from '../lib/formatters';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 const PAGE_SIZE = 20;
 
@@ -53,100 +63,105 @@ function HistoryPage() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Run History</h1>
         <div className="flex items-center gap-2">
-          <select
-            value={group}
-            onChange={(e) => navigate({ search: { page: 1, group: e.target.value } })}
-            className="rounded border border-gray-700 bg-gray-800 px-2 py-1.5 text-sm text-white"
+          <Select
+            value={group || '__all__'}
+            onValueChange={(v) => navigate({ search: { page: 1, group: !v || v === '__all__' ? '' : v } })}
           >
-            <option value="">All groups</option>
-            {groups.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-          <button
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All groups" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All groups</SelectItem>
+              {groups.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={handleClear}
             disabled={deleteMutation.isPending}
-            className="rounded border border-red-800 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950/50 disabled:opacity-50"
           >
             {deleteMutation.isPending ? 'Clearing…' : 'Clear'}
-          </button>
+          </Button>
         </div>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <Spinner className="text-gray-400" />
+          <Spinner className="text-muted-foreground" />
         </div>
       ) : !runs?.length ? (
-        <p className="text-gray-400">No runs found.</p>
+        <p className="text-muted-foreground">No runs found.</p>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-gray-800">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-800 bg-gray-900 text-left text-xs text-gray-400">
-                  <th className="px-4 py-3">#</th>
-                  <th className="px-4 py-3">Group</th>
-                  <th className="px-4 py-3">Started</th>
-                  <th className="px-4 py-3">Duration</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Results</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="rounded-lg border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Group</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Results</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {runs.map((run) => (
-                  <tr
+                  <TableRow
                     key={run.id}
-                    className="cursor-pointer border-b border-gray-800 bg-gray-950 hover:bg-gray-900"
+                    className="cursor-pointer"
                     onClick={() =>
                       navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
                     }
                   >
-                    <td className="px-4 py-3 text-gray-400">{run.id}</td>
-                    <td className="px-4 py-3 font-medium text-white">{run.group_name}</td>
-                    <td className="px-4 py-3 text-gray-300">{formatDate(run.started_at)}</td>
-                    <td className="px-4 py-3 text-gray-300">
-                      {formatDuration(run.started_at, run.ended_at)}
-                    </td>
-                    <td className="px-4 py-3">
+                    <TableCell className="text-muted-foreground">{run.id}</TableCell>
+                    <TableCell className="font-medium">{run.group_name}</TableCell>
+                    <TableCell>{formatDate(run.started_at)}</TableCell>
+                    <TableCell>{formatDuration(run.started_at, run.ended_at)}</TableCell>
+                    <TableCell>
                       <StatusBadge status={run.status} />
-                    </td>
-                    <td className="px-4 py-3 text-gray-300">
+                    </TableCell>
+                    <TableCell>
                       {run.success_count !== null ? (
                         <span>
-                          <span className="text-green-400">{run.success_count} ok</span>
+                          <span className="text-green-500">{run.success_count} ok</span>
                           {run.failure_count ? (
-                            <span className="ml-2 text-red-400">{run.failure_count} failed</span>
+                            <span className="ml-2 text-destructive">{run.failure_count} failed</span>
                           ) : null}
                         </span>
                       ) : (
                         '—'
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-400">
-            <button
+          <div className="mt-4 flex items-center justify-between">
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => navigate({ search: { page: page - 1, group } })}
               disabled={page <= 1}
-              className="rounded border border-gray-700 px-3 py-1.5 hover:bg-gray-800 disabled:opacity-30"
             >
               Previous
-            </button>
-            <span>Page {page}</span>
-            <button
+            </Button>
+            <span className="text-sm text-muted-foreground">Page {page}</span>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => navigate({ search: { page: page + 1, group } })}
               disabled={runs.length < PAGE_SIZE}
-              className="rounded border border-gray-700 px-3 py-1.5 hover:bg-gray-800 disabled:opacity-30"
             >
               Next
-            </button>
+            </Button>
           </div>
         </>
       )}

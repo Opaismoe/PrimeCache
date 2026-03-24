@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { saveApiKey } from '../lib/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   onSave: () => void;
@@ -16,30 +19,27 @@ export function ApiKeyModal({ onSave }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-lg border border-gray-700 bg-gray-900 p-6 shadow-xl">
-        <h2 className="mb-1 text-lg font-semibold text-white">API Key required</h2>
-        <p className="mb-4 text-sm text-gray-400">
-          Enter your API key to access the Cache Warmer dashboard.
-        </p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input
+    <Dialog open onOpenChange={() => {}}>
+      <DialogContent className="sm:max-w-sm" showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>API Key required</DialogTitle>
+          <DialogDescription>
+            Enter your API key to access the Cache Warmer dashboard.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 pt-2">
+          <Input
             type="password"
             autoFocus
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Enter API key"
-            className="rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
           />
-          <button
-            type="submit"
-            disabled={!value.trim()}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={!value.trim()}>
             Save
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

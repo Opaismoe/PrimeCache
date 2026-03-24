@@ -35,6 +35,7 @@ export interface GroupOptions {
   crawl: boolean;
   crawl_depth?: number;
   userAgent?: string;
+  localStorage?: Record<string, string>;
 }
 
 export interface Group {
