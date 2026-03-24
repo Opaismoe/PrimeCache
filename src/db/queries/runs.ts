@@ -52,6 +52,18 @@ export async function getRunById(db: Knex, id: number): Promise<RunRow | null> {
   return row ?? null
 }
 
+export async function deleteRuns(
+  db: Knex,
+  opts?: { group?: string },
+): Promise<number> {
+  const query = db('runs')
+  if (opts?.group) query.where({ group_name: opts.group })
+  const ids = (await query.clone().select('id')).map((r: { id: number }) => r.id)
+  if (!ids.length) return 0
+  await db('visits').whereIn('run_id', ids).delete()
+  return db('runs').whereIn('id', ids).delete()
+}
+
 export async function getLatestPerGroup(db: Knex): Promise<RunRow[]> {
   // SQLite: get the row with the max id per group_name
   return db('runs')

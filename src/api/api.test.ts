@@ -10,13 +10,17 @@ vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
 }))
 
-vi.mock('../warmer/runner', () => ({ runGroup: vi.fn().mockResolvedValue(42) }))
+vi.mock('../warmer/runner', () => ({
+  runGroup: vi.fn().mockResolvedValue(42),
+  startRunGroup: vi.fn().mockResolvedValue({ runId: 42, promise: Promise.resolve() }),
+}))
 vi.mock('../scheduler/index', () => ({ registerJobs: vi.fn() }))
 vi.mock('../db/queries/runs', () => ({
   getRuns: vi.fn().mockResolvedValue([]),
   getRunById: vi.fn().mockResolvedValue(null),
   getLatestPerGroup: vi.fn().mockResolvedValue([]),
   finalizeRun: vi.fn().mockResolvedValue(undefined),
+  deleteRuns: vi.fn().mockResolvedValue(3),
 }))
 vi.mock('../warmer/registry', () => ({
   cancelRun: vi.fn().mockReturnValue(true),
@@ -278,5 +282,55 @@ describe('POST /runs/:id/cancel', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json().ok).toBe(true)
+  })
+})
+
+// ── POST /trigger/async ───────────────────────────────────────────────────────
+
+describe('POST /trigger/async', () => {
+  it('returns 400 for unknown group', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/trigger/async',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({ group: 'nonexistent' }),
+    })
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('returns runId immediately for known group', async () => {
+    const res = await app.inject({
+      method: 'POST', url: '/trigger/async',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({ group: 'homepage' }),
+    })
+    expect(res.statusCode).toBe(200)
+    expect(typeof res.json().runId).toBe('number')
+  })
+})
+
+// ── DELETE /runs ──────────────────────────────────────────────────────────────
+
+describe('DELETE /runs', () => {
+  it('returns 401 without API key', async () => {
+    const res = await app.inject({ method: 'DELETE', url: '/runs' })
+    expect(res.statusCode).toBe(401)
+  })
+
+  it('deletes all runs and returns count', async () => {
+    const res = await app.inject({
+      method: 'DELETE', url: '/runs',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(typeof res.json().deleted).toBe('number')
+  })
+
+  it('deletes runs for a specific group with ?group= param', async () => {
+    const res = await app.inject({
+      method: 'DELETE', url: '/runs?group=homepage',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(typeof res.json().deleted).toBe('number')
   })
 })

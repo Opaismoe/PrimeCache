@@ -8,8 +8,22 @@ import { logger } from '../utils/logger'
 import { env } from '../config/env'
 import type { WarmGroup } from '../config/urls'
 
+export async function startRunGroup(
+  db: Knex,
+  group: WarmGroup,
+): Promise<{ runId: number; promise: Promise<void> }> {
+  const runId = await insertRun(db, { groupName: group.name, totalUrls: group.urls.length })
+  const promise = _executeRun(runId, db, group)
+  return { runId, promise }
+}
+
 export async function runGroup(db: Knex, group: WarmGroup): Promise<number> {
   const runId = await insertRun(db, { groupName: group.name, totalUrls: group.urls.length })
+  await _executeRun(runId, db, group)
+  return runId
+}
+
+async function _executeRun(runId: number, db: Knex, group: WarmGroup): Promise<void> {
   const signal = registerRun(runId)
   const log = logger.child({ runId, group: group.name })
   log.info({ totalUrls: group.urls.length }, 'warm run started')
@@ -70,6 +84,4 @@ export async function runGroup(db: Knex, group: WarmGroup): Promise<number> {
 
   await finalizeRun(db, runId, { status, successCount, failureCount })
   log.info({ status, successCount, failureCount, totalVisited: visited.size }, 'warm run finished')
-
-  return runId
 }

@@ -6,9 +6,9 @@ import type { Knex } from 'knex'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
 import type { Config } from '../config/urls'
-import { getRuns, getRunById, getLatestPerGroup, finalizeRun } from '../db/queries/runs'
+import { getRuns, getRunById, getLatestPerGroup, finalizeRun, deleteRuns } from '../db/queries/runs'
 import { getVisitsByRunId } from '../db/queries/visits'
-import { runGroup } from '../warmer/runner'
+import { runGroup, startRunGroup } from '../warmer/runner'
 import { cancelRun } from '../warmer/registry'
 import { putConfigRoute } from './routes/config'
 
@@ -63,12 +63,24 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       return { ...run, visits }
     })
 
-    // POST /trigger
+    // POST /trigger (synchronous — waits for completion)
     protected_.post('/trigger', async (request: any, reply: any) => {
       const { group: groupName } = request.body as { group: string }
       const group = getConfig().groups.find((g) => g.name === groupName)
       if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` })
       const runId = await runGroup(db, group)
+      return { runId }
+    })
+
+    // POST /trigger/async — returns runId immediately, runs in background
+    protected_.post('/trigger/async', async (request: any, reply: any) => {
+      const { group: groupName } = request.body as { group: string }
+      const group = getConfig().groups.find((g) => g.name === groupName)
+      if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` })
+      const { runId, promise } = await startRunGroup(db, group)
+      promise
+        .then(() => logger.info({ group: groupName, runId }, 'async trigger run complete'))
+        .catch((err) => logger.error({ group: groupName, runId, err }, 'async trigger run failed'))
       return { runId }
     })
 
@@ -108,6 +120,13 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
         failureCount: run.failure_count ?? 0,
       })
       return { ok: true }
+    })
+
+    // DELETE /runs — clears history (optional ?group= filter)
+    protected_.delete('/runs', async (request: any) => {
+      const group = (request.query as any).group as string | undefined
+      const deleted = await deleteRuns(db, group ? { group } : undefined)
+      return { deleted }
     })
 
     // GET /config
