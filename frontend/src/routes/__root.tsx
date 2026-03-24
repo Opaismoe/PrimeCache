@@ -49,7 +49,7 @@ function RootLayout() {
       {showModal && <ApiKeyModal onSave={handleSave} />}
       <nav className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-          <span className="font-semibold">Cache Warmer</span>
+          <span className="font-semibold">PrimeCache</span>
           <NavLink to="/">Dashboard</NavLink>
           <NavLink to="/history">History</NavLink>
           <NavLink to="/config">Config</NavLink>

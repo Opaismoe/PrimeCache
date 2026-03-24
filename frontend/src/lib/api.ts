@@ -1,7 +1,7 @@
 import type { Config, Run, RunDetail } from './types';
 import { authEvents } from './events';
 
-const API_KEY_STORAGE = 'cache-warmer-api-key';
+const API_KEY_STORAGE = 'primecache-api-key';
 
 export function getApiKey(): string | null {
   return localStorage.getItem(API_KEY_STORAGE);
