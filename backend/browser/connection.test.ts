@@ -8,6 +8,7 @@ vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16')
 const mockBrowser = {
   isConnected: vi.fn().mockReturnValue(true),
   close: vi.fn().mockResolvedValue(undefined),
+  on: vi.fn(),
 }
 
 vi.mock('playwright-extra', () => ({
@@ -55,11 +56,50 @@ describe('connection', () => {
     expect(chromium.connect).toHaveBeenCalledTimes(2)
   })
 
+  it('clears singleton when browser emits disconnected event', async () => {
+    vi.resetModules()
+    const { chromium } = await import('playwright-extra')
+    const { getBrowser } = await import('./connection')
+
+    let disconnectHandler: (() => void) | undefined
+    mockBrowser.on.mockImplementation((event: string, handler: () => void) => {
+      if (event === 'disconnected') disconnectHandler = handler
+    })
+
+    await getBrowser()
+    expect(chromium.connect).toHaveBeenCalledTimes(1)
+
+    // Simulate Browserless killing the session
+    disconnectHandler?.()
+
+    await getBrowser()
+    expect(chromium.connect).toHaveBeenCalledTimes(2)
+  })
+
   it('disconnect closes the browser and clears the singleton', async () => {
     vi.resetModules()
     const { getBrowser, disconnect } = await import('./connection')
     await getBrowser()
     await disconnect()
     expect(mockBrowser.close).toHaveBeenCalledOnce()
+  })
+
+  it('resetBrowser closes the singleton and forces reconnect on next call', async () => {
+    vi.resetModules()
+    const { chromium } = await import('playwright-extra')
+    const { getBrowser, resetBrowser } = await import('./connection')
+    await getBrowser()
+    await resetBrowser()
+    expect(mockBrowser.close).toHaveBeenCalledOnce()
+    await getBrowser()
+    expect(chromium.connect).toHaveBeenCalledTimes(2)
+  })
+
+  it('resetBrowser does not throw when browser is already closed by Browserless', async () => {
+    vi.resetModules()
+    const { getBrowser, resetBrowser } = await import('./connection')
+    mockBrowser.close.mockRejectedValueOnce(new Error('Target page, context or browser has been closed'))
+    await getBrowser()
+    await expect(resetBrowser()).resolves.toBeUndefined()
   })
 })

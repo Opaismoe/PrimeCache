@@ -17,7 +17,9 @@ export async function getBrowser(): Promise<Browser> {
 async function connectWithRetry(attempt = 0): Promise<Browser> {
   const wsEndpoint = `${env.BROWSERLESS_WS_URL}?token=${env.BROWSERLESS_TOKEN}`
   try {
-    return await (chromium as any).connect(wsEndpoint)
+    const b = await (chromium as any).connect(wsEndpoint)
+    b.on('disconnected', () => { browser = null })
+    return b
   } catch (err) {
     if (attempt >= 4) throw err
     const delayMs = Math.pow(2, attempt) * 1000
@@ -27,9 +29,17 @@ async function connectWithRetry(attempt = 0): Promise<Browser> {
   }
 }
 
-export async function disconnect(): Promise<void> {
+export async function resetBrowser(): Promise<void> {
   if (browser) {
-    await browser.close()
+    try {
+      await browser.close()
+    } catch {
+      // browser may already be closed by Browserless
+    }
     browser = null
   }
+}
+
+export async function disconnect(): Promise<void> {
+  await resetBrowser()
 }

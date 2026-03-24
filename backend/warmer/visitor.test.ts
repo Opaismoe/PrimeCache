@@ -5,7 +5,7 @@ vi.stubEnv('BROWSERLESS_TOKEN', 'test-token')
 vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16')
 
 // Mock the browser layer so no real connections are made
-vi.mock('../browser/connection', () => ({ getBrowser: vi.fn() }))
+vi.mock('../browser/connection', () => ({ getBrowser: vi.fn(), resetBrowser: vi.fn() }))
 vi.mock('../browser/context', () => ({ createContext: vi.fn() }))
 vi.mock('../browser/stealth', () => ({
   simulateMouseMovement: vi.fn().mockResolvedValue(undefined),
@@ -115,6 +115,22 @@ describe('visitUrl', () => {
     expect(result.discoveredLinks).toContain('https://example.com/about')
     expect(result.discoveredLinks).toContain('https://example.com/contact')
     expect(result.discoveredLinks).not.toContain('https://other.com/external')
+  })
+
+  it('calls resetBrowser after every visit to force fresh Browserless session', async () => {
+    const { resetBrowser } = await import('../browser/connection')
+    const { visitUrl } = await import('./visitor')
+    await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
+    expect(vi.mocked(resetBrowser)).toHaveBeenCalledOnce()
+  })
+
+  it('calls resetBrowser even when the visit fails', async () => {
+    const { createContext } = await import('../browser/context')
+    const { resetBrowser } = await import('../browser/connection')
+    vi.mocked(createContext).mockRejectedValue(new Error('Browserless unreachable'))
+    const { visitUrl } = await import('./visitor')
+    await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
+    expect(vi.mocked(resetBrowser)).toHaveBeenCalledOnce()
   })
 
   it('passes custom userAgent to createContext', async () => {
