@@ -4,8 +4,32 @@ groups:
     urls:
       - https://terralemon.nl
     options:
-      scrollToBottom: true
+      scrollToBottom: false
       waitForSelector: main
       crawl: true
       crawl_depth: 1
       userAgent: TerraCache/1.0.0
+  - name: Think
+    schedule: '*/15 * * * *'
+    urls:
+      - https://think.ing.com
+      - https://think.ing.com/forecasts/
+      - https://think.ing.com/ajax/ajax_related_cats_popular/10
+    options:
+      scrollToBottom: false
+      crawl: false
+      userAgent: TerraBot/1.0.0
+      localStorage:
+        cookie_consent: all
+  - name: Newvi test
+    schedule: 0 12 * * *
+    urls:
+      - https://newvi.ingthink.com/
+      - https://newvi.ingthink.com/forecasts/
+      - https://newvi.ingthink.com/markets/fx/
+    options:
+      scrollToBottom: false
+      crawl: false
+      userAgent: terrabot
+      localStorage:
+        cookie_consent: all
