@@ -1,24 +1,11 @@
 groups:
-  # - name: homepage
-  #   schedule: "*/15 * * * *"
-  #   urls:
-  #     - https://example.com/
-  #     - https://example.com/nl/
-  #   options:
-  #     scrollToBottom: true
-  #     waitForSelector: "main"
-
-  # - name: product-pages
-  #   schedule: "0 * * * *"
-  #   urls:
-  #     - https://example.com/products
   - name: Terralemon
-    schedule: "0 * * * *"
+    schedule: '*/60 * * * *'
     urls:
-      - https://terralemon.nl/
+      - https://terralemon.nl
     options:
-      scrollToBottom: true
-      waitForSelector: "main"
+      scrollToBottom: false
+      waitForSelector: main
       crawl: true
-      crawl_depth: 2
-      userAgent: "TerraCache/1.0.0"
+      crawl_depth: 1
+      userAgent: TerraCache/1.0.0

@@ -4,12 +4,12 @@
     "module": "CommonJS",
     "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./backend",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*"],
+  "include": ["backend/**/*"],
   "exclude": ["node_modules", "dist"]
 }
