@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Props {
   initial?: Group;
@@ -175,6 +176,68 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
               placeholder="e.g. MyBot/1.0"
               className="max-w-xs"
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="navigationTimeout">Navigation timeout (ms)</Label>
+            <Input
+              id="navigationTimeout"
+              type="number"
+              min={5000}
+              step={1000}
+              value={group.options.navigationTimeout ?? 30000}
+              onChange={(e) => setOpt('navigationTimeout', parseInt(e.target.value) || 30000)}
+              className="w-32"
+            />
+            <p className="text-xs text-muted-foreground">Default: 30 000 ms. Increase for slow sites.</p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="waitUntil">Wait until</Label>
+            <Select
+              value={group.options.waitUntil ?? 'networkidle'}
+              onValueChange={(v) => setOpt('waitUntil', (v ?? 'networkidle') as 'networkidle' | 'load' | 'domcontentloaded')}
+            >
+              <SelectTrigger id="waitUntil" className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="networkidle">networkidle (default)</SelectItem>
+                <SelectItem value="load">load</SelectItem>
+                <SelectItem value="domcontentloaded">domcontentloaded</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Use <code>load</code> if pages time out due to endless background requests.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label>Delay between URLs (ms)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="delayMinMs"
+                type="number"
+                min={0}
+                step={500}
+                value={group.options.delayMinMs ?? ''}
+                onChange={(e) => setOpt('delayMinMs', e.target.value ? parseInt(e.target.value) : undefined)}
+                placeholder="min (default 2000)"
+                className="w-40"
+              />
+              <span className="text-muted-foreground text-sm">–</span>
+              <Input
+                id="delayMaxMs"
+                type="number"
+                min={0}
+                step={500}
+                value={group.options.delayMaxMs ?? ''}
+                onChange={(e) => setOpt('delayMaxMs', e.target.value ? parseInt(e.target.value) : undefined)}
+                placeholder="max (default 5000)"
+                className="w-40"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Leave blank to use the global env defaults.</p>
           </div>
 
           <div className="flex flex-col gap-1.5">

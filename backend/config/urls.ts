@@ -4,22 +4,27 @@ import fs from 'fs'
 import chokidar from 'chokidar'
 
 const GroupOptionsSchema = z.object({
-  scrollToBottom:   z.boolean().default(false),
-  waitForSelector:  z.string().optional(),
-  crawl:            z.boolean().default(false),
-  crawl_depth:      z.number().int().min(1).max(10).optional(),
-  userAgent:        z.string().optional(),
-  localStorage:     z.record(z.string(), z.string()).optional(),
+  scrollToBottom:      z.boolean().default(false),
+  waitForSelector:     z.string().optional(),
+  crawl:               z.boolean().default(false),
+  crawl_depth:         z.number().int().min(1).max(10).optional(),
+  userAgent:           z.string().optional(),
+  localStorage:        z.record(z.string(), z.string()).optional(),
+  navigationTimeout:   z.number().int().min(5_000).default(30_000),
+  waitUntil:           z.enum(['networkidle', 'load', 'domcontentloaded']).default('networkidle'),
+  delayMinMs:          z.number().int().min(0).optional(),
+  delayMaxMs:          z.number().int().min(0).optional(),
 }).refine(
   (opts) => !opts.crawl || opts.crawl_depth !== undefined,
   { message: 'crawl_depth is required when crawl is true' },
-).default({ scrollToBottom: false, crawl: false, userAgent: undefined })
+)
 
 const GroupSchema = z.object({
   name:     z.string().min(1, 'Group name is required'),
   schedule: z.string().min(1, 'Group schedule is required'),
   urls:     z.array(z.string().url('Each URL must be a valid URL')).min(1, 'At least one URL is required'),
-  options:  GroupOptionsSchema,
+  // preprocess: missing options block → {} so per-field defaults apply
+  options:  z.preprocess((v) => v ?? {}, GroupOptionsSchema),
 })
 
 export const ConfigSchema = z.object({

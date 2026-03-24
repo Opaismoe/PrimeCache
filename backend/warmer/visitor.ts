@@ -46,7 +46,7 @@ export async function visitUrl(
       }
     })
 
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30_000 })
+    await page.goto(url, { waitUntil: options.waitUntil, timeout: options.navigationTimeout })
 
     if (options.waitForSelector) {
       await page.waitForSelector(options.waitForSelector, { timeout: 5_000 }).catch(() => {})
