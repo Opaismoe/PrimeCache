@@ -2,6 +2,11 @@ import { useState } from 'react';
 import type { Group } from '../lib/types';
 import { ApiError } from '../lib/api';
 import { CronBuilder } from './CronBuilder';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Props {
   initial?: Group;
@@ -19,6 +24,11 @@ const defaultGroup: Group = {
 export function GroupForm({ initial, onSave, onCancel }: Props) {
   const [group, setGroup] = useState<Group>(() => initial ?? defaultGroup);
   const [urlsText, setUrlsText] = useState(() => (initial?.urls ?? []).join('\n'));
+  const [localStorageText, setLocalStorageText] = useState(() => {
+    const entries = initial?.options.localStorage;
+    if (!entries) return '';
+    return Object.entries(entries).map(([k, v]) => `${k}=${v}`).join('\n');
+  });
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -35,9 +45,23 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
       .split('\n')
       .map((u) => u.trim())
       .filter(Boolean);
+
+    // Parse localStorage entries: KEY=VALUE lines
+    const localStorageEntries = localStorageText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .reduce<Record<string, string>>((acc, line) => {
+        const eq = line.indexOf('=');
+        if (eq > 0) acc[line.slice(0, eq).trim()] = line.slice(eq + 1);
+        return acc;
+      }, {});
+
+    const localStorageValue = Object.keys(localStorageEntries).length > 0 ? localStorageEntries : undefined;
+
     setSaving(true);
     try {
-      await onSave({ ...group, urls });
+      await onSave({ ...group, urls, options: { ...group.options, localStorage: localStorageValue } });
     } catch (err) {
       if (err instanceof ApiError && err.issues) {
         setErrors((err.issues as { message: string }[]).map((i) => i.message));
@@ -51,9 +75,6 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
     }
   };
 
-  const inputCls =
-    'rounded border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none';
-
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {errors.length > 0 && (
@@ -66,109 +87,122 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
         </div>
       )}
 
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-gray-300">Name</span>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="group-name">Name</Label>
+        <Input
+          id="group-name"
           type="text"
           required
           value={group.name}
           onChange={(e) => set('name', e.target.value)}
-          className={inputCls}
         />
-      </label>
+      </div>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-gray-300">Schedule</span>
+      <div className="flex flex-col gap-1.5">
+        <Label>Schedule</Label>
         <CronBuilder value={group.schedule} onChange={(v) => set('schedule', v)} />
       </div>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-sm font-medium text-gray-300">URLs (one per line)</span>
-        <textarea
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="group-urls">URLs (one per line)</Label>
+        <Textarea
+          id="group-urls"
           required
           rows={5}
           value={urlsText}
           onChange={(e) => setUrlsText(e.target.value)}
-          className={`font-mono ${inputCls}`}
+          className="font-mono"
           placeholder={'https://example.com\nhttps://example.com/page'}
         />
-      </label>
+      </div>
 
-      <fieldset className="rounded border border-gray-700 p-4">
-        <legend className="px-2 text-sm font-medium text-gray-300">Options</legend>
+      <fieldset className="rounded border border-border p-4">
+        <legend className="px-2 text-sm font-medium">Options</legend>
         <div className="flex flex-col gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-300">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="scrollToBottom"
               checked={group.options.scrollToBottom}
-              onChange={(e) => setOpt('scrollToBottom', e.target.checked)}
+              onCheckedChange={(checked) => setOpt('scrollToBottom', checked === true)}
             />
-            Scroll to bottom after load
-          </label>
+            <Label htmlFor="scrollToBottom" className="cursor-pointer">Scroll to bottom after load</Label>
+          </div>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-gray-300">Wait for selector (optional)</span>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="waitForSelector">Wait for selector (optional)</Label>
+            <Input
+              id="waitForSelector"
               type="text"
               value={group.options.waitForSelector ?? ''}
               onChange={(e) => setOpt('waitForSelector', e.target.value || undefined)}
               placeholder="e.g. main, #content"
-              className={`max-w-xs ${inputCls}`}
+              className="max-w-xs"
             />
-          </label>
+          </div>
 
-          <label className="flex items-center gap-2 text-sm text-gray-300">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="crawl"
               checked={group.options.crawl}
-              onChange={(e) => setOpt('crawl', e.target.checked)}
+              onCheckedChange={(checked) => setOpt('crawl', checked === true)}
             />
-            Crawl internal links
-          </label>
+            <Label htmlFor="crawl" className="cursor-pointer">Crawl internal links</Label>
+          </div>
 
           {group.options.crawl && (
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-300">Crawl depth (1–10)</span>
-              <input
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="crawl_depth">Crawl depth (1–10)</Label>
+              <Input
+                id="crawl_depth"
                 type="number"
                 min={1}
                 max={10}
                 required
                 value={group.options.crawl_depth ?? 1}
                 onChange={(e) => setOpt('crawl_depth', parseInt(e.target.value) || 1)}
-                className={`w-24 ${inputCls}`}
+                className="w-24"
               />
-            </label>
+            </div>
           )}
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-gray-300">User agent (optional)</span>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="userAgent">User agent (optional)</Label>
+            <Input
+              id="userAgent"
               type="text"
               value={group.options.userAgent ?? ''}
               onChange={(e) => setOpt('userAgent', e.target.value || undefined)}
               placeholder="e.g. MyBot/1.0"
-              className={`max-w-xs ${inputCls}`}
+              className="max-w-xs"
             />
-          </label>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="localStorage">
+              localStorage entries (optional, one per line: <code className="text-xs">KEY=value</code>)
+            </Label>
+            <Textarea
+              id="localStorage"
+              rows={3}
+              value={localStorageText}
+              onChange={(e) => setLocalStorageText(e.target.value)}
+              className="font-mono"
+              placeholder={'cookieConsent=accepted\nsome_flag=true'}
+            />
+            <p className="text-xs text-muted-foreground">
+              Set before page load — useful for cookie consent banners that check localStorage.
+            </p>
+          </div>
         </div>
       </fieldset>
 
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded border border-gray-700 px-4 py-2 text-sm text-gray-300 hover:bg-gray-800"
-        >
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

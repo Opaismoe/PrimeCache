@@ -8,10 +8,10 @@ export const db = knex({
   useNullAsDefault: true,
   migrations: {
     // Always use compiled .js migrations so the same DB works in both dev and prod.
-    // ts-node:  __dirname = backend/db/  → ../../dist/db/migrations  = <root>/dist/db/migrations
-    // compiled: __dirname = dist/db/     → migrations                = <root>/dist/db/migrations
+    // ts-node:  __dirname = backend/db/      → ../dist/db/migrations = backend/dist/db/migrations
+    // compiled: __dirname = backend/dist/db/ → migrations            = backend/dist/db/migrations
     directory: __filename.endsWith('.ts')
-      ? path.join(__dirname, '..', '..', 'dist', 'db', 'migrations')
+      ? path.join(__dirname, '..', 'dist', 'db', 'migrations')
       : path.join(__dirname, 'migrations'),
     loadExtensions: ['.js'],
   },

@@ -5,6 +5,16 @@ import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
 import { Spinner } from '../components/Spinner';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const Route = createFileRoute('/history_/$runId')({
   component: RunDetailPage,
@@ -29,19 +39,19 @@ function RunDetailPage() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <Spinner className="text-gray-400" />
+        <Spinner className="text-muted-foreground" />
       </div>
     );
   }
 
   if (!run) {
-    return <p className="text-gray-400">Run not found.</p>;
+    return <p className="text-muted-foreground">Run not found.</p>;
   }
 
   return (
     <div>
-      <div className="mb-1 flex items-center gap-2 text-sm text-gray-400">
-        <Link to="/history" search={{ page: 1, group: '' }} className="hover:text-white">
+      <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+        <Link to="/history" search={{ page: 1, group: '' }} className="hover:text-foreground">
           History
         </Link>
         <span>/</span>
@@ -51,18 +61,19 @@ function RunDetailPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Run #{run.id}</h1>
-          <p className="text-sm text-gray-400">{run.group_name}</p>
+          <p className="text-sm text-muted-foreground">{run.group_name}</p>
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge status={run.status} />
           {run.status === 'running' && (
-            <button
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={() => cancel.mutate()}
               disabled={cancel.isPending}
-              className="rounded border border-red-800 px-3 py-1.5 text-sm text-red-400 hover:bg-red-950/50 disabled:opacity-50"
             >
               {cancel.isPending ? 'Stopping…' : 'Stop'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -75,48 +86,48 @@ function RunDetailPage() {
       </div>
 
       {run.visits.length === 0 ? (
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className="flex items-center gap-2 text-muted-foreground">
           {run.status === 'running' && <Spinner className="h-4 w-4" />}
           <span className="text-sm">
             {run.status === 'running' ? 'Waiting for first visit…' : 'No visits recorded.'}
           </span>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-800">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800 bg-gray-900 text-left text-xs text-gray-400">
-                <th className="px-4 py-3">URL</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">TTFB</th>
-                <th className="px-4 py-3">Load</th>
-                <th className="px-4 py-3">Error</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>URL</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>TTFB</TableHead>
+                <TableHead>Load</TableHead>
+                <TableHead>Error</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {run.visits.map((visit) => (
-                <tr
+                <TableRow
                   key={visit.id}
-                  className={`border-b border-gray-800 ${visit.error ? 'bg-red-950/20' : 'bg-gray-950'}`}
+                  className={visit.error ? 'bg-destructive/10' : ''}
                 >
-                  <td className="max-w-xs truncate px-4 py-3 font-mono text-xs text-gray-300">
+                  <TableCell className="max-w-xs truncate font-mono text-xs">
                     <a
                       href={visit.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="hover:text-white hover:underline"
+                      className="hover:text-foreground hover:underline"
                     >
                       {visit.url}
                     </a>
-                  </td>
-                  <td className="px-4 py-3 text-gray-300">{visit.status_code ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-300">{formatMs(visit.ttfb_ms)}</td>
-                  <td className="px-4 py-3 text-gray-300">{formatMs(visit.load_time_ms)}</td>
-                  <td className="px-4 py-3 text-xs text-red-400">{visit.error ?? ''}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{visit.status_code ?? '—'}</TableCell>
+                  <TableCell>{formatMs(visit.ttfb_ms)}</TableCell>
+                  <TableCell>{formatMs(visit.load_time_ms)}</TableCell>
+                  <TableCell className="text-xs text-destructive">{visit.error ?? ''}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>
@@ -125,9 +136,11 @@ function RunDetailPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-3">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="mt-0.5 font-medium text-white">{value}</p>
-    </div>
+    <Card>
+      <CardContent className="pt-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-0.5 font-medium">{value}</p>
+      </CardContent>
+    </Card>
   );
 }
