@@ -95,6 +95,29 @@ describe('GET /runs', () => {
     expect(res.statusCode).toBe(200)
     expect(Array.isArray(res.json())).toBe(true)
   })
+
+  it('passes group filter to getRuns when ?group= is provided', async () => {
+    const { getRuns } = await import('../db/queries/runs')
+    const res = await app.inject({
+      method: 'GET', url: '/runs?group=homepage',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(vi.mocked(getRuns)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ group: 'homepage' }),
+    )
+  })
+
+  it('does not pass group when ?group= is absent', async () => {
+    const { getRuns } = await import('../db/queries/runs')
+    vi.mocked(getRuns).mockClear()
+    await app.inject({ method: 'GET', url: '/runs', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    expect(vi.mocked(getRuns)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.not.objectContaining({ group: expect.anything() }),
+    )
+  })
 })
 
 describe('GET /runs/:id', () => {

@@ -53,7 +53,8 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
     protected_.get('/runs', async (request: any) => {
       const limit  = Number(request.query.limit  ?? 20)
       const offset = Number(request.query.offset ?? 0)
-      return getRuns(db, { limit, offset })
+      const group  = (request.query.group as string | undefined) || undefined
+      return getRuns(db, { limit, offset, ...(group ? { group } : {}) })
     })
 
     // GET /runs/latest  — must be registered before /runs/:id
