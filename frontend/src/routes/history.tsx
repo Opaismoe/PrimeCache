@@ -1,5 +1,14 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  createColumnHelper,
+  flexRender,
+  type SortingState,
+} from '@tanstack/react-table';
+import { useState } from 'react';
 import { getRuns, getConfig, deleteRuns, cancelRun } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
@@ -15,8 +24,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import type { Run } from '../lib/types';
 
 const PAGE_SIZE = 20;
+
+const columnHelper = createColumnHelper<Run>();
 
 export const Route = createFileRoute('/history')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -30,6 +42,7 @@ function HistoryPage() {
   const { page, group } = Route.useSearch();
   const navigate = useNavigate({ from: '/history' });
   const queryClient = useQueryClient();
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   const { data: runs, isLoading } = useQuery({
     queryKey: queryKeys.runs.list(page, group),
@@ -62,6 +75,81 @@ function HistoryPage() {
       deleteMutation.mutate(group || undefined);
     }
   };
+
+  const columns = [
+    columnHelper.accessor('id', {
+      header: '#',
+      cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor('group_name', {
+      header: 'Group',
+      cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+    }),
+    columnHelper.accessor('started_at', {
+      header: 'Started',
+      cell: (info) => formatDate(info.getValue()),
+    }),
+    columnHelper.display({
+      id: 'duration',
+      header: 'Duration',
+      cell: (info) => formatDuration(info.row.original.started_at, info.row.original.ended_at),
+      enableSorting: false,
+    }),
+    columnHelper.accessor('status', {
+      header: 'Status',
+      cell: (info) => <StatusBadge status={info.getValue()} />,
+    }),
+    columnHelper.display({
+      id: 'results',
+      header: 'Results',
+      cell: (info) => {
+        const run = info.row.original;
+        return run.success_count !== null ? (
+          <span>
+            <span className="text-green-500">{run.success_count} ok</span>
+            {run.failure_count ? (
+              <span className="ml-2 text-destructive">{run.failure_count} failed</span>
+            ) : null}
+          </span>
+        ) : (
+          '—'
+        );
+      },
+      enableSorting: false,
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: '',
+      cell: (info) => {
+        const run = info.row.original;
+        return run.status === 'running' ? (
+          <div className="text-right">
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={cancelMutation.isPending && cancelMutation.variables === run.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                cancelMutation.mutate(run.id);
+              }}
+            >
+              Stop
+            </Button>
+          </div>
+        ) : null;
+      },
+      enableSorting: false,
+    }),
+  ];
+
+  const table = useReactTable({
+    data: runs ?? [],
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   return (
     <div>
@@ -106,59 +194,37 @@ function HistoryPage() {
           <div className="rounded-lg border border-border">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Group</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Results</TableHead>
-                  <TableHead />
-                </TableRow>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {{ asc: ' ▲', desc: ' ▼' }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
               </TableHeader>
               <TableBody>
-                {runs.map((run) => (
+                {table.getRowModel().rows.map((row) => (
                   <TableRow
-                    key={run.id}
+                    key={row.id}
                     className="cursor-pointer"
                     onClick={() =>
-                      navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
+                      navigate({ to: '/history/$runId', params: { runId: String(row.original.id) } })
                     }
                   >
-                    <TableCell className="text-muted-foreground">{run.id}</TableCell>
-                    <TableCell className="font-medium">{run.group_name}</TableCell>
-                    <TableCell>{formatDate(run.started_at)}</TableCell>
-                    <TableCell>{formatDuration(run.started_at, run.ended_at)}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={run.status} />
-                    </TableCell>
-                    <TableCell>
-                      {run.success_count !== null ? (
-                        <span>
-                          <span className="text-green-500">{run.success_count} ok</span>
-                          {run.failure_count ? (
-                            <span className="ml-2 text-destructive">{run.failure_count} failed</span>
-                          ) : null}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {run.status === 'running' && (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          disabled={cancelMutation.isPending && cancelMutation.variables === run.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            cancelMutation.mutate(run.id);
-                          }}
-                        >
-                          Stop
-                        </Button>
-                      )}
-                    </TableCell>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
                   </TableRow>
                 ))}
               </TableBody>
