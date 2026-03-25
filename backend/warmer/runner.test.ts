@@ -6,6 +6,13 @@ vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright')
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token')
 vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16')
 
+const BASE_OPTIONS = {
+  scrollToBottom: false as const,
+  crawl: false as const,
+  navigationTimeout: 30_000,
+  waitUntil: 'networkidle' as const,
+}
+
 vi.mock('./visitor', () => ({
   visitUrl: vi.fn().mockResolvedValue({
     url: 'https://example.com/',
@@ -41,14 +48,14 @@ describe('runGroup', () => {
 
   it('returns a numeric runId', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false, crawl: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: BASE_OPTIONS })
     expect(typeof runId).toBe('number')
     expect(runId).toBeGreaterThan(0)
   })
 
   it('creates a run record in the DB', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: { scrollToBottom: false, crawl: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: BASE_OPTIONS })
     const run = await db('runs').where({ id: runId }).first()
     expect(run).toBeTruthy()
     expect(run.group_name).toBe('homepage')
@@ -57,7 +64,7 @@ describe('runGroup', () => {
 
   it('sets status to completed when all visits succeed', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false, crawl: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: BASE_OPTIONS })
     const run = await db('runs').where({ id: runId }).first()
     expect(run.status).toBe('completed')
     expect(run.success_count).toBe(2)
@@ -71,7 +78,7 @@ describe('runGroup', () => {
       .mockResolvedValueOnce({ url: 'https://b.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date(), discoveredLinks: [] })
 
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false, crawl: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: BASE_OPTIONS })
     const run = await db('runs').where({ id: runId }).first()
     expect(run.status).toBe('partial_failure')
     expect(run.success_count).toBe(1)
@@ -83,14 +90,14 @@ describe('runGroup', () => {
     vi.mocked(visitUrl).mockResolvedValue({ url: 'https://fail.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date(), discoveredLinks: [] })
 
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://fail.com/'], options: { scrollToBottom: false, crawl: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://fail.com/'], options: BASE_OPTIONS })
     const run = await db('runs').where({ id: runId }).first()
     expect(run.status).toBe('failed')
   })
 
   it('inserts a visit record per URL', async () => {
     const { runGroup } = await import('./runner')
-    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: { scrollToBottom: false, crawl: false } })
+    const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: BASE_OPTIONS })
     const visits = await db('visits').where({ run_id: runId })
     expect(visits).toHaveLength(2)
   })
@@ -117,7 +124,7 @@ describe('runGroup', () => {
       name: 'crawl-group',
       schedule: '* * * * *',
       urls: ['https://example.com/'],
-      options: { scrollToBottom: false, crawl: true, crawl_depth: 1 },
+      options: { ...BASE_OPTIONS, crawl: true, crawl_depth: 1 },
     })
 
     const visits = await db('visits').where({ run_id: runId })
@@ -142,7 +149,7 @@ describe('runGroup', () => {
       name: 'dedup-group',
       schedule: '* * * * *',
       urls: ['https://example.com/'],
-      options: { scrollToBottom: false, crawl: true, crawl_depth: 2 },
+      options: { ...BASE_OPTIONS, crawl: true, crawl_depth: 2 },
     })
 
     const visits = await db('visits').where({ run_id: runId })
@@ -172,7 +179,7 @@ describe('runGroup', () => {
       name: 'depth-group',
       schedule: '* * * * *',
       urls: ['https://example.com/'],
-      options: { scrollToBottom: false, crawl: true, crawl_depth: 1 },
+      options: { ...BASE_OPTIONS, crawl: true, crawl_depth: 1 },
     })
 
     const visits = await db('visits').where({ run_id: runId })
@@ -215,7 +222,7 @@ describe('runGroup', () => {
         name: 'slow-group',
         schedule: '* * * * *',
         urls: ['https://example.com/'],
-        options: { scrollToBottom: false, crawl: false },
+        options: BASE_OPTIONS,
       })
 
       // Advance past the 60-min timeout (fires cancel) and past visitUrl's 61-min delay
