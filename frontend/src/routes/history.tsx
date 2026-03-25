@@ -101,6 +101,7 @@ function HistoryPage() {
     columnHelper.accessor('status', {
       header: 'Status',
       cell: (info) => <StatusBadge status={info.getValue()} />,
+      filterFn: 'equals',
     }),
     columnHelper.display({
       id: 'results',
@@ -218,11 +219,11 @@ function HistoryPage() {
                 <TableRow className="hover:bg-transparent">
                   {table.getHeaderGroups()[0].headers.map((header) => (
                     <TableHead key={`filter-${header.id}`} className="py-1">
-                      {header.id === 'status' ? (
+                      {header.column.getCanFilter() ? (
                         <Select
-                          value={(table.getColumn('status')?.getFilterValue() as string) ?? '__all__'}
+                          value={(header.column.getFilterValue() as string) ?? '__all__'}
                           onValueChange={(v) =>
-                            table.getColumn('status')?.setFilterValue(v === '__all__' ? undefined : v)
+                            header.column.setFilterValue(v === '__all__' ? undefined : v)
                           }
                         >
                           <SelectTrigger className="h-7 w-36 text-xs">
