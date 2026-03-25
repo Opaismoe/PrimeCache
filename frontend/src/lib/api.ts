@@ -54,8 +54,14 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return res.json();
 }
 
-export const getRuns = (params: { limit?: number; offset?: number } = {}) =>
-  request<Run[]>('GET', `/runs?limit=${params.limit ?? 20}&offset=${params.offset ?? 0}`);
+export const getRuns = (params: { limit?: number; offset?: number; group?: string } = {}) => {
+  const qs = new URLSearchParams({
+    limit: String(params.limit ?? 20),
+    offset: String(params.offset ?? 0),
+    ...(params.group ? { group: params.group } : {}),
+  });
+  return request<Run[]>('GET', `/runs?${qs}`);
+};
 
 export const getLatestRuns = () => request<Run[]>('GET', '/runs/latest');
 

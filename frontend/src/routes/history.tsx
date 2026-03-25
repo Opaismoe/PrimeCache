@@ -33,7 +33,7 @@ function HistoryPage() {
 
   const { data: runs, isLoading } = useQuery({
     queryKey: queryKeys.runs.list(page, group),
-    queryFn: () => getRuns({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+    queryFn: () => getRuns({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, group: group || undefined }),
   });
 
   const { data: config } = useQuery({
