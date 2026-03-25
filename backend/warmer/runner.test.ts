@@ -181,4 +181,51 @@ describe('runGroup', () => {
     const urls = visits.map((v: any) => v.url)
     expect(urls).not.toContain('https://example.com/depth2')
   })
+
+  describe('run timeout', () => {
+    it('auto-cancels a run that exceeds the 60-minute timeout', async () => {
+      vi.useFakeTimers()
+
+      const { visitUrl } = await import('./visitor')
+      // Make visitUrl hang for 61 minutes (longer than the 60-min timeout)
+      vi.mocked(visitUrl).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  url: 'https://example.com/',
+                  finalUrl: 'https://example.com/',
+                  statusCode: 200,
+                  ttfbMs: 100,
+                  loadTimeMs: 1000,
+                  consentFound: false,
+                  consentStrategy: null,
+                  error: null,
+                  visitedAt: new Date(),
+                  discoveredLinks: [],
+                }),
+              61 * 60 * 1000,
+            ),
+          ),
+      )
+
+      const { runGroup } = await import('./runner')
+      const runPromise = runGroup(db, {
+        name: 'slow-group',
+        schedule: '* * * * *',
+        urls: ['https://example.com/'],
+        options: { scrollToBottom: false, crawl: false },
+      })
+
+      // Advance past the 60-min timeout (fires cancel) and past visitUrl's 61-min delay
+      await vi.advanceTimersByTimeAsync(62 * 60 * 1000)
+
+      const runId = await runPromise
+      const run = await db('runs').where({ id: runId }).first()
+      expect(run.status).toBe('cancelled')
+
+      vi.useRealTimers()
+    })
+  })
 })
