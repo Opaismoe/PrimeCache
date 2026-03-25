@@ -28,6 +28,12 @@ vi.mock('../warmer/registry', () => ({
 vi.mock('../db/queries/visits', () => ({
   getVisitsByRunId: vi.fn().mockResolvedValue([]),
 }))
+vi.mock('../db/queries/stats', () => ({
+  getStats: vi.fn().mockResolvedValue({
+    statusCounts: { completed: 5, partial_failure: 2, failed: 1, cancelled: 0 },
+    visitsByDay: [{ date: '2026-03-24', group: 'homepage', count: 14 }],
+  }),
+}))
 
 const mockConfig = {
   groups: [
@@ -166,6 +172,24 @@ describe('POST /webhook/warm', () => {
       body: JSON.stringify({ group: 'nonexistent' }),
     })
     expect(res.statusCode).toBe(400)
+  })
+})
+
+// ── /stats ────────────────────────────────────────────────────────────────────
+
+describe('GET /stats', () => {
+  it('returns statusCounts and visitsByDay', async () => {
+    const res = await app.inject({ method: 'GET', url: '/stats', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body).toHaveProperty('statusCounts')
+    expect(body).toHaveProperty('visitsByDay')
+    expect(Array.isArray(body.visitsByDay)).toBe(true)
+  })
+
+  it('requires API key', async () => {
+    const res = await app.inject({ method: 'GET', url: '/stats' })
+    expect(res.statusCode).toBe(401)
   })
 })
 
