@@ -117,20 +117,20 @@ describe('visitUrl', () => {
     expect(result.discoveredLinks).not.toContain('https://other.com/external')
   })
 
-  it('calls resetBrowser after every visit to force fresh Browserless session', async () => {
+  it('does not call resetBrowser — context isolation is sufficient per visit', async () => {
     const { resetBrowser } = await import('../browser/connection')
     const { visitUrl } = await import('./visitor')
     await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
-    expect(vi.mocked(resetBrowser)).toHaveBeenCalledOnce()
+    expect(vi.mocked(resetBrowser)).not.toHaveBeenCalled()
   })
 
-  it('calls resetBrowser even when the visit fails', async () => {
+  it('does not call resetBrowser even when the visit fails', async () => {
     const { createContext } = await import('../browser/context')
     const { resetBrowser } = await import('../browser/connection')
     vi.mocked(createContext).mockRejectedValue(new Error('Browserless unreachable'))
     const { visitUrl } = await import('./visitor')
     await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false })
-    expect(vi.mocked(resetBrowser)).toHaveBeenCalledOnce()
+    expect(vi.mocked(resetBrowser)).not.toHaveBeenCalled()
   })
 
   it('passes custom userAgent to createContext', async () => {
