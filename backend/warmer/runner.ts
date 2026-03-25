@@ -3,7 +3,7 @@ import { visitUrl } from './visitor'
 import { randomDelay } from '../browser/stealth'
 import { insertRun, finalizeRun } from '../db/queries/runs'
 import { insertVisit } from '../db/queries/visits'
-import { registerRun, unregisterRun } from './registry'
+import { registerRun, unregisterRun, cancelRun } from './registry'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
 import type { WarmGroup } from '../config/urls'
@@ -27,6 +27,11 @@ async function _executeRun(runId: number, db: Knex, group: WarmGroup): Promise<v
   const signal = registerRun(runId)
   const log = logger.child({ runId, group: group.name })
   log.info({ totalUrls: group.urls.length }, 'warm run started')
+
+  const timeoutId = setTimeout(() => {
+    log.warn({ runId }, 'run exceeded 60-minute timeout — auto-cancelling')
+    cancelRun(runId)
+  }, 60 * 60 * 1000)
 
   let successCount = 0
   let failureCount = 0
@@ -75,6 +80,7 @@ async function _executeRun(runId: number, db: Knex, group: WarmGroup): Promise<v
       }
     }
   } finally {
+    clearTimeout(timeoutId)
     unregisterRun(runId)
   }
 
