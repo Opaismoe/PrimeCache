@@ -7,6 +7,7 @@ import { authEvents } from '../lib/events';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { Button } from '@/components/ui/button';
 import { Moon, Sun } from 'lucide-react';
+import logo from '../assets/logo.png'
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -49,7 +50,9 @@ function RootLayout() {
       {showModal && <ApiKeyModal onSave={handleSave} />}
       <nav className="border-b border-border bg-card">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-          <span className="font-semibold">PrimeCache</span>
+          <span className="font-semibold">
+            <img src={logo} alt="PrimeCache" width={32} height={32} />
+          </span>
           <NavLink to="/">Dashboard</NavLink>
           <NavLink to="/history">History</NavLink>
           <NavLink to="/config">Config</NavLink>
