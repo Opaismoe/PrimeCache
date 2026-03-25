@@ -4,9 +4,11 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
   createColumnHelper,
   flexRender,
   type SortingState,
+  type ColumnFiltersState,
 } from '@tanstack/react-table';
 import { useState } from 'react';
 import { getRuns, getConfig, deleteRuns, cancelRun } from '../lib/api';
@@ -43,6 +45,7 @@ function HistoryPage() {
   const navigate = useNavigate({ from: '/history' });
   const queryClient = useQueryClient();
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const { data: runs, isLoading } = useQuery({
     queryKey: queryKeys.runs.list(page, group),
@@ -145,10 +148,12 @@ function HistoryPage() {
   const table = useReactTable({
     data: runs ?? [],
     columns,
-    state: { sorting },
+    state: { sorting, columnFilters },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   });
 
   return (
@@ -161,10 +166,10 @@ function HistoryPage() {
             onValueChange={(v) => navigate({ search: { page: 1, group: !v || v === '__all__' ? '' : v } })}
           >
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="All groups" />
+              <SelectValue placeholder="All Groups" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">All groups</SelectItem>
+              <SelectItem value="__all__">All Groups</SelectItem>
               {groups.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
@@ -210,6 +215,32 @@ function HistoryPage() {
                     ))}
                   </TableRow>
                 ))}
+                <TableRow className="hover:bg-transparent">
+                  {table.getHeaderGroups()[0].headers.map((header) => (
+                    <TableHead key={`filter-${header.id}`} className="py-1">
+                      {header.id === 'status' ? (
+                        <Select
+                          value={(table.getColumn('status')?.getFilterValue() as string) ?? '__all__'}
+                          onValueChange={(v) =>
+                            table.getColumn('status')?.setFilterValue(v === '__all__' ? undefined : v)
+                          }
+                        >
+                          <SelectTrigger className="h-7 w-36 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__all__">All statuses</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="partial_failure">Partial failure</SelectItem>
+                            <SelectItem value="failed">Failed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="running">Running</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : null}
+                    </TableHead>
+                  ))}
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
