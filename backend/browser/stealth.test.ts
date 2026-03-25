@@ -57,3 +57,26 @@ describe('randomDelay', () => {
     expect(elapsed).toBeLessThan(100)
   })
 })
+
+describe('page-closed resilience', () => {
+  it('simulateMouseMovement silently returns when page.mouse.move throws closed error', async () => {
+    const page = makePage({
+      mouse: { move: vi.fn().mockRejectedValue(new Error('Target page, context or browser has been closed')) },
+    })
+    await expect(simulateMouseMovement(page)).resolves.toBeUndefined()
+  })
+
+  it('simulateScroll silently returns when page.evaluate throws closed error', async () => {
+    const page = makePage({
+      evaluate: vi.fn().mockRejectedValue(new Error('Target page, context or browser has been closed')),
+    })
+    await expect(simulateScroll(page)).resolves.toBeUndefined()
+  })
+
+  it('simulateReading silently returns when page.waitForTimeout throws closed error', async () => {
+    const page = makePage({
+      waitForTimeout: vi.fn().mockRejectedValue(new Error('Target page, context or browser has been closed')),
+    })
+    await expect(simulateReading(page)).resolves.toBeUndefined()
+  })
+})
