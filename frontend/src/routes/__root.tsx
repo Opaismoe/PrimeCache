@@ -53,10 +53,10 @@ function RootLayout() {
           <span className="font-semibold">
             <img src={logo} alt="PrimeCache" width={32} height={32} />
           </span>
-          <NavLink to="/">Dashboard</NavLink>
-          <NavLink to="/history">History</NavLink>
-          <NavLink to="/config">Config</NavLink>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-6">
+            <NavLink to="/">Dashboard</NavLink>
+            <NavLink to="/history">History</NavLink>
+            <NavLink to="/config">Config</NavLink>
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
