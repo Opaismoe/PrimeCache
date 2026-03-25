@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getConfig, getLatestRuns, triggerAsync } from '../lib/api';
+import { getConfig, getLatestRuns, triggerAsync, getStats } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
 import { Spinner } from '../components/Spinner';
@@ -9,11 +9,49 @@ import { formatDate } from '../lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Link } from '@tanstack/react-router';
-import type { Run } from '../lib/types';
+import type { Run, Stats } from '../lib/types';
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell,
+} from 'recharts';
 
 export const Route = createFileRoute('/')({
   component: DashboardPage,
 });
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: '#4ade80',
+  partial_failure: '#fbbf24',
+  failed: '#f87171',
+  cancelled: '#9ca3af',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  completed: 'Completed',
+  partial_failure: 'Partial',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+};
+
+// Generate a distinct color for each group line
+const LINE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
+
+function getGroupColor(index: number) {
+  return LINE_COLORS[index % LINE_COLORS.length];
+}
+
+function buildLineChartData(visitsByDay: Stats['visitsByDay']) {
+  const groups = [...new Set(visitsByDay.map((v) => v.group))];
+  const byDate = new Map<string, Record<string, number>>();
+  for (const v of visitsByDay) {
+    if (!byDate.has(v.date)) byDate.set(v.date, {});
+    byDate.get(v.date)![v.group] = v.count;
+  }
+  return {
+    groups,
+    data: [...byDate.entries()].map(([date, counts]) => ({ date, ...counts })),
+  };
+}
 
 function DashboardPage() {
   const queryClient = useQueryClient();
@@ -27,6 +65,11 @@ function DashboardPage() {
   const { data: latestRuns, isLoading: runsLoading } = useQuery({
     queryKey: queryKeys.runs.latest(),
     queryFn: getLatestRuns,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: queryKeys.stats.all(),
+    queryFn: getStats,
   });
 
   const trigger = useMutation({
@@ -46,6 +89,14 @@ function DashboardPage() {
   }
 
   const latestByGroup = new Map<string, Run>((latestRuns ?? []).map((r) => [r.group_name, r]));
+
+  const pieData = Object.entries(stats?.statusCounts ?? {}).map(([status, count]) => ({
+    name: STATUS_LABELS[status] ?? status,
+    value: count,
+    color: STATUS_COLORS[status] ?? '#6b7280',
+  }));
+
+  const { groups: lineGroups, data: lineData } = buildLineChartData(stats?.visitsByDay ?? []);
 
   return (
     <div>
@@ -103,6 +154,83 @@ function DashboardPage() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {stats && (
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
+          {/* Pie chart — run status breakdown */}
+          {pieData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <h2 className="text-sm font-medium">Run status breakdown</h2>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={({ name, percent }) =>
+                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
+                      }
+                    >
+                      {pieData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Line chart — URLs visited per day per group */}
+          {lineData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <h2 className="text-sm font-medium">URLs visited per day (last 30 days)</h2>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={lineData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                      tickFormatter={(v: string) => v.slice(5)}
+                    />
+                    <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                      labelStyle={{ color: 'hsl(var(--foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    {lineGroups.map((group, i) => (
+                      <Line
+                        key={group}
+                        type="monotone"
+                        dataKey={group}
+                        stroke={getGroupColor(i)}
+                        dot={false}
+                        strokeWidth={2}
+                        activeDot={{ r: 4 }}
+                      />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
     </div>

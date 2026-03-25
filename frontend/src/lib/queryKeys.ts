@@ -8,4 +8,7 @@ export const queryKeys = {
   config: {
     all: () => ['config'] as const,
   },
+  stats: {
+    all: () => ['stats'] as const,
+  },
 };
