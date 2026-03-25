@@ -52,3 +52,8 @@ export interface Group {
 export interface Config {
   groups: Group[];
 }
+
+export interface Stats {
+  statusCounts: Record<string, number>;
+  visitsByDay: Array<{ date: string; group: string; count: number }>;
+}

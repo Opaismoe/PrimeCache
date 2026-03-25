@@ -8,6 +8,7 @@ import { logger } from '../utils/logger'
 import type { Config } from '../config/urls'
 import { getRuns, getRunById, getLatestPerGroup, finalizeRun, deleteRuns } from '../db/queries/runs'
 import { getVisitsByRunId } from '../db/queries/visits'
+import { getStats } from '../db/queries/stats'
 import { runGroup, startRunGroup } from '../warmer/runner'
 import { cancelRun } from '../warmer/registry'
 import { putConfigRoute } from './routes/config'
@@ -133,6 +134,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       const deleted = await deleteRuns(db, group ? { group } : undefined)
       return { deleted }
     })
+
+    // GET /stats
+    protected_.get('/stats', async () => getStats(db))
 
     // GET /config
     protected_.get('/config', async () => ({ groups: getConfig().groups }))
