@@ -39,12 +39,11 @@ export async function finalizeRun(
 
 export async function getRuns(
   db: Knex,
-  params: { limit: number; offset: number },
+  params: { limit: number; offset: number; group?: string },
 ): Promise<RunRow[]> {
-  return db('runs')
-    .orderBy('id', 'desc')
-    .limit(params.limit)
-    .offset(params.offset)
+  const q = db('runs').orderBy('id', 'desc').limit(params.limit).offset(params.offset)
+  if (params.group) q.where({ group_name: params.group })
+  return q
 }
 
 export async function getRunById(db: Knex, id: number): Promise<RunRow | null> {
