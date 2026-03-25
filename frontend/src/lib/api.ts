@@ -1,4 +1,4 @@
-import type { Config, Run, RunDetail } from './types';
+import type { Config, Run, RunDetail, Stats } from './types';
 import { authEvents } from './events';
 
 const API_KEY_STORAGE = 'primecache-api-key';
@@ -71,6 +71,8 @@ export const cancelRun = (id: number) =>
   request<{ ok: boolean }>('POST', `/runs/${id}/cancel`);
 
 export const getConfig = () => request<Config>('GET', '/config');
+
+export const getStats = () => request<Stats>('GET', '/stats');
 
 export const putConfig = (config: Config) =>
   request<{ ok: boolean }>('PUT', '/config', config);
