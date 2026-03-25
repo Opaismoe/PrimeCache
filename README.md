@@ -1,4 +1,4 @@
-# Cache Warmer
+# PrimeCache
 
 A self-hosted cache warming service that visits configured URLs using a real browser (via [Browserless](https://browserless.io/)), simulating genuine user behaviour to keep your CDN/reverse-proxy cache warm.
 
