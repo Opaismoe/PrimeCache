@@ -1,4 +1,4 @@
-import type { Knex } from 'knex'
+import type { Db } from '../db/client'
 import { visitUrl } from './visitor'
 import { randomDelay } from '../browser/stealth'
 import { insertRun, finalizeRun } from '../db/queries/runs'
@@ -9,7 +9,7 @@ import { env } from '../config/env'
 import type { WarmGroup } from '../config/urls'
 
 export async function startRunGroup(
-  db: Knex,
+  db: Db,
   group: WarmGroup,
 ): Promise<{ runId: number; promise: Promise<void> }> {
   const runId = await insertRun(db, { groupName: group.name, totalUrls: group.urls.length })
@@ -17,13 +17,13 @@ export async function startRunGroup(
   return { runId, promise }
 }
 
-export async function runGroup(db: Knex, group: WarmGroup): Promise<number> {
+export async function runGroup(db: Db, group: WarmGroup): Promise<number> {
   const runId = await insertRun(db, { groupName: group.name, totalUrls: group.urls.length })
   await _executeRun(runId, db, group)
   return runId
 }
 
-async function _executeRun(runId: number, db: Knex, group: WarmGroup): Promise<void> {
+async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<void> {
   const signal = registerRun(runId)
   const log = logger.child({ runId, group: group.name })
   log.info({ totalUrls: group.urls.length }, 'warm run started')
