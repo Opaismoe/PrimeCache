@@ -2,8 +2,8 @@ services:
   primecache:
     build: .
     environment:
-      - BROWSERLESS_WS_URL=${BROWSERLESS_WS_URL:-ws://browserless:3000/chromium/playwright}
-      - BROWSERLESS_TOKEN=${BROWSERLESS_TOKEN:-localtoken}
+      - BROWSERLESS_WS_URL=${BROWSERLESS_WS_URL}
+      - BROWSERLESS_TOKEN=${BROWSERLESS_TOKEN}
       - API_KEY=${API_KEY}
       - DATABASE_URL=postgres://primecache:${POSTGRES_PASSWORD}@postgres:5432/primecache
       - CONFIG_PATH=/app/config/config.yaml
@@ -14,33 +14,14 @@ services:
       - ./config.yaml:/app/config/config.yaml
     ports:
       - "3000:3000"
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     depends_on:
       postgres:
         condition: service_healthy
-      browserless:
-        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-    restart: unless-stopped
-
-  # Browserless — Chromium-as-a-service. Explicit DNS servers prevent ERR_NAME_NOT_RESOLVED
-  # inside the container when visiting external domains.
-  # Override BROWSERLESS_WS_URL + BROWSERLESS_TOKEN to use an external instance instead.
-  browserless:
-    image: ghcr.io/browserless/chromium:latest
-    environment:
-      - TOKEN=${BROWSERLESS_TOKEN:-localtoken}
-      - TIMEOUT=60000
-      - MAX_CONCURRENT_SESSIONS=5
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     restart: unless-stopped
 
   postgres:
