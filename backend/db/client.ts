@@ -1,18 +1,15 @@
-import knex from 'knex'
-import path from 'path'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import type { PgDatabase } from 'drizzle-orm/pg-core'
+import postgres from 'postgres'
 import { env } from '../config/env'
+import * as schema from './schema'
 
-export const db = knex({
-  client: 'better-sqlite3',
-  connection: { filename: env.DB_PATH },
-  useNullAsDefault: true,
-  migrations: {
-    // Always use compiled .js migrations so the same DB works in both dev and prod.
-    // ts-node:  __dirname = backend/db/      → ../dist/db/migrations = backend/dist/db/migrations
-    // compiled: __dirname = backend/dist/db/ → migrations            = backend/dist/db/migrations
-    directory: __filename.endsWith('.ts')
-      ? path.join(__dirname, '..', 'dist', 'db', 'migrations')
-      : path.join(__dirname, 'migrations'),
-    loadExtensions: ['.js'],
-  },
-})
+const queryClient = postgres(env.DATABASE_URL)
+export const db = drizzle({ client: queryClient, schema })
+
+// Abstract over driver-specific types so PGlite and postgres-js are both assignable
+export type Db = PgDatabase<any, typeof schema>
+
+export async function destroyDb(): Promise<void> {
+  await queryClient.end()
+}
