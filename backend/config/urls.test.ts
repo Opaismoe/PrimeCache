@@ -116,4 +116,23 @@ groups:
     expect(config.groups[0].options.crawl).toBe(false)
     expect(config.groups[0].options.crawl_depth).toBeUndefined()
   })
+
+  it('defaults fetchAssets to true when omitted', () => {
+    const config = parseConfig(VALID_YAML)
+    expect(config.groups[0].options.fetchAssets).toBe(true)
+  })
+
+  it('accepts fetchAssets: false', () => {
+    const yaml = `
+groups:
+  - name: no-assets
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/
+    options:
+      fetchAssets: false
+`
+    const config = parseConfig(yaml)
+    expect(config.groups[0].options.fetchAssets).toBe(false)
+  })
 })

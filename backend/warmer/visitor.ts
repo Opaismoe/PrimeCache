@@ -30,6 +30,16 @@ export async function visitUrl(
     context = await createContext(browser, options.userAgent)
     const page = await context.newPage()
 
+    // Block static asset downloads when fetchAssets is disabled.
+    // Fonts and images are not needed for server-side cache warming and
+    // skipping them significantly reduces per-visit bandwidth and duration.
+    if (!options.fetchAssets) {
+      await page.route(
+        /\.(woff2?|ttf|otf|eot|png|jpe?g|gif|webp|avif|ico|svg)(\?.*)?$/i,
+        (route) => route.abort(),
+      )
+    }
+
     // Inject cookies before the page loads
     if (options.cookies?.length) {
       await context.addCookies(options.cookies)
