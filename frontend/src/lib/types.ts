@@ -29,6 +29,18 @@ export interface RunDetail extends Run {
   visits: Visit[];
 }
 
+export interface Cookie {
+  name: string;
+  value: string;
+  url?: string;
+  domain?: string;
+  path?: string;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: 'Strict' | 'Lax' | 'None';
+  expires?: number;
+}
+
 export interface GroupOptions {
   scrollToBottom: boolean;
   waitForSelector?: string;
@@ -36,10 +48,13 @@ export interface GroupOptions {
   crawl_depth?: number;
   userAgent?: string;
   localStorage?: Record<string, string>;
+  cookies?: Cookie[];
   navigationTimeout?: number;
   waitUntil?: 'networkidle' | 'load' | 'domcontentloaded';
   delayMinMs?: number;
   delayMaxMs?: number;
+  stealth?: boolean;
+  fetchAssets?: boolean;
 }
 
 export interface Group {
