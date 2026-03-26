@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import knex, { type Knex } from 'knex'
+import { PGlite } from '@electric-sql/pglite'
+import { drizzle } from 'drizzle-orm/pglite'
+import { migrate } from 'drizzle-orm/pglite/migrator'
 import path from 'path'
+import * as schema from '../db/schema'
+import { runs, visits } from '../db/schema'
+import { eq } from 'drizzle-orm'
 
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright')
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token')
@@ -32,11 +37,13 @@ vi.mock('../browser/stealth', () => ({
   randomDelay: vi.fn().mockResolvedValue(undefined),
 }))
 
-let db: Knex
+type Db = ReturnType<typeof drizzle<typeof schema>>
+let db: Db
 
-async function createTestDb() {
-  const instance = knex({ client: 'better-sqlite3', connection: { filename: ':memory:' }, useNullAsDefault: true })
-  await instance.migrate.latest({ directory: path.join(__dirname, '../db/migrations') })
+async function createTestDb(): Promise<Db> {
+  const client = new PGlite()
+  const instance = drizzle({ client, schema })
+  await migrate(instance, { migrationsFolder: path.join(__dirname, '../db/migrations') })
   return instance
 }
 
@@ -56,7 +63,7 @@ describe('runGroup', () => {
   it('creates a run record in the DB', async () => {
     const { runGroup } = await import('./runner')
     const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://example.com/'], options: BASE_OPTIONS })
-    const run = await db('runs').where({ id: runId }).first()
+    const [run] = await db.select().from(runs).where(eq(runs.id, runId))
     expect(run).toBeTruthy()
     expect(run.group_name).toBe('homepage')
     expect(run.ended_at).toBeTruthy()
@@ -65,7 +72,7 @@ describe('runGroup', () => {
   it('sets status to completed when all visits succeed', async () => {
     const { runGroup } = await import('./runner')
     const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: BASE_OPTIONS })
-    const run = await db('runs').where({ id: runId }).first()
+    const [run] = await db.select().from(runs).where(eq(runs.id, runId))
     expect(run.status).toBe('completed')
     expect(run.success_count).toBe(2)
     expect(run.failure_count).toBe(0)
@@ -79,7 +86,7 @@ describe('runGroup', () => {
 
     const { runGroup } = await import('./runner')
     const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: BASE_OPTIONS })
-    const run = await db('runs').where({ id: runId }).first()
+    const [run] = await db.select().from(runs).where(eq(runs.id, runId))
     expect(run.status).toBe('partial_failure')
     expect(run.success_count).toBe(1)
     expect(run.failure_count).toBe(1)
@@ -91,15 +98,15 @@ describe('runGroup', () => {
 
     const { runGroup } = await import('./runner')
     const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://fail.com/'], options: BASE_OPTIONS })
-    const run = await db('runs').where({ id: runId }).first()
+    const [run] = await db.select().from(runs).where(eq(runs.id, runId))
     expect(run.status).toBe('failed')
   })
 
   it('inserts a visit record per URL', async () => {
     const { runGroup } = await import('./runner')
     const runId = await runGroup(db, { name: 'homepage', schedule: '* * * * *', urls: ['https://a.com/', 'https://b.com/'], options: BASE_OPTIONS })
-    const visits = await db('visits').where({ run_id: runId })
-    expect(visits).toHaveLength(2)
+    const v = await db.select().from(visits).where(eq(visits.run_id, runId))
+    expect(v).toHaveLength(2)
   })
 
   it('crawls discovered links up to crawl_depth', async () => {
@@ -127,9 +134,9 @@ describe('runGroup', () => {
       options: { ...BASE_OPTIONS, crawl: true, crawl_depth: 1 },
     })
 
-    const visits = await db('visits').where({ run_id: runId })
-    expect(visits).toHaveLength(3) // seed + 2 discovered
-    const visitedUrls = visits.map((v: any) => v.url)
+    const v = await db.select().from(visits).where(eq(visits.run_id, runId))
+    expect(v).toHaveLength(3) // seed + 2 discovered
+    const visitedUrls = v.map((r) => r.url)
     expect(visitedUrls).toContain('https://example.com/')
     expect(visitedUrls).toContain('https://example.com/about')
     expect(visitedUrls).toContain('https://example.com/contact')
@@ -137,11 +144,10 @@ describe('runGroup', () => {
 
   it('does not visit the same URL twice during a crawl', async () => {
     const { visitUrl } = await import('./visitor')
-    // Seed returns a link that points back to itself
     vi.mocked(visitUrl).mockResolvedValue({
       url: 'https://example.com/', finalUrl: 'https://example.com/', statusCode: 200, ttfbMs: 10, loadTimeMs: 100,
       consentFound: false, consentStrategy: null, error: null, visitedAt: new Date(),
-      discoveredLinks: ['https://example.com/'],  // circular
+      discoveredLinks: ['https://example.com/'],
     })
 
     const { runGroup } = await import('./runner')
@@ -152,8 +158,8 @@ describe('runGroup', () => {
       options: { ...BASE_OPTIONS, crawl: true, crawl_depth: 2 },
     })
 
-    const visits = await db('visits').where({ run_id: runId })
-    expect(visits).toHaveLength(1)
+    const v = await db.select().from(visits).where(eq(visits.run_id, runId))
+    expect(v).toHaveLength(1)
   })
 
   it('stops at crawl_depth and does not follow deeper links', async () => {
@@ -182,10 +188,9 @@ describe('runGroup', () => {
       options: { ...BASE_OPTIONS, crawl: true, crawl_depth: 1 },
     })
 
-    const visits = await db('visits').where({ run_id: runId })
-    // depth 0 (seed) + depth 1 = 2 pages, depth2 not visited
-    expect(visits).toHaveLength(2)
-    const urls = visits.map((v: any) => v.url)
+    const v = await db.select().from(visits).where(eq(visits.run_id, runId))
+    expect(v).toHaveLength(2)
+    const urls = v.map((r) => r.url)
     expect(urls).not.toContain('https://example.com/depth2')
   })
 
@@ -194,7 +199,6 @@ describe('runGroup', () => {
       vi.useFakeTimers()
 
       const { visitUrl } = await import('./visitor')
-      // Make visitUrl hang for 61 minutes (longer than the 60-min timeout)
       vi.mocked(visitUrl).mockImplementation(
         () =>
           new Promise((resolve) =>
@@ -225,11 +229,10 @@ describe('runGroup', () => {
         options: BASE_OPTIONS,
       })
 
-      // Advance past the 60-min timeout (fires cancel) and past visitUrl's 61-min delay
       await vi.advanceTimersByTimeAsync(62 * 60 * 1000)
 
       const runId = await runPromise
-      const run = await db('runs').where({ id: runId }).first()
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId))
       expect(run.status).toBe('cancelled')
 
       vi.useRealTimers()

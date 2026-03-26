@@ -1,5 +1,5 @@
 import cron, { type ScheduledTask } from 'node-cron'
-import type { Knex } from 'knex'
+import type { Db } from '../db/client'
 import { runGroup } from '../warmer/runner'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
@@ -7,7 +7,7 @@ import type { WarmGroup } from '../config/urls'
 
 const jobs: ScheduledTask[] = []
 
-export function registerJobs(groups: WarmGroup[], db: Knex): void {
+export function registerJobs(groups: WarmGroup[], db: Db): void {
   // Tear down existing jobs first
   jobs.forEach((j) => j.destroy())
   jobs.length = 0
