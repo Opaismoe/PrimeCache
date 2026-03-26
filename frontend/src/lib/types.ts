@@ -72,3 +72,67 @@ export interface Stats {
   statusCounts: Record<string, number>;
   visitsByDay: Array<{ date: string; group: string; count: number }>;
 }
+
+// ── Group detail page types ───────────────────────────────────────────────────
+
+export interface GroupOverviewStats {
+  totalRuns: number;
+  successRate: number;     // 0-100
+  avgLoadTimeMs: number;
+  avgTtfbMs: number | null;
+}
+
+export interface GroupRunSeries {
+  runId: number;
+  startedAt: string;
+  successRate: number;     // 0-100
+  avgLoadTimeMs: number;
+}
+
+export interface GroupOverview {
+  recentRuns: Run[];
+  stats: GroupOverviewStats;
+  series: GroupRunSeries[];
+}
+
+export interface UrlPerformance {
+  url: string;
+  p50LoadTimeMs: number;
+  p95LoadTimeMs: number;
+  p50TtfbMs: number | null;
+  p95TtfbMs: number | null;
+  isSlow: boolean;
+  sampleCount: number;
+}
+
+export interface LoadTimeTrendPoint {
+  runId: number;
+  startedAt: string;
+  url: string;
+  avgLoadTimeMs: number;
+}
+
+export interface GroupPerformance {
+  urls: UrlPerformance[];
+  loadTimeTrend: LoadTimeTrendPoint[];
+}
+
+export interface UrlUptime {
+  url: string;
+  uptimePct: number;
+  totalChecks: number;
+  downCount: number;
+  lastStatus: 'up' | 'down';
+  lastCheckedAt: string;
+}
+
+export interface UptimeTimelinePoint {
+  url: string;
+  visitedAt: string;
+  isDown: boolean;
+}
+
+export interface GroupUptime {
+  urls: UrlUptime[];
+  timeline: UptimeTimelinePoint[];
+}

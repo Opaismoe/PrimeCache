@@ -13,6 +13,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HistoryRunIdRouteImport } from './routes/history_.$runId'
+import { Route as GroupsGroupNameRouteImport } from './routes/groups_.$groupName'
 
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
@@ -34,17 +35,24 @@ const HistoryRunIdRoute = HistoryRunIdRouteImport.update({
   path: '/history/$runId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GroupsGroupNameRoute = GroupsGroupNameRouteImport.update({
+  id: '/groups_/$groupName',
+  path: '/groups/$groupName',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/config': typeof ConfigRoute
   '/history': typeof HistoryRoute
+  '/groups/$groupName': typeof GroupsGroupNameRoute
   '/history/$runId': typeof HistoryRunIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/config': typeof ConfigRoute
   '/history': typeof HistoryRoute
+  '/groups/$groupName': typeof GroupsGroupNameRoute
   '/history/$runId': typeof HistoryRunIdRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,33 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/config': typeof ConfigRoute
   '/history': typeof HistoryRoute
+  '/groups_/$groupName': typeof GroupsGroupNameRoute
   '/history_/$runId': typeof HistoryRunIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/config' | '/history' | '/history/$runId'
+  fullPaths:
+    | '/'
+    | '/config'
+    | '/history'
+    | '/groups/$groupName'
+    | '/history/$runId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/config' | '/history' | '/history/$runId'
-  id: '__root__' | '/' | '/config' | '/history' | '/history_/$runId'
+  to: '/' | '/config' | '/history' | '/groups/$groupName' | '/history/$runId'
+  id:
+    | '__root__'
+    | '/'
+    | '/config'
+    | '/history'
+    | '/groups_/$groupName'
+    | '/history_/$runId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConfigRoute: typeof ConfigRoute
   HistoryRoute: typeof HistoryRoute
+  GroupsGroupNameRoute: typeof GroupsGroupNameRoute
   HistoryRunIdRoute: typeof HistoryRunIdRoute
 }
 
@@ -99,6 +120,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRunIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/groups_/$groupName': {
+      id: '/groups_/$groupName'
+      path: '/groups/$groupName'
+      fullPath: '/groups/$groupName'
+      preLoaderRoute: typeof GroupsGroupNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -106,6 +134,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConfigRoute: ConfigRoute,
   HistoryRoute: HistoryRoute,
+  GroupsGroupNameRoute: GroupsGroupNameRoute,
   HistoryRunIdRoute: HistoryRunIdRoute,
 }
 export const routeTree = rootRouteImport

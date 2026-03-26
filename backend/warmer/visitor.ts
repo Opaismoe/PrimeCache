@@ -59,11 +59,13 @@ export async function visitUrl(
       }, entries as Record<string, unknown>)
     }
 
-    // Capture TTFB from the first matching response
+    // Capture TTFB and actual HTTP status code from the first matching response
     let ttfbMs: number | null = null
+    let statusCode: number | null = null
     page.on('response', (response) => {
-      if (response.url() === url && ttfbMs === null) {
-        ttfbMs = Date.now() - start
+      if (response.url() === url) {
+        if (ttfbMs === null) ttfbMs = Date.now() - start
+        if (statusCode === null) statusCode = response.status()
       }
     })
 
@@ -102,7 +104,7 @@ export async function visitUrl(
     return {
       url,
       finalUrl,
-      statusCode: 200,   // captured via response event above when available
+      statusCode,
       ttfbMs,
       loadTimeMs,
       consentFound: consentResult.found,
