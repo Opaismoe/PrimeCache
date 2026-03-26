@@ -46,8 +46,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
     }
   }
 
-  // ── Protected routes ──────────────────────────────────────────────────────
+  // ── Protected routes (/api/*) ─────────────────────────────────────────────
   app.register(async (protected_) => {
+
     protected_.addHook('preHandler', requireApiKey)
 
     // GET /runs
@@ -143,7 +144,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
     // PUT /config
     protected_.register(putConfigRoute)
-  })
+  }, { prefix: '/api' })
 
   // SPA catch-all: serve index.html for any unmatched non-API path
   app.setNotFoundHandler((_request, reply: any) => {
