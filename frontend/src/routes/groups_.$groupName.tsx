@@ -201,7 +201,9 @@ function GroupDetailPage() {
             <TabLoadingSkeleton rows={6} cols={6} />
           ) : performance ? (
             <PerformanceTab data={performance} />
-          ) : null}
+          ) : (
+            <p className="text-sm text-muted-foreground">No performance data yet — run the group to start collecting data.</p>
+          )}
         </TabsContent>
 
         {/* ── Uptime ── */}
@@ -210,7 +212,9 @@ function GroupDetailPage() {
             <TabLoadingSkeleton rows={5} cols={4} />
           ) : uptime ? (
             <UptimeTab data={uptime} />
-          ) : null}
+          ) : (
+            <p className="text-sm text-muted-foreground">No uptime data yet — run the group to start collecting data.</p>
+          )}
         </TabsContent>
 
         {/* ── SEO ── */}
@@ -388,6 +392,10 @@ function OverviewTab({ overview }: { overview: ReturnType<typeof useQuery<any>>[
 // ── Performance Tab ───────────────────────────────────────────────────────────
 
 function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTrend: any[] } }) {
+  if (data.urls.length === 0) {
+    return <p className="text-sm text-muted-foreground">No performance data yet — run the group to start collecting data.</p>;
+  }
+
   const slowCount = data.urls.filter((u) => u.isSlow).length;
 
   // Build multi-line chart data: group by runId, each URL is a key
@@ -481,6 +489,10 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
 // ── Uptime Tab ────────────────────────────────────────────────────────────────
 
 function UptimeTab({ data }: { data: { urls: UrlUptime[]; timeline: any[] } }) {
+  if (data.urls.length === 0) {
+    return <p className="text-sm text-muted-foreground">No uptime data yet — run the group to start collecting data.</p>;
+  }
+
   const downNow = data.urls.filter((u) => u.lastStatus === 'down').length;
 
   // Build scatter chart data for status timeline
@@ -635,7 +647,7 @@ function SeoTab({ data }: { data: { urls: UrlSeoSummary[] } }) {
           </div>
         )}
         {data.urls.length === 0 && (
-          <p className="text-sm text-muted-foreground">No SEO data yet — run the group to collect it.</p>
+          <p className="text-sm text-muted-foreground">No SEO data collected — visits may be failing. Check the Uptime tab for errors.</p>
         )}
       </div>
 
