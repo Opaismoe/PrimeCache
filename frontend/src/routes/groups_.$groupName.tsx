@@ -224,7 +224,7 @@ function GroupDetailPage() {
           ) : seo ? (
             <SeoTab data={seo} />
           ) : (
-            <p className="text-sm text-muted-foreground">No SEO data yet — run the group to collect it.</p>
+            <p className="text-sm text-muted-foreground">No SEO data collected — visits may be failing. Check the Uptime tab for errors.</p>
           )}
         </TabsContent>
 
