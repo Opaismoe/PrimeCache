@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryOptions } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getGroupOverview, getGroupPerformance, getGroupUptime, triggerAsync, getConfig } from '../lib/api';
+import { getGroupOverview, getGroupPerformance, getGroupUptime, getGroupSeo, triggerAsync, getConfig } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { describeCron } from '../lib/cronUtils';
-import type { UrlPerformance, UrlUptime } from '../lib/types';
+import type { UrlPerformance, UrlUptime, UrlSeoSummary } from '../lib/types';
 
 const LINE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
 const getColor = (i: number) => LINE_COLORS[i % LINE_COLORS.length];
@@ -115,6 +115,12 @@ function GroupDetailPage() {
     enabled: activeTab === 'uptime',
   });
 
+  const { data: seo, isLoading: seoLoading } = useQuery({
+    queryKey: queryKeys.groups.seo(groupName),
+    queryFn: () => getGroupSeo(groupName),
+    enabled: activeTab === 'seo',
+  });
+
   const trigger = useMutation({
     mutationFn: () => triggerAsync(groupName),
     onSuccess: (data) => {
@@ -163,7 +169,7 @@ function GroupDetailPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="uptime">Uptime</TabsTrigger>
-          <TabsTrigger value="seo" disabled>SEO <Badge variant="secondary" className="ml-1 text-xs">Soon</Badge></TabsTrigger>
+          <TabsTrigger value="seo">SEO</TabsTrigger>
         </TabsList>
 
         {/* ── Overview ── */}
@@ -187,6 +193,17 @@ function GroupDetailPage() {
           ) : uptime ? (
             <UptimeTab data={uptime} />
           ) : null}
+        </TabsContent>
+
+        {/* ── SEO ── */}
+        <TabsContent value="seo">
+          {seoLoading ? (
+            <TabLoadingSkeleton rows={5} cols={4} />
+          ) : seo ? (
+            <SeoTab data={seo} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No SEO data yet — run the group to collect it.</p>
+          )}
         </TabsContent>
       </Tabs>
     </div>
@@ -545,6 +562,135 @@ function UptimeTab({ data }: { data: { urls: UrlUptime[]; timeline: any[] } }) {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ── SEO Tab ───────────────────────────────────────────────────────────────────
+
+function scoreColor(score: number) {
+  if (score >= 80) return 'text-green-500';
+  if (score >= 50) return 'text-yellow-500';
+  return 'text-destructive';
+}
+
+function SeoFieldRow({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="flex gap-3 py-1 text-xs border-b border-border last:border-0">
+      <span className="w-36 shrink-0 text-muted-foreground">{label}</span>
+      <span className={value ? 'font-mono break-all' : 'italic text-muted-foreground'}>
+        {value ?? 'not set'}
+      </span>
+    </div>
+  );
+}
+
+function SeoTab({ data }: { data: { urls: UrlSeoSummary[] } }) {
+  const issueCount = data.urls.reduce((n, u) => n + u.issues.length, 0);
+  const changedCount = data.urls.filter((u) => u.changed).length;
+
+  return (
+    <div>
+      {/* Summary bar */}
+      <div className="mb-4 flex flex-wrap gap-3">
+        {issueCount > 0 && (
+          <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <span className="font-medium">{issueCount} SEO {issueCount === 1 ? 'issue' : 'issues'}</span>
+            <span className="text-muted-foreground">across {data.urls.filter(u => u.issues.length > 0).length} URLs</span>
+          </div>
+        )}
+        {changedCount > 0 && (
+          <div className="flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-600 dark:text-yellow-400">
+            <span className="font-medium">{changedCount} {changedCount === 1 ? 'URL' : 'URLs'} changed</span>
+            <span className="text-muted-foreground">since last run</span>
+          </div>
+        )}
+        {data.urls.length === 0 && (
+          <p className="text-sm text-muted-foreground">No SEO data yet — run the group to collect it.</p>
+        )}
+      </div>
+
+      {/* Per-URL cards */}
+      <div className="flex flex-col gap-3">
+        {data.urls.map((u) => (
+          <Card key={u.url}>
+            <CardContent className="pt-4">
+              {/* Header row */}
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  {u.changed && (
+                    <Badge variant="outline" className="shrink-0 border-yellow-500 text-yellow-600 dark:text-yellow-400 text-xs">Changed</Badge>
+                  )}
+                  <a
+                    href={u.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="truncate font-mono text-xs hover:text-foreground hover:underline text-muted-foreground"
+                  >
+                    {u.url}
+                  </a>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-lg font-bold ${scoreColor(u.score)}`}>{u.score}</span>
+                  <span className="text-xs text-muted-foreground">/ 100</span>
+                </div>
+              </div>
+
+              {/* Issues */}
+              {u.issues.length > 0 && (
+                <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2">
+                  <ul className="space-y-0.5">
+                    {u.issues.map((issue) => (
+                      <li key={issue} className="flex items-start gap-1.5 text-xs text-destructive">
+                        <span className="mt-0.5 shrink-0">✕</span>
+                        {issue}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* SEO fields */}
+              {u.latestSeo && (
+                <div className="rounded-md border border-border px-3 py-1">
+                  <SeoFieldRow label="Title" value={u.latestSeo.title} />
+                  <SeoFieldRow label="Meta description" value={u.latestSeo.metaDescription} />
+                  <SeoFieldRow label="H1" value={u.latestSeo.h1} />
+                  <SeoFieldRow label="Canonical URL" value={u.latestSeo.canonicalUrl} />
+                  <SeoFieldRow label="og:title" value={u.latestSeo.ogTitle} />
+                  <SeoFieldRow label="og:description" value={u.latestSeo.ogDescription} />
+                  <SeoFieldRow label="og:image" value={u.latestSeo.ogImage} />
+                  <SeoFieldRow label="Robots" value={u.latestSeo.robotsMeta} />
+                </div>
+              )}
+
+              {/* History diff (last 2 runs) */}
+              {u.changed && u.history.length >= 2 && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Changes since previous run</p>
+                  <div className="space-y-1">
+                    {(['title', 'metaDescription', 'h1', 'canonicalUrl'] as const).map((field) => {
+                      const prev = u.history[1].seo[field];
+                      const curr = u.history[0].seo[field];
+                      if (prev === curr) return null;
+                      const labels: Record<string, string> = {
+                        title: 'Title', metaDescription: 'Meta description', h1: 'H1', canonicalUrl: 'Canonical',
+                      };
+                      return (
+                        <div key={field} className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs">
+                          <span className="font-medium text-yellow-600 dark:text-yellow-400">{labels[field]}</span>
+                          <div className="mt-1 text-muted-foreground line-through">{prev ?? '(empty)'}</div>
+                          <div className="mt-0.5 text-foreground">{curr ?? '(empty)'}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

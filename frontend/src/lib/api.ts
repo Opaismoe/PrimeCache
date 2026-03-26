@@ -1,4 +1,4 @@
-import type { Config, Run, RunDetail, Stats, GroupOverview, GroupPerformance, GroupUptime } from './types';
+import type { Config, Run, RunDetail, Stats, GroupOverview, GroupPerformance, GroupUptime, GroupSeo } from './types';
 import { authEvents } from './events';
 
 const API_KEY_STORAGE = 'primecache-api-key';
@@ -91,3 +91,6 @@ export const getGroupPerformance = (name: string, threshold = 3000) =>
 
 export const getGroupUptime = (name: string) =>
   request<GroupUptime>('GET', `/api/groups/${encodeURIComponent(name)}/uptime`);
+
+export const getGroupSeo = (name: string) =>
+  request<GroupSeo>('GET', `/api/groups/${encodeURIComponent(name)}/seo`);

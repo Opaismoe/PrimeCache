@@ -5,6 +5,17 @@ import { simulateMouseMovement, simulateScroll, simulateReading } from '../brows
 import { logger } from '../utils/logger'
 import type { WarmGroup } from '../config/urls'
 
+export interface SeoSnapshot {
+  title: string | null
+  metaDescription: string | null
+  h1: string | null
+  canonicalUrl: string | null
+  ogTitle: string | null
+  ogDescription: string | null
+  ogImage: string | null
+  robotsMeta: string | null
+}
+
 export interface VisitResult {
   url: string
   finalUrl: string | null
@@ -16,6 +27,7 @@ export interface VisitResult {
   error: string | null
   visitedAt: Date
   discoveredLinks: string[]
+  seo: SeoSnapshot | null
 }
 
 export async function visitUrl(
@@ -75,6 +87,18 @@ export async function visitUrl(
       await page.waitForSelector(options.waitForSelector, { timeout: 5_000 }).catch(() => {})
     }
 
+    // Collect SEO metadata — never throws, failure returns null
+    const seo: SeoSnapshot | null = await page.evaluate(() => ({
+      title:           document.title || null,
+      metaDescription: document.querySelector('meta[name="description"]')?.getAttribute('content') ?? null,
+      h1:              document.querySelector('h1')?.textContent?.trim() ?? null,
+      canonicalUrl:    document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? null,
+      ogTitle:         document.querySelector('meta[property="og:title"]')?.getAttribute('content') ?? null,
+      ogDescription:   document.querySelector('meta[property="og:description"]')?.getAttribute('content') ?? null,
+      ogImage:         document.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? null,
+      robotsMeta:      document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? null,
+    })).catch(() => null)
+
     const consentResult = await dismissCookieConsent(page)
     await simulateMouseMovement(page)
     if (options.scrollToBottom) await simulateScroll(page)
@@ -112,6 +136,7 @@ export async function visitUrl(
       error: null,
       visitedAt: new Date(),
       discoveredLinks,
+      seo,
     }
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err)
@@ -127,6 +152,7 @@ export async function visitUrl(
       error,
       visitedAt: new Date(),
       discoveredLinks: [],
+      seo: null,
     }
   } finally {
     await context?.close()
