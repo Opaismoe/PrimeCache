@@ -10,6 +10,7 @@ export interface VisitInput {
   finalUrl: string | null
   ttfbMs: number | null
   loadTimeMs: number
+  redirectCount: number
   consentFound: boolean
   consentStrategy: string | null
   error: string | null
@@ -27,6 +28,7 @@ export async function insertVisit(
     final_url:        visit.finalUrl,
     ttfb_ms:          visit.ttfbMs,
     load_time_ms:     visit.loadTimeMs,
+    redirect_count:   visit.redirectCount,
     consent_found:    visit.consentFound,
     consent_strategy: visit.consentStrategy,
     error:            visit.error,

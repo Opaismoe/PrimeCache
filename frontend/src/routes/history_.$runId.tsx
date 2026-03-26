@@ -63,7 +63,7 @@ function RunDetailSkeleton() {
         <Table>
           <TableHeader>
             <TableRow>
-              {['URL', 'Status', 'TTFB', 'Load', 'Error'].map((h) => (
+              {['URL', 'Status', 'Redirects', 'TTFB', 'Load', 'Error'].map((h) => (
                 <TableHead key={h}>{h}</TableHead>
               ))}
             </TableRow>
@@ -156,6 +156,7 @@ function RunDetailPage() {
               <TableRow>
                 <TableHead>URL</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Redirects</TableHead>
                 <TableHead>TTFB</TableHead>
                 <TableHead>Load</TableHead>
                 <TableHead>Error</TableHead>
@@ -178,6 +179,7 @@ function RunDetailPage() {
                     </a>
                   </TableCell>
                   <TableCell>{visit.status_code ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{visit.redirect_count > 0 ? visit.redirect_count : '—'}</TableCell>
                   <TableCell>{formatMs(visit.ttfb_ms)}</TableCell>
                   <TableCell>{formatMs(visit.load_time_ms)}</TableCell>
                   <TableCell className="text-xs text-destructive">{visit.error ?? ''}</TableCell>

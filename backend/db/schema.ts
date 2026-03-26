@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, boolean, text, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, serial, varchar, integer, boolean, text, timestamp, real } from 'drizzle-orm/pg-core'
 
 export const runs = pgTable('runs', {
   id:            serial('id').primaryKey(),
@@ -23,6 +23,46 @@ export const visits = pgTable('visits', {
   consent_strategy: varchar('consent_strategy', { length: 255 }),
   error:            text('error'),
   visited_at:       timestamp('visited_at').notNull(),
+  redirect_count:   integer('redirect_count').notNull().default(0),
+})
+
+export const visit_headers = pgTable('visit_headers', {
+  id:                       serial('id').primaryKey(),
+  visit_id:                 integer('visit_id').notNull().references(() => visits.id, { onDelete: 'cascade' }),
+  cache_control:            text('cache_control'),
+  x_cache:                  varchar('x_cache', { length: 255 }),
+  cf_cache_status:          varchar('cf_cache_status', { length: 64 }),
+  age:                      integer('age'),
+  etag:                     varchar('etag', { length: 512 }),
+  content_type:             varchar('content_type', { length: 255 }),
+  x_frame_options:          varchar('x_frame_options', { length: 255 }),
+  x_content_type_options:   varchar('x_content_type_options', { length: 255 }),
+  strict_transport_security: text('strict_transport_security'),
+  content_security_policy:  text('content_security_policy'),
+})
+
+export const visit_cwv = pgTable('visit_cwv', {
+  id:       serial('id').primaryKey(),
+  visit_id: integer('visit_id').notNull().references(() => visits.id, { onDelete: 'cascade' }),
+  lcp_ms:   integer('lcp_ms'),
+  cls_score: real('cls_score'),
+  inp_ms:   integer('inp_ms'),
+  fcp_ms:   integer('fcp_ms'),
+})
+
+export const visit_screenshots = pgTable('visit_screenshots', {
+  id:           serial('id').primaryKey(),
+  visit_id:     integer('visit_id').notNull().references(() => visits.id, { onDelete: 'cascade' }),
+  image_data:   text('image_data').notNull(),
+  captured_at:  timestamp('captured_at').notNull(),
+})
+
+export const visit_broken_links = pgTable('visit_broken_links', {
+  id:          serial('id').primaryKey(),
+  visit_id:    integer('visit_id').notNull().references(() => visits.id, { onDelete: 'cascade' }),
+  url:         varchar('url', { length: 2048 }).notNull(),
+  status_code: integer('status_code'),
+  error:       text('error'),
 })
 
 export const visit_seo = pgTable('visit_seo', {

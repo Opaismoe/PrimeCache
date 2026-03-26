@@ -12,9 +12,13 @@ export const queryKeys = {
     all: () => ['stats'] as const,
   },
   groups: {
-    overview:    (name: string) => ['groups', name, 'overview'] as const,
-    performance: (name: string) => ['groups', name, 'performance'] as const,
-    uptime:      (name: string) => ['groups', name, 'uptime'] as const,
-    seo:         (name: string) => ['groups', name, 'seo'] as const,
+    overview:     (name: string) => ['groups', name, 'overview'] as const,
+    performance:  (name: string) => ['groups', name, 'performance'] as const,
+    uptime:       (name: string) => ['groups', name, 'uptime'] as const,
+    seo:          (name: string) => ['groups', name, 'seo'] as const,
+    brokenLinks:  (name: string) => ['groups', name, 'broken-links'] as const,
+  },
+  publicStatus: {
+    all: () => ['public-status'] as const,
   },
 };
