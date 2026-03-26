@@ -5,8 +5,10 @@ vi.stubEnv('BROWSERLESS_TOKEN', 'test-token')
 vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16')
 
 const mockMigrate = vi.fn().mockResolvedValue(undefined)
+vi.mock('drizzle-orm/postgres-js/migrator', () => ({ migrate: mockMigrate }))
 vi.mock('./db/client', () => ({
-  db: { migrate: { latest: mockMigrate }, destroy: vi.fn() },
+  db: {},
+  destroyDb: vi.fn().mockResolvedValue(undefined),
 }))
 
 const mockListen = vi.fn().mockResolvedValue(undefined)

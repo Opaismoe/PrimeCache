@@ -1,4 +1,6 @@
-import { db } from './db/client'
+import path from 'path'
+import { db, destroyDb } from './db/client'
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { buildServer } from './api/server'
 import { registerJobs } from './scheduler/index'
 import { disconnect } from './browser/connection'
@@ -12,7 +14,7 @@ async function main() {
   logger.info({ groups: config.groups.length }, 'config loaded')
 
   // 2. Run DB migrations — must complete before anything else starts
-  await db.migrate.latest()
+  await migrate(db, { migrationsFolder: path.join(__dirname, 'db', 'migrations') })
   logger.info('migrations complete')
 
   // 3. Start API server
@@ -36,7 +38,7 @@ async function main() {
     stopWatcher()
     await server.close()
     await disconnect()
-    await db.destroy()
+    await destroyDb()
     process.exit(0)
   }
 
