@@ -2,7 +2,7 @@ services:
   primecache:
     build: .
     environment:
-      - BROWSERLESS_WS_URL=ws://browserless:3000/chromium/playwright
+      - BROWSERLESS_WS_URL=${BROWSERLESS_WS_URL}
       - BROWSERLESS_TOKEN=${BROWSERLESS_TOKEN}
       - API_KEY=${API_KEY}
       - DATABASE_URL=postgres://primecache:${POSTGRES_PASSWORD}@postgres:5432/primecache
@@ -15,8 +15,6 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      browserless:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     healthcheck:
@@ -24,20 +22,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-    restart: unless-stopped
-
-  browserless:
-    image: ghcr.io/browserless/chromium:latest
-    environment:
-      - TOKEN=${BROWSERLESS_TOKEN}
-    ports:
-      - "3001:3000"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/pressure?token=${BROWSERLESS_TOKEN}"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 10s
     restart: unless-stopped
 
   postgres:

@@ -1,13 +1,16 @@
 import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { Group } from '../lib/types';
 import { ApiError } from '../lib/api';
 import { CronBuilder } from './CronBuilder';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 
 interface Props {
   initial?: Group;
@@ -19,7 +22,7 @@ const defaultGroup: Group = {
   name: '',
   schedule: '0 * * * *',
   urls: [],
-  options: { scrollToBottom: false, crawl: false },
+  options: { scrollToBottom: false, crawl: false, stealth: true, fetchAssets: true },
 };
 
 export function GroupForm({ initial, onSave, onCancel }: Props) {
@@ -30,6 +33,12 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
     if (!entries) return '';
     return Object.entries(entries).map(([k, v]) => `${k}=${v}`).join('\n');
   });
+  const [cookiesText, setCookiesText] = useState(() => {
+    const cookies = initial?.options.cookies;
+    if (!cookies?.length) return '';
+    return JSON.stringify(cookies, null, 2);
+  });
+  const [advancedOpen, setAdvancedOpen] = useState(!!initial);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -42,12 +51,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors([]);
-    const urls = urlsText
-      .split('\n')
-      .map((u) => u.trim())
-      .filter(Boolean);
 
-    // Parse localStorage entries: KEY=VALUE lines
+    const urls = urlsText.split('\n').map((u) => u.trim()).filter(Boolean);
+
     const localStorageEntries = localStorageText
       .split('\n')
       .map((line) => line.trim())
@@ -57,12 +63,25 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
         if (eq > 0) acc[line.slice(0, eq).trim()] = line.slice(eq + 1);
         return acc;
       }, {});
-
     const localStorageValue = Object.keys(localStorageEntries).length > 0 ? localStorageEntries : undefined;
+
+    let cookiesValue: Group['options']['cookies'] = undefined;
+    if (cookiesText.trim()) {
+      try {
+        cookiesValue = JSON.parse(cookiesText.trim());
+      } catch {
+        setErrors(['Cookies must be valid JSON (array of cookie objects)']);
+        return;
+      }
+    }
 
     setSaving(true);
     try {
-      await onSave({ ...group, urls, options: { ...group.options, localStorage: localStorageValue } });
+      await onSave({
+        ...group,
+        urls,
+        options: { ...group.options, localStorage: localStorageValue, cookies: cookiesValue },
+      });
     } catch (err) {
       if (err instanceof ApiError && err.issues) {
         setErrors((err.issues as { message: string }[]).map((i) => i.message));
@@ -81,183 +100,261 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
       {errors.length > 0 && (
         <div className="rounded border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">
           <ul className="list-inside list-disc space-y-0.5">
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
+            {errors.map((e, i) => <li key={i}>{e}</li>)}
           </ul>
         </div>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="group-name">Name</Label>
-        <Input
-          id="group-name"
-          type="text"
-          required
-          value={group.name}
-          onChange={(e) => set('name', e.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label>Schedule</Label>
-        <CronBuilder value={group.schedule} onChange={(v) => set('schedule', v)} />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="group-urls">URLs (one per line)</Label>
-        <Textarea
-          id="group-urls"
-          required
-          rows={5}
-          value={urlsText}
-          onChange={(e) => setUrlsText(e.target.value)}
-          className="font-mono"
-          placeholder={'https://example.com\nhttps://example.com/page'}
-        />
-      </div>
-
-      <fieldset className="rounded border border-border p-4">
-        <legend className="px-2 text-sm font-medium">Options</legend>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="scrollToBottom"
-              checked={group.options.scrollToBottom}
-              onCheckedChange={(checked) => setOpt('scrollToBottom', checked === true)}
-            />
-            <Label htmlFor="scrollToBottom" className="cursor-pointer">Scroll to bottom after load</Label>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="waitForSelector">Wait for selector (optional)</Label>
-            <Input
-              id="waitForSelector"
-              type="text"
-              value={group.options.waitForSelector ?? ''}
-              onChange={(e) => setOpt('waitForSelector', e.target.value || undefined)}
-              placeholder="e.g. main, #content"
-              className="max-w-xs"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="crawl"
-              checked={group.options.crawl}
-              onCheckedChange={(checked) => setOpt('crawl', checked === true)}
-            />
-            <Label htmlFor="crawl" className="cursor-pointer">Crawl internal links</Label>
-          </div>
-
-          {group.options.crawl && (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="crawl_depth">Crawl depth (1–10)</Label>
-              <Input
-                id="crawl_depth"
-                type="number"
-                min={1}
-                max={10}
-                required
-                value={group.options.crawl_depth ?? 1}
-                onChange={(e) => setOpt('crawl_depth', parseInt(e.target.value) || 1)}
-                className="w-24"
-              />
-            </div>
-          )}
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="userAgent">User agent (optional)</Label>
-            <Input
-              id="userAgent"
-              type="text"
-              value={group.options.userAgent ?? ''}
-              onChange={(e) => setOpt('userAgent', e.target.value || undefined)}
-              placeholder="e.g. MyBot/1.0"
-              className="max-w-xs"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="navigationTimeout">Navigation timeout (ms)</Label>
-            <Input
-              id="navigationTimeout"
-              type="number"
-              min={5000}
-              step={1000}
-              value={group.options.navigationTimeout ?? 30000}
-              onChange={(e) => setOpt('navigationTimeout', parseInt(e.target.value) || 30000)}
-              className="w-32"
-            />
-            <p className="text-xs text-muted-foreground">Default: 30 000 ms. Increase for slow sites.</p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="waitUntil">Wait until</Label>
-            <Select
-              value={group.options.waitUntil ?? 'networkidle'}
-              onValueChange={(v) => setOpt('waitUntil', (v ?? 'networkidle') as 'networkidle' | 'load' | 'domcontentloaded')}
-            >
-              <SelectTrigger id="waitUntil" className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="networkidle">networkidle (default)</SelectItem>
-                <SelectItem value="load">load</SelectItem>
-                <SelectItem value="domcontentloaded">domcontentloaded</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Use <code>load</code> if pages time out due to endless background requests.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label>Delay between URLs (ms)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="delayMinMs"
-                type="number"
-                min={0}
-                step={500}
-                value={group.options.delayMinMs ?? ''}
-                onChange={(e) => setOpt('delayMinMs', e.target.value ? parseInt(e.target.value) : undefined)}
-                placeholder="min (default 2000)"
-                className="w-40"
-              />
-              <span className="text-muted-foreground text-sm">–</span>
-              <Input
-                id="delayMaxMs"
-                type="number"
-                min={0}
-                step={500}
-                value={group.options.delayMaxMs ?? ''}
-                onChange={(e) => setOpt('delayMaxMs', e.target.value ? parseInt(e.target.value) : undefined)}
-                placeholder="max (default 5000)"
-                className="w-40"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">Leave blank to use the global env defaults.</p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="localStorage">
-              localStorage entries (optional, one per line: <code className="text-xs">KEY=value</code>)
-            </Label>
-            <Textarea
-              id="localStorage"
-              rows={3}
-              value={localStorageText}
-              onChange={(e) => setLocalStorageText(e.target.value)}
-              className="font-mono"
-              placeholder={'cookieConsent=accepted\nsome_flag=true'}
-            />
-            <p className="text-xs text-muted-foreground">
-              Set before page load — useful for cookie consent banners that check localStorage.
-            </p>
-          </div>
+      {/* ── Basic ── */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="group-name">Name</Label>
+          <Input
+            id="group-name"
+            type="text"
+            required
+            value={group.name}
+            onChange={(e) => set('name', e.target.value)}
+          />
         </div>
-      </fieldset>
+
+        <div className="flex flex-col gap-1.5">
+          <Label>Schedule</Label>
+          <CronBuilder value={group.schedule} onChange={(v) => set('schedule', v)} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="group-urls">URLs <span className="text-muted-foreground font-normal">(one per line)</span></Label>
+          <Textarea
+            id="group-urls"
+            required
+            rows={5}
+            value={urlsText}
+            onChange={(e) => setUrlsText(e.target.value)}
+            className="font-mono"
+            placeholder={'https://example.com\nhttps://example.com/page'}
+          />
+        </div>
+      </div>
+
+      {/* ── Advanced ── */}
+      <Collapsible open={advancedOpen} onOpenChange={(open) => setAdvancedOpen(open)}>
+        <CollapsibleTrigger className="flex w-full items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <ChevronDown className={cn('h-4 w-4 transition-transform duration-200', advancedOpen && 'rotate-180')} />
+          Advanced settings
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <div className="mt-3 flex flex-col gap-4 rounded border border-border p-4">
+
+            {/* Behaviour */}
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Behaviour</p>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="scrollToBottom"
+                    checked={group.options.scrollToBottom}
+                    onCheckedChange={(v) => setOpt('scrollToBottom', v === true)}
+                  />
+                  <Label htmlFor="scrollToBottom" className="cursor-pointer">Scroll to bottom after load</Label>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="crawl"
+                    checked={group.options.crawl}
+                    onCheckedChange={(v) => setOpt('crawl', v === true)}
+                  />
+                  <Label htmlFor="crawl" className="cursor-pointer">Crawl internal links</Label>
+                </div>
+              </div>
+
+              {group.options.crawl && (
+                <div className="flex flex-col gap-1.5 pl-6">
+                  <Label htmlFor="crawl_depth">Crawl depth (1–10)</Label>
+                  <Input
+                    id="crawl_depth"
+                    type="number"
+                    min={1}
+                    max={10}
+                    required
+                    value={group.options.crawl_depth ?? 1}
+                    onChange={(e) => setOpt('crawl_depth', parseInt(e.target.value) || 1)}
+                    className="w-24"
+                  />
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="waitForSelector">Wait for selector <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input
+                  id="waitForSelector"
+                  type="text"
+                  value={group.options.waitForSelector ?? ''}
+                  onChange={(e) => setOpt('waitForSelector', e.target.value || undefined)}
+                  placeholder="e.g. main, #content"
+                  className="max-w-xs"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="waitUntil">Wait until</Label>
+                <Select
+                  value={group.options.waitUntil ?? 'networkidle'}
+                  onValueChange={(v) => setOpt('waitUntil', v as 'networkidle' | 'load' | 'domcontentloaded')}
+                >
+                  <SelectTrigger id="waitUntil" className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="networkidle">networkidle (default)</SelectItem>
+                    <SelectItem value="load">load</SelectItem>
+                    <SelectItem value="domcontentloaded">domcontentloaded</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Use <code>load</code> if pages time out due to endless background requests.
+                </p>
+              </div>
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Performance */}
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Performance</p>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="fetchAssets"
+                    checked={group.options.fetchAssets !== false}
+                    onCheckedChange={(v) => setOpt('fetchAssets', v === true)}
+                  />
+                  <Label htmlFor="fetchAssets" className="cursor-pointer">Fetch static assets</Label>
+                </div>
+                <p className="pl-6 text-xs text-muted-foreground">
+                  When unchecked, fonts and images are aborted before download — reduces bandwidth and visit duration. CSS and JS are always fetched.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="stealth"
+                    checked={group.options.stealth !== false}
+                    onCheckedChange={(v) => setOpt('stealth', v === true)}
+                  />
+                  <Label htmlFor="stealth" className="cursor-pointer">Stealth mode</Label>
+                </div>
+                <p className="pl-6 text-xs text-muted-foreground">
+                  Applies browser evasions to reduce bot-detection signals (e.g. hides <code>navigator.webdriver</code>).
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="navigationTimeout">Navigation timeout (ms)</Label>
+                <Input
+                  id="navigationTimeout"
+                  type="number"
+                  min={5000}
+                  step={1000}
+                  value={group.options.navigationTimeout ?? 30000}
+                  onChange={(e) => setOpt('navigationTimeout', parseInt(e.target.value) || 30000)}
+                  className="w-32"
+                />
+                <p className="text-xs text-muted-foreground">Default: 30 000 ms. Increase for slow sites.</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>Delay between URLs (ms)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="delayMinMs"
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={group.options.delayMinMs ?? ''}
+                    onChange={(e) => setOpt('delayMinMs', e.target.value ? parseInt(e.target.value) : undefined)}
+                    placeholder="min (default 2000)"
+                    className="w-40"
+                  />
+                  <span className="text-sm text-muted-foreground">–</span>
+                  <Input
+                    id="delayMaxMs"
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={group.options.delayMaxMs ?? ''}
+                    onChange={(e) => setOpt('delayMaxMs', e.target.value ? parseInt(e.target.value) : undefined)}
+                    placeholder="max (default 5000)"
+                    className="w-40"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Leave blank to use the global env defaults.</p>
+              </div>
+            </div>
+
+            <div className="border-t border-border" />
+
+            {/* Identity & state */}
+            <div className="flex flex-col gap-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Identity & state</p>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="userAgent">User agent <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Input
+                  id="userAgent"
+                  type="text"
+                  value={group.options.userAgent ?? ''}
+                  onChange={(e) => setOpt('userAgent', e.target.value || undefined)}
+                  placeholder="e.g. MyBot/1.0"
+                  className="max-w-xs"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="localStorage">
+                  localStorage entries <span className="font-normal text-muted-foreground">(optional, one per line: <code className="text-xs">KEY=value</code>)</span>
+                </Label>
+                <Textarea
+                  id="localStorage"
+                  rows={3}
+                  value={localStorageText}
+                  onChange={(e) => setLocalStorageText(e.target.value)}
+                  className="font-mono"
+                  placeholder={'cookieConsent=accepted\nsome_flag=true'}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Injected before page load — useful for consent banners that read localStorage.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="cookies">
+                  Cookies <span className="font-normal text-muted-foreground">(optional, JSON array)</span>
+                </Label>
+                <Textarea
+                  id="cookies"
+                  rows={4}
+                  value={cookiesText}
+                  onChange={(e) => setCookiesText(e.target.value)}
+                  className="font-mono"
+                  placeholder={`[{"name":"session","value":"abc123","domain":"example.com"}]`}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Injected before page load. Each object supports <code>name</code>, <code>value</code>, <code>domain</code>, <code>path</code>, <code>httpOnly</code>, <code>secure</code>, <code>sameSite</code>.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       <div className="flex gap-2">
         <Button type="submit" disabled={saving}>
