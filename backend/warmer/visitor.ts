@@ -30,6 +30,11 @@ export async function visitUrl(
     context = await createContext(browser, options.userAgent)
     const page = await context.newPage()
 
+    // Inject cookies before the page loads
+    if (options.cookies?.length) {
+      await context.addCookies(options.cookies)
+    }
+
     // Inject localStorage entries before the page loads (runs as init script)
     if (options.localStorage && Object.keys(options.localStorage).length > 0) {
       const entries = options.localStorage
