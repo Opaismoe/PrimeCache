@@ -12,6 +12,7 @@ import { getStats } from '../db/queries/stats'
 import { runGroup, startRunGroup } from '../warmer/runner'
 import { cancelRun } from '../warmer/registry'
 import { putConfigRoute } from './routes/config'
+import { groupRoutes } from './routes/groups'
 
 interface ServerDeps {
   db: Db
@@ -144,6 +145,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
     // PUT /config
     protected_.register(putConfigRoute)
+
+    // GET /groups/:name/overview|performance|uptime
+    protected_.register(groupRoutes(db))
   }, { prefix: '/api' })
 
   // SPA catch-all: serve index.html for any unmatched non-API path
