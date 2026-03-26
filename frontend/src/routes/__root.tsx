@@ -1,12 +1,19 @@
-import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router';
+import { Link, Outlet, createRootRouteWithContext, useRouterState } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
-import { getApiKey } from '../lib/api';
+import { getApiKey, getConfig } from '../lib/api';
+import { queryKeys } from '../lib/queryKeys';
 import { authEvents } from '../lib/events';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { Button } from '@/components/ui/button';
-import { Moon, Sun } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Moon, Sun, ChevronDown } from 'lucide-react';
 import logo from '../assets/logo.png'
 
 interface RouterContext {
@@ -36,6 +43,13 @@ function RootLayout() {
   const [showModal, setShowModal] = useState(() => !getApiKey());
   const { dark, toggle } = useTheme();
 
+  const { data: config } = useQuery({
+    queryKey: queryKeys.config.all(),
+    queryFn: getConfig,
+    enabled: !!getApiKey(),
+  });
+  const groups = config?.groups ?? [];
+
   useEffect(() => {
     return authEvents.onUnauthorized(() => setShowModal(true));
   }, []);
@@ -56,6 +70,9 @@ function RootLayout() {
           <div className="ml-auto flex items-center gap-6">
             <NavLink to="/">Dashboard</NavLink>
             <NavLink to="/history">History</NavLink>
+            {groups.length > 0 && (
+              <DetailsDropdown groups={groups} />
+            )}
             <NavLink to="/config">Config</NavLink>
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -78,5 +95,36 @@ function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
     >
       {children}
     </Link>
+  );
+}
+
+function DetailsDropdown({ groups }: { groups: { name: string }[] }) {
+  const routerState = useRouterState();
+  const isActive = routerState.location.pathname.startsWith('/groups/');
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={`flex items-center gap-1 text-sm hover:text-foreground focus:outline-none ${
+          isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        Details
+        <ChevronDown className="h-3 w-3" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {groups.map((g) => (
+          <DropdownMenuItem key={g.name}>
+            <Link
+              to="/groups/$groupName"
+              params={{ groupName: g.name }}
+              className="w-full"
+            >
+              {g.name}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
