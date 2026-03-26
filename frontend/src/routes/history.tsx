@@ -163,14 +163,13 @@ function HistoryPage() {
         <h1 className="text-xl font-semibold">Run History</h1>
         <div className="flex items-center gap-2">
           <Select
-            value={group || '__all__'}
-            onValueChange={(v) => navigate({ search: { page: 1, group: !v || v === '__all__' ? '' : v } })}
+            value={group || ''}
+            onValueChange={(v) => navigate({ search: { page: 1, group: v || '' } })}
           >
             <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Groups" />
+              <SelectValue placeholder="All groups" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">All Groups</SelectItem>
               {groups.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
