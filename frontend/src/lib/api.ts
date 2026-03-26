@@ -60,25 +60,25 @@ export const getRuns = (params: { limit?: number; offset?: number; group?: strin
     offset: String(params.offset ?? 0),
     ...(params.group ? { group: params.group } : {}),
   });
-  return request<Run[]>('GET', `/runs?${qs}`);
+  return request<Run[]>('GET', `/api/runs?${qs}`);
 };
 
-export const getLatestRuns = () => request<Run[]>('GET', '/runs/latest');
+export const getLatestRuns = () => request<Run[]>('GET', '/api/runs/latest');
 
-export const getRunById = (id: number) => request<RunDetail>('GET', `/runs/${id}`);
+export const getRunById = (id: number) => request<RunDetail>('GET', `/api/runs/${id}`);
 
 export const deleteRuns = (group?: string) =>
-  request<{ deleted: number }>('DELETE', '/runs', group ? { group } : undefined);
+  request<{ deleted: number }>('DELETE', '/api/runs', group ? { group } : undefined);
 
 export const triggerAsync = (group: string) =>
-  request<{ runId: number }>('POST', '/trigger/async', { group });
+  request<{ runId: number }>('POST', '/api/trigger/async', { group });
 
 export const cancelRun = (id: number) =>
-  request<{ ok: boolean }>('POST', `/runs/${id}/cancel`);
+  request<{ ok: boolean }>('POST', `/api/runs/${id}/cancel`);
 
-export const getConfig = () => request<Config>('GET', '/config');
+export const getConfig = () => request<Config>('GET', '/api/config');
 
-export const getStats = () => request<Stats>('GET', '/stats');
+export const getStats = () => request<Stats>('GET', '/api/stats');
 
 export const putConfig = (config: Config) =>
-  request<{ ok: boolean }>('PUT', '/config', config);
+  request<{ ok: boolean }>('PUT', '/api/config', config);

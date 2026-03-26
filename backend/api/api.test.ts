@@ -78,17 +78,17 @@ describe('GET /health', () => {
 
 describe('API key auth', () => {
   it('returns 401 with no key', async () => {
-    const res = await app.inject({ method: 'GET', url: '/runs' })
+    const res = await app.inject({ method: 'GET', url: '/api/runs' })
     expect(res.statusCode).toBe(401)
   })
 
   it('returns 401 with wrong key', async () => {
-    const res = await app.inject({ method: 'GET', url: '/runs', headers: { 'x-api-key': 'wrong' } })
+    const res = await app.inject({ method: 'GET', url: '/api/runs', headers: { 'x-api-key': 'wrong' } })
     expect(res.statusCode).toBe(401)
   })
 
   it('passes with correct key', async () => {
-    const res = await app.inject({ method: 'GET', url: '/runs', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    const res = await app.inject({ method: 'GET', url: '/api/runs', headers: { 'x-api-key': 'supersecretapikey1234' } })
     expect(res.statusCode).not.toBe(401)
   })
 })
@@ -97,7 +97,7 @@ describe('API key auth', () => {
 
 describe('GET /runs', () => {
   it('returns paginated results', async () => {
-    const res = await app.inject({ method: 'GET', url: '/runs?limit=5&offset=0', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    const res = await app.inject({ method: 'GET', url: '/api/runs?limit=5&offset=0', headers: { 'x-api-key': 'supersecretapikey1234' } })
     expect(res.statusCode).toBe(200)
     expect(Array.isArray(res.json())).toBe(true)
   })
@@ -105,7 +105,7 @@ describe('GET /runs', () => {
   it('passes group filter to getRuns when ?group= is provided', async () => {
     const { getRuns } = await import('../db/queries/runs')
     const res = await app.inject({
-      method: 'GET', url: '/runs?group=homepage',
+      method: 'GET', url: '/api/runs?group=homepage',
       headers: { 'x-api-key': 'supersecretapikey1234' },
     })
     expect(res.statusCode).toBe(200)
@@ -118,7 +118,7 @@ describe('GET /runs', () => {
   it('does not pass group when ?group= is absent', async () => {
     const { getRuns } = await import('../db/queries/runs')
     vi.mocked(getRuns).mockClear()
-    await app.inject({ method: 'GET', url: '/runs', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    await app.inject({ method: 'GET', url: '/api/runs', headers: { 'x-api-key': 'supersecretapikey1234' } })
     expect(vi.mocked(getRuns)).toHaveBeenCalledWith(
       expect.anything(),
       expect.not.objectContaining({ group: expect.anything() }),
@@ -128,14 +128,14 @@ describe('GET /runs', () => {
 
 describe('GET /runs/:id', () => {
   it('returns 404 for unknown id', async () => {
-    const res = await app.inject({ method: 'GET', url: '/runs/99999', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    const res = await app.inject({ method: 'GET', url: '/api/runs/99999', headers: { 'x-api-key': 'supersecretapikey1234' } })
     expect(res.statusCode).toBe(404)
   })
 })
 
 describe('GET /runs/latest', () => {
   it('returns an array', async () => {
-    const res = await app.inject({ method: 'GET', url: '/runs/latest', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    const res = await app.inject({ method: 'GET', url: '/api/runs/latest', headers: { 'x-api-key': 'supersecretapikey1234' } })
     expect(res.statusCode).toBe(200)
     expect(Array.isArray(res.json())).toBe(true)
   })
@@ -146,7 +146,7 @@ describe('GET /runs/latest', () => {
 describe('POST /trigger', () => {
   it('returns 400 for unknown group', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/trigger',
+      method: 'POST', url: '/api/trigger',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({ group: 'nonexistent' }),
     })
@@ -155,7 +155,7 @@ describe('POST /trigger', () => {
 
   it('returns runId for known group', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/trigger',
+      method: 'POST', url: '/api/trigger',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({ group: 'homepage' }),
     })
@@ -169,7 +169,7 @@ describe('POST /trigger', () => {
 describe('POST /webhook/warm', () => {
   it('triggers a specific group and returns runIds', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/webhook/warm',
+      method: 'POST', url: '/api/webhook/warm',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({ group: 'homepage' }),
     })
@@ -180,7 +180,7 @@ describe('POST /webhook/warm', () => {
 
   it('triggers all groups when group is "all"', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/webhook/warm',
+      method: 'POST', url: '/api/webhook/warm',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({ group: 'all' }),
     })
@@ -190,7 +190,7 @@ describe('POST /webhook/warm', () => {
 
   it('returns 400 for unknown group', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/webhook/warm',
+      method: 'POST', url: '/api/webhook/warm',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({ group: 'nonexistent' }),
     })
@@ -202,7 +202,7 @@ describe('POST /webhook/warm', () => {
 
 describe('GET /stats', () => {
   it('returns statusCounts and visitsByDay', async () => {
-    const res = await app.inject({ method: 'GET', url: '/stats', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    const res = await app.inject({ method: 'GET', url: '/api/stats', headers: { 'x-api-key': 'supersecretapikey1234' } })
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body).toHaveProperty('statusCounts')
@@ -211,7 +211,7 @@ describe('GET /stats', () => {
   })
 
   it('requires API key', async () => {
-    const res = await app.inject({ method: 'GET', url: '/stats' })
+    const res = await app.inject({ method: 'GET', url: '/api/stats' })
     expect(res.statusCode).toBe(401)
   })
 })
@@ -220,7 +220,7 @@ describe('GET /stats', () => {
 
 describe('GET /config', () => {
   it('returns current URL groups', async () => {
-    const res = await app.inject({ method: 'GET', url: '/config', headers: { 'x-api-key': 'supersecretapikey1234' } })
+    const res = await app.inject({ method: 'GET', url: '/api/config', headers: { 'x-api-key': 'supersecretapikey1234' } })
     expect(res.statusCode).toBe(200)
     expect(res.json().groups).toHaveLength(1)
     expect(res.json().groups[0].name).toBe('homepage')
@@ -241,7 +241,7 @@ const validConfigBody = {
 describe('PUT /config', () => {
   it('returns 200 and { ok: true } on valid payload', async () => {
     const res = await app.inject({
-      method: 'PUT', url: '/config',
+      method: 'PUT', url: '/api/config',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify(validConfigBody),
     })
@@ -251,7 +251,7 @@ describe('PUT /config', () => {
 
   it('returns 400 when groups array is missing', async () => {
     const res = await app.inject({
-      method: 'PUT', url: '/config',
+      method: 'PUT', url: '/api/config',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({}),
     })
@@ -261,7 +261,7 @@ describe('PUT /config', () => {
 
   it('returns 400 when a URL is invalid', async () => {
     const res = await app.inject({
-      method: 'PUT', url: '/config',
+      method: 'PUT', url: '/api/config',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({
         groups: [{ ...validConfigBody.groups[0], urls: ['not-a-url'] }],
@@ -273,7 +273,7 @@ describe('PUT /config', () => {
 
   it('returns 400 when crawl is true but crawl_depth is missing', async () => {
     const res = await app.inject({
-      method: 'PUT', url: '/config',
+      method: 'PUT', url: '/api/config',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({
         groups: [{ ...validConfigBody.groups[0], options: { scrollToBottom: false, crawl: true } }],
@@ -285,7 +285,7 @@ describe('PUT /config', () => {
 
   it('returns 401 without API key', async () => {
     const res = await app.inject({
-      method: 'PUT', url: '/config',
+      method: 'PUT', url: '/api/config',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(validConfigBody),
     })
@@ -298,7 +298,7 @@ describe('PUT /config', () => {
 describe('POST /runs/:id/cancel', () => {
   it('returns 404 for unknown run', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/runs/99999/cancel',
+      method: 'POST', url: '/api/runs/99999/cancel',
       headers: { 'x-api-key': 'supersecretapikey1234' },
     })
     expect(res.statusCode).toBe(404)
@@ -311,7 +311,7 @@ describe('POST /runs/:id/cancel', () => {
       status: 'completed', total_urls: 1, success_count: 1, failure_count: 0,
     } as any)
     const res = await app.inject({
-      method: 'POST', url: '/runs/1/cancel',
+      method: 'POST', url: '/api/runs/1/cancel',
       headers: { 'x-api-key': 'supersecretapikey1234' },
     })
     expect(res.statusCode).toBe(400)
@@ -324,7 +324,7 @@ describe('POST /runs/:id/cancel', () => {
       status: 'running', total_urls: 1, success_count: null, failure_count: null,
     } as any)
     const res = await app.inject({
-      method: 'POST', url: '/runs/1/cancel',
+      method: 'POST', url: '/api/runs/1/cancel',
       headers: { 'x-api-key': 'supersecretapikey1234' },
     })
     expect(res.statusCode).toBe(200)
@@ -337,7 +337,7 @@ describe('POST /runs/:id/cancel', () => {
 describe('POST /trigger/async', () => {
   it('returns 400 for unknown group', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/trigger/async',
+      method: 'POST', url: '/api/trigger/async',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({ group: 'nonexistent' }),
     })
@@ -346,7 +346,7 @@ describe('POST /trigger/async', () => {
 
   it('returns runId immediately for known group', async () => {
     const res = await app.inject({
-      method: 'POST', url: '/trigger/async',
+      method: 'POST', url: '/api/trigger/async',
       headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
       body: JSON.stringify({ group: 'homepage' }),
     })
@@ -359,13 +359,13 @@ describe('POST /trigger/async', () => {
 
 describe('DELETE /runs', () => {
   it('returns 401 without API key', async () => {
-    const res = await app.inject({ method: 'DELETE', url: '/runs' })
+    const res = await app.inject({ method: 'DELETE', url: '/api/runs' })
     expect(res.statusCode).toBe(401)
   })
 
   it('deletes all runs and returns count', async () => {
     const res = await app.inject({
-      method: 'DELETE', url: '/runs',
+      method: 'DELETE', url: '/api/runs',
       headers: { 'x-api-key': 'supersecretapikey1234' },
     })
     expect(res.statusCode).toBe(200)
@@ -374,7 +374,7 @@ describe('DELETE /runs', () => {
 
   it('deletes runs for a specific group with ?group= param', async () => {
     const res = await app.inject({
-      method: 'DELETE', url: '/runs?group=homepage',
+      method: 'DELETE', url: '/api/runs?group=homepage',
       headers: { 'x-api-key': 'supersecretapikey1234' },
     })
     expect(res.statusCode).toBe(200)
