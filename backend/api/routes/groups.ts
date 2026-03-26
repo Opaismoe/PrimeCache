@@ -3,6 +3,7 @@ import type { Db } from '../../db/client'
 import { getGroupOverview } from '../../db/queries/groupOverview'
 import { getGroupPerformance } from '../../db/queries/groupPerformance'
 import { getGroupUptime } from '../../db/queries/groupUptime'
+import { getGroupSeo } from '../../db/queries/groupSeo'
 
 export function groupRoutes(db: Db): FastifyPluginAsync {
   return async (app) => {
@@ -20,6 +21,11 @@ export function groupRoutes(db: Db): FastifyPluginAsync {
     app.get('/groups/:name/uptime', async (request: any) => {
       const name = decodeURIComponent(request.params.name as string)
       return getGroupUptime(db, name)
+    })
+
+    app.get('/groups/:name/seo', async (request: any) => {
+      const name = decodeURIComponent(request.params.name as string)
+      return getGroupSeo(db, name)
     })
   }
 }

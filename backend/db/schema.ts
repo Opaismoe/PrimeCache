@@ -24,3 +24,17 @@ export const visits = pgTable('visits', {
   error:            text('error'),
   visited_at:       timestamp('visited_at').notNull(),
 })
+
+export const visit_seo = pgTable('visit_seo', {
+  id:               serial('id').primaryKey(),
+  visit_id:         integer('visit_id').notNull().references(() => visits.id, { onDelete: 'cascade' }),
+  title:            text('title'),
+  meta_description: text('meta_description'),
+  h1:               text('h1'),
+  canonical_url:    varchar('canonical_url', { length: 2048 }),
+  og_title:         text('og_title'),
+  og_description:   text('og_description'),
+  og_image:         varchar('og_image', { length: 2048 }),
+  robots_meta:      varchar('robots_meta', { length: 255 }),
+  collected_at:     timestamp('collected_at').notNull(),
+})
