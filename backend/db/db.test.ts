@@ -1,30 +1,28 @@
-import { describe, it, expect, beforeEach, afterAll } from 'vitest'
-import knex, { type Knex } from 'knex'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { PGlite } from '@electric-sql/pglite'
+import { drizzle } from 'drizzle-orm/pglite'
+import { migrate } from 'drizzle-orm/pglite/migrator'
 import path from 'path'
+import * as schema from './schema'
+import { runs, visits } from './schema'
+import { eq } from 'drizzle-orm'
 
-// In-memory SQLite for all DB tests
-let db: Knex
+type Db = ReturnType<typeof drizzle<typeof schema>>
 
-async function createTestDb(): Promise<Knex> {
-  const instance = knex({
-    client: 'better-sqlite3',
-    connection: { filename: ':memory:' },
-    useNullAsDefault: true,
-  })
-  await instance.migrate.latest({
-    directory: path.join(__dirname, 'migrations'),
-  })
-  return instance
+// In-memory Postgres (PGlite) for all DB tests
+async function createTestDb(): Promise<Db> {
+  const client = new PGlite()
+  const db = drizzle({ client, schema })
+  await migrate(db, { migrationsFolder: path.join(__dirname, 'migrations') })
+  return db
 }
+
+let db: Db
 
 // --- runs queries ---
 describe('runs queries', () => {
   beforeEach(async () => {
     db = await createTestDb()
-  })
-
-  afterAll(async () => {
-    await db.destroy()
   })
 
   it('insertRun returns a numeric id', async () => {
@@ -37,7 +35,7 @@ describe('runs queries', () => {
   it('insertRun sets status to "running" and records started_at', async () => {
     const { insertRun } = await import('./queries/runs')
     const id = await insertRun(db, { groupName: 'homepage', totalUrls: 2 })
-    const row = await db('runs').where({ id }).first()
+    const [row] = await db.select().from(runs).where(eq(runs.id, id))
     expect(row.status).toBe('running')
     expect(row.started_at).toBeTruthy()
     expect(row.ended_at).toBeNull()
@@ -47,7 +45,7 @@ describe('runs queries', () => {
     const { insertRun, finalizeRun } = await import('./queries/runs')
     const id = await insertRun(db, { groupName: 'homepage', totalUrls: 3 })
     await finalizeRun(db, id, { status: 'partial_failure', successCount: 2, failureCount: 1 })
-    const row = await db('runs').where({ id }).first()
+    const [row] = await db.select().from(runs).where(eq(runs.id, id))
     expect(row.status).toBe('partial_failure')
     expect(row.ended_at).toBeTruthy()
     expect(row.success_count).toBe(2)
@@ -76,7 +74,7 @@ describe('runs queries', () => {
     await insertRun(db, { groupName: 'products', totalUrls: 1 })
     const rows = await getLatestPerGroup(db)
     expect(rows).toHaveLength(2)
-    expect(rows.map((r: { group_name: string }) => r.group_name).sort()).toEqual(['homepage', 'products'])
+    expect(rows.map((r) => r.group_name).sort()).toEqual(['homepage', 'products'])
   })
 
   it('deleteRuns deletes all runs and their visits', async () => {
@@ -108,10 +106,6 @@ describe('visits queries', () => {
     db = await createTestDb()
   })
 
-  afterAll(async () => {
-    await db.destroy()
-  })
-
   it('insertVisits bulk inserts and returns count', async () => {
     const { insertRun } = await import('./queries/runs')
     const { insertVisits } = await import('./queries/visits')
@@ -132,11 +126,11 @@ describe('visits queries', () => {
     await insertVisits(db, runId, [
       { url: 'https://a.com', statusCode: 200, finalUrl: 'https://a.com', ttfbMs: 80, loadTimeMs: 400, consentFound: false, consentStrategy: null, error: null },
     ])
-    const visits = await getVisitsByRunId(db, runId)
-    expect(visits).toHaveLength(1)
-    expect(visits[0].url).toBe('https://a.com')
-    expect(visits[0].ttfb_ms).toBe(80)
-    expect(visits[0].error).toBeNull()
+    const v = await getVisitsByRunId(db, runId)
+    expect(v).toHaveLength(1)
+    expect(v[0].url).toBe('https://a.com')
+    expect(v[0].ttfb_ms).toBe(80)
+    expect(v[0].error).toBeNull()
   })
 
   it('persists error field correctly', async () => {
@@ -147,8 +141,8 @@ describe('visits queries', () => {
     await insertVisits(db, runId, [
       { url: 'https://fail.com', statusCode: null, finalUrl: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Navigation timeout' },
     ])
-    const visits = await getVisitsByRunId(db, runId)
-    expect(visits[0].error).toBe('Navigation timeout')
+    const v = await getVisitsByRunId(db, runId)
+    expect(v[0].error).toBe('Navigation timeout')
   })
 
   it('insertVisit inserts a single visit and returns the row id', async () => {
@@ -162,8 +156,8 @@ describe('visits queries', () => {
     })
     expect(typeof visitId).toBe('number')
     expect(visitId).toBeGreaterThan(0)
-    const visits = await getVisitsByRunId(db, runId)
-    expect(visits).toHaveLength(1)
-    expect(visits[0].url).toBe('https://single.com')
+    const v = await getVisitsByRunId(db, runId)
+    expect(v).toHaveLength(1)
+    expect(v[0].url).toBe('https://single.com')
   })
 })
