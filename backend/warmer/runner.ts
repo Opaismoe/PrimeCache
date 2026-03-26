@@ -3,6 +3,7 @@ import { visitUrl } from './visitor'
 import { randomDelay } from '../browser/stealth'
 import { insertRun, finalizeRun } from '../db/queries/runs'
 import { insertVisit } from '../db/queries/visits'
+import { insertVisitSeo } from '../db/queries/visitSeo'
 import { registerRun, unregisterRun, cancelRun } from './registry'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
@@ -53,7 +54,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
       log.info({ url, depth }, 'visiting')
       const result = await visitUrl(url, group.options)
 
-      await insertVisit(db, runId, {
+      const visitId = await insertVisit(db, runId, {
         url: result.url,
         statusCode: result.statusCode,
         finalUrl: result.finalUrl,
@@ -63,6 +64,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
         consentStrategy: result.consentStrategy,
         error: result.error,
       })
+      if (result.seo) await insertVisitSeo(db, visitId, result.seo)
 
       if (result.error === null) successCount++
       else failureCount++

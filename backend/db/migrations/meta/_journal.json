@@ -8,6 +8,13 @@
       "when": 1774518202004,
       "tag": "0000_thin_luminals",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774536739758,
+      "tag": "0001_lush_lyja",
+      "breakpoints": true
     }
   ]
 }
