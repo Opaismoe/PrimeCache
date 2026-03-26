@@ -26,16 +26,16 @@ export async function visitUrl(
   let context: Awaited<ReturnType<typeof createContext>> | null = null
 
   try {
-    const browser = await getBrowser()
+    const browser = await getBrowser(options.stealth)
     context = await createContext(browser, options.userAgent)
     const page = await context.newPage()
 
     // Block static asset downloads when fetchAssets is disabled.
-    // Fonts and images are not needed for server-side cache warming and
-    // skipping them significantly reduces per-visit bandwidth and duration.
+    // Skipping fonts, images, CSS, and JS significantly reduces per-visit
+    // bandwidth and duration when only server-side cache warming is needed.
     if (!options.fetchAssets) {
       await page.route(
-        /\.(woff2?|ttf|otf|eot|png|jpe?g|gif|webp|avif|ico|svg)(\?.*)?$/i,
+        /\.(woff2?|ttf|otf|eot|png|jpe?g|gif|webp|avif|ico|svg|css|js|map)(\?.*)?$/i,
         (route) => route.abort(),
       )
     }
