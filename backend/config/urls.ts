@@ -25,6 +25,7 @@ const GroupOptionsSchema = z.object({
   waitUntil:           z.enum(['networkidle', 'load', 'domcontentloaded']).default('networkidle'),
   delayMinMs:          z.number().int().min(0).optional(),
   delayMaxMs:          z.number().int().min(0).optional(),
+  fetchAssets:         z.boolean().default(true),
 }).refine(
   (opts) => !opts.crawl || opts.crawl_depth !== undefined,
   { message: 'crawl_depth is required when crawl is true' },
