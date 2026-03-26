@@ -1,30 +1,39 @@
-import type { Knex } from 'knex'
+import { sql, ne } from 'drizzle-orm'
+import { runs, visits } from '../schema'
+import type { Db } from '../client'
 
 export interface Stats {
   statusCounts: Record<string, number>
   visitsByDay: Array<{ date: string; group: string; count: number }>
 }
 
-export async function getStats(db: Knex): Promise<Stats> {
-  const statusRows: Array<{ status: string; count: number }> = await db('runs')
-    .select('status')
-    .count('* as count')
-    .whereNot({ status: 'running' })
-    .groupBy('status')
+export async function getStats(db: Db): Promise<Stats> {
+  const statusRows = await db
+    .select({
+      status: runs.status,
+      count:  sql<number>`count(*)`.as('count'),
+    })
+    .from(runs)
+    .where(ne(runs.status, 'running'))
+    .groupBy(runs.status)
 
   const statusCounts: Record<string, number> = {}
   for (const row of statusRows) {
     statusCounts[row.status] = Number(row.count)
   }
 
-  const visitsByDay: Array<{ date: string; group: string; count: number }> = await db('visits as v')
-    .join('runs as r', 'v.run_id', 'r.id')
-    .select(db.raw("date(v.visited_at) as date"), 'r.group_name as group')
-    .count('* as count')
-    .where('v.visited_at', '>=', db.raw("date('now', '-30 days')"))
-    .groupBy('date', 'r.group_name')
-    .orderBy('date', 'asc')
-    .then((rows: any[]) => rows.map((r) => ({ date: r.date, group: r.group, count: Number(r.count) })))
+  const visitsByDay = await db
+    .select({
+      date:  sql<string>`(${visits.visited_at})::date::text`.as('date'),
+      group: runs.group_name,
+      count: sql<number>`count(*)`.as('count'),
+    })
+    .from(visits)
+    .innerJoin(runs, sql`${visits.run_id} = ${runs.id}`)
+    .where(sql`${visits.visited_at} >= now() - interval '30 days'`)
+    .groupBy(sql`(${visits.visited_at})::date`, runs.group_name)
+    .orderBy(sql`(${visits.visited_at})::date`)
+    .then((rows) => rows.map((r) => ({ date: r.date, group: r.group, count: Number(r.count) })))
 
   return { statusCounts, visitsByDay }
 }
