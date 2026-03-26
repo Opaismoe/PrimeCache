@@ -160,7 +160,13 @@ function DashboardPage() {
                 <CardHeader className="pb-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h2 className="font-medium">{group.name}</h2>
+                      <Link
+                        to="/groups/$groupName"
+                        params={{ groupName: group.name }}
+                        className="font-medium hover:text-primary hover:underline"
+                      >
+                        {group.name}
+                      </Link>
                       <p className="text-xs text-muted-foreground">{describeCron(group.schedule)}</p>
                     </div>
                     {latest && <StatusBadge status={latest.status} />}
