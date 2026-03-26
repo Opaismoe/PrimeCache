@@ -4,7 +4,9 @@ import type { Browser } from 'playwright'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
 
-chromium.use(StealthPlugin())
+const stealth = StealthPlugin()
+stealth.enabledEvasions.delete('user-agent-override')
+chromium.use(stealth)
 
 let browser: Browser | null = null
 
