@@ -1,18 +1,54 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import { useState } from 'react';
 import { getConfig, putConfig } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { GroupForm } from '../components/GroupForm';
-import { Spinner } from '../components/Spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { describeCron } from '../lib/cronUtils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Config, Group } from '../lib/types';
 
+const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
+
 export const Route = createFileRoute('/config')({
+  loader: ({ context: { queryClient } }) =>
+    queryClient.ensureQueryData(configQueryOptions),
+  pendingComponent: ConfigSkeleton,
+  pendingMs: 200,
+  pendingMinMs: 300,
   component: ConfigPage,
 });
+
+function ConfigSkeleton() {
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <Skeleton className="h-7 w-16" />
+        <Skeleton className="h-9 w-24" />
+      </div>
+      <div className="flex flex-col gap-3">
+        {[0, 1, 2].map((i) => (
+          <Card key={i}>
+            <CardContent className="flex items-start justify-between pt-4">
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-8 w-14" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type FormMode = { mode: 'add' } | { mode: 'edit'; index: number } | null;
 
@@ -20,10 +56,7 @@ function ConfigPage() {
   const queryClient = useQueryClient();
   const [formMode, setFormMode] = useState<FormMode>(null);
 
-  const { data: config, isLoading } = useQuery({
-    queryKey: queryKeys.config.all(),
-    queryFn: getConfig,
-  });
+  const { data: config } = useQuery(configQueryOptions);
 
   const saveConfig = useMutation({
     mutationFn: putConfig,
@@ -47,14 +80,6 @@ function ConfigPage() {
     const groups = config.groups.filter((_, i) => i !== index);
     await saveConfig.mutateAsync({ groups } as Config);
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-16">
-        <Spinner className="text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div>
