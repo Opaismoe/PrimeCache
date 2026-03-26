@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import { getConfig, getLatestRuns, triggerAsync, getStats } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
-import { Spinner } from '../components/Spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { describeCron } from '../lib/cronUtils';
 import { formatDate } from '../lib/formatters';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,20 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 
+const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
+const latestRunsQueryOptions = queryOptions({ queryKey: queryKeys.runs.latest(), queryFn: getLatestRuns });
+const statsQueryOptions = queryOptions({ queryKey: queryKeys.stats.all(), queryFn: getStats });
+
 export const Route = createFileRoute('/')({
+  loader: ({ context: { queryClient } }) =>
+    Promise.all([
+      queryClient.ensureQueryData(configQueryOptions),
+      queryClient.ensureQueryData(latestRunsQueryOptions),
+      queryClient.ensureQueryData(statsQueryOptions),
+    ]),
+  pendingComponent: DashboardSkeleton,
+  pendingMs: 200,
+  pendingMinMs: 300,
   component: DashboardPage,
 });
 
@@ -53,24 +67,58 @@ function buildLineChartData(visitsByDay: Stats['visitsByDay']) {
   };
 }
 
+function DashboardSkeleton() {
+  return (
+    <div>
+      <Skeleton className="mb-6 h-7 w-32" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Card key={i} className="flex flex-col gap-3">
+            <CardHeader className="pb-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 pt-0">
+              <Skeleton className="h-3 w-36" />
+              <Skeleton className="h-9 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="mt-10 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-40" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[220px] w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <Skeleton className="h-4 w-56" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[220px] w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 function DashboardPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  const { data: config, isLoading: configLoading } = useQuery({
-    queryKey: queryKeys.config.all(),
-    queryFn: getConfig,
-  });
-
-  const { data: latestRuns, isLoading: runsLoading } = useQuery({
-    queryKey: queryKeys.runs.latest(),
-    queryFn: getLatestRuns,
-  });
-
-  const { data: stats } = useQuery({
-    queryKey: queryKeys.stats.all(),
-    queryFn: getStats,
-  });
+  const { data: config } = useQuery(configQueryOptions);
+  const { data: latestRuns } = useQuery(latestRunsQueryOptions);
+  const { data: stats } = useQuery(statsQueryOptions);
 
   const trigger = useMutation({
     mutationFn: triggerAsync,
@@ -79,14 +127,6 @@ function DashboardPage() {
       navigate({ to: '/history/$runId', params: { runId: String(data.runId) } });
     },
   });
-
-  if (configLoading || runsLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Spinner className="text-muted-foreground" />
-      </div>
-    );
-  }
 
   const latestByGroup = new Map<string, Run>((latestRuns ?? []).map((r) => [r.group_name, r]));
 
