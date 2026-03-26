@@ -112,13 +112,23 @@ function RunDetailPage() {
           History
         </Link>
         <span>/</span>
+        <Link to="/groups/$groupName" params={{ groupName: run.group_name }} className="hover:text-foreground">
+          {run.group_name}
+        </Link>
+        <span>/</span>
         <span>Run #{run.id}</span>
       </div>
 
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Run #{run.id}</h1>
-          <p className="text-sm text-muted-foreground">{run.group_name}</p>
+          <Link
+            to="/groups/$groupName"
+            params={{ groupName: run.group_name }}
+            className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+          >
+            {run.group_name}
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge status={run.status} />
