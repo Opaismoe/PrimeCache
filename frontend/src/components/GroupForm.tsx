@@ -256,6 +256,34 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                 </p>
               </div>
 
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="screenshot"
+                    checked={group.options.screenshot === true}
+                    onCheckedChange={(v) => setOpt('screenshot', v === true)}
+                  />
+                  <Label htmlFor="screenshot" className="cursor-pointer">Capture screenshots</Label>
+                </div>
+                <p className="pl-6 text-xs text-muted-foreground">
+                  Saves a JPEG thumbnail after each visit (increases storage usage).
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="checkBrokenLinks"
+                    checked={group.options.checkBrokenLinks === true}
+                    onCheckedChange={(v) => setOpt('checkBrokenLinks', v === true)}
+                  />
+                  <Label htmlFor="checkBrokenLinks" className="cursor-pointer">Check broken links</Label>
+                </div>
+                <p className="pl-6 text-xs text-muted-foreground">
+                  HEAD-checks all discovered links after crawling; requires <strong>crawl</strong> enabled.
+                </p>
+              </div>
+
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="navigationTimeout">Navigation timeout (ms)</Label>
                 <Input

@@ -4,6 +4,10 @@ import { randomDelay } from '../browser/stealth'
 import { insertRun, finalizeRun } from '../db/queries/runs'
 import { insertVisit } from '../db/queries/visits'
 import { insertVisitSeo } from '../db/queries/visitSeo'
+import { insertVisitHeaders } from '../db/queries/visitHeaders'
+import { insertVisitCwv } from '../db/queries/visitCwv'
+import { insertVisitScreenshot } from '../db/queries/visitScreenshot'
+import { insertVisitBrokenLinks } from '../db/queries/visitBrokenLinks'
 import { registerRun, unregisterRun, cancelRun } from './registry'
 import { logger } from '../utils/logger'
 import { env } from '../config/env'
@@ -60,11 +64,18 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
         finalUrl: result.finalUrl,
         ttfbMs: result.ttfbMs,
         loadTimeMs: result.loadTimeMs,
+        redirectCount: result.redirectCount,
         consentFound: result.consentFound,
         consentStrategy: result.consentStrategy,
         error: result.error,
       })
-      if (result.seo) await insertVisitSeo(db, visitId, result.seo)
+
+      // Persist Phase 2 + Phase 3 data — each wrapped so one failure doesn't abort the run
+      if (result.seo) await insertVisitSeo(db, visitId, result.seo).catch(() => {})
+      if (result.headers) await insertVisitHeaders(db, visitId, result.headers).catch(() => {})
+      if (result.cwv) await insertVisitCwv(db, visitId, result.cwv).catch(() => {})
+      if (result.screenshotBase64) await insertVisitScreenshot(db, visitId, result.screenshotBase64).catch(() => {})
+      if (result.brokenLinks.length > 0) await insertVisitBrokenLinks(db, visitId, result.brokenLinks).catch(() => {})
 
       if (result.error === null) successCount++
       else failureCount++

@@ -16,18 +16,49 @@ export interface SeoSnapshot {
   robotsMeta: string | null
 }
 
+export interface CwvSnapshot {
+  lcpMs: number | null
+  clsScore: number | null
+  inpMs: number | null
+  fcpMs: number | null
+}
+
+export interface HeadersSnapshot {
+  cacheControl: string | null
+  xCache: string | null
+  cfCacheStatus: string | null
+  age: number | null
+  etag: string | null
+  contentType: string | null
+  xFrameOptions: string | null
+  xContentTypeOptions: string | null
+  strictTransportSecurity: string | null
+  contentSecurityPolicy: string | null
+}
+
+export interface BrokenLink {
+  url: string
+  statusCode: number | null
+  error: string | null
+}
+
 export interface VisitResult {
   url: string
   finalUrl: string | null
   statusCode: number | null
   ttfbMs: number | null
   loadTimeMs: number
+  redirectCount: number
   consentFound: boolean
   consentStrategy: string | null
   error: string | null
   visitedAt: Date
   discoveredLinks: string[]
   seo: SeoSnapshot | null
+  cwv: CwvSnapshot | null
+  headers: HeadersSnapshot | null
+  screenshotBase64: string | null
+  brokenLinks: BrokenLink[]
 }
 
 export async function visitUrl(
@@ -43,8 +74,6 @@ export async function visitUrl(
     const page = await context.newPage()
 
     // Block static asset downloads when fetchAssets is disabled.
-    // Skipping fonts, images, CSS, and JS significantly reduces per-visit
-    // bandwidth and duration when only server-side cache warming is needed.
     if (!options.fetchAssets) {
       await page.route(
         /\.(woff2?|ttf|otf|eot|png|jpe?g|gif|webp|avif|ico|svg|css|js|map)(\?.*)?$/i,
@@ -53,8 +82,6 @@ export async function visitUrl(
     }
 
     // Inject cookies before the page loads.
-    // Playwright requires either `url` or both `domain` + `path`.
-    // Default path to "/" when domain is present but path is omitted.
     if (options.cookies?.length) {
       await context.addCookies(
         options.cookies.map((c) =>
@@ -71,17 +98,84 @@ export async function visitUrl(
       }, entries as Record<string, unknown>)
     }
 
-    // Capture TTFB and actual HTTP status code from the first matching response
+    // Inject Core Web Vitals observer before navigation
+    await page.addInitScript(() => {
+      (window as any).__cwv = { lcp: null, cls: 0, inp: null, fcp: null }
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            (window as any).__cwv.lcp = entry.startTime
+          }
+        }).observe({ type: 'largest-contentful-paint', buffered: true })
+      } catch (_) { /* unsupported */ }
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!(entry as any).hadRecentInput) {
+              (window as any).__cwv.cls = ((window as any).__cwv.cls ?? 0) + (entry as any).value
+            }
+          }
+        }).observe({ type: 'layout-shift', buffered: true })
+      } catch (_) { /* unsupported */ }
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            const dur = (entry as any).processingEnd - entry.startTime
+            if ((window as any).__cwv.inp === null || dur > (window as any).__cwv.inp) {
+              (window as any).__cwv.inp = dur
+            }
+          }
+        }).observe({ type: 'event', buffered: true } as any)
+      } catch (_) { /* unsupported */ }
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (entry.name === 'first-contentful-paint') {
+              (window as any).__cwv.fcp = entry.startTime
+            }
+          }
+        }).observe({ type: 'paint', buffered: true })
+      } catch (_) { /* unsupported */ }
+    })
+
+    // Capture TTFB, status code, and response headers from the first matching response
     let ttfbMs: number | null = null
     let statusCode: number | null = null
+    let headers: HeadersSnapshot | null = null
     page.on('response', (response) => {
       if (response.url() === url) {
         if (ttfbMs === null) ttfbMs = Date.now() - start
         if (statusCode === null) statusCode = response.status()
+        if (headers === null) {
+          const h = response.headers()
+          const parseAge = (v: string | undefined) => v ? parseInt(v, 10) || null : null
+          headers = {
+            cacheControl:            h['cache-control'] ?? null,
+            xCache:                  h['x-cache'] ?? null,
+            cfCacheStatus:           h['cf-cache-status'] ?? null,
+            age:                     parseAge(h['age']),
+            etag:                    h['etag'] ?? null,
+            contentType:             h['content-type']?.split(';')[0]?.trim() ?? null,
+            xFrameOptions:           h['x-frame-options'] ?? null,
+            xContentTypeOptions:     h['x-content-type-options'] ?? null,
+            strictTransportSecurity: h['strict-transport-security'] ?? null,
+            contentSecurityPolicy:   h['content-security-policy'] ?? null,
+          }
+        }
       }
     })
 
-    await page.goto(url, { waitUntil: options.waitUntil, timeout: options.navigationTimeout })
+    const response = await page.goto(url, { waitUntil: options.waitUntil, timeout: options.navigationTimeout })
+
+    // Count redirect hops by walking the redirectedFrom chain
+    let redirectCount = 0
+    if (response) {
+      let req = response.request().redirectedFrom()
+      while (req) {
+        redirectCount++
+        req = req.redirectedFrom()
+      }
+    }
 
     if (options.waitForSelector) {
       await page.waitForSelector(options.waitForSelector, { timeout: 5_000 }).catch(() => {})
@@ -98,6 +192,15 @@ export async function visitUrl(
       ogImage:         document.querySelector('meta[property="og:image"]')?.getAttribute('content') ?? null,
       robotsMeta:      document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? null,
     })).catch(() => null)
+
+    // Read CWV values collected by the init script observer
+    const cwvRaw = await page.evaluate(() => (window as any).__cwv ?? null).catch(() => null)
+    const cwv: CwvSnapshot | null = cwvRaw ? {
+      lcpMs:    cwvRaw.lcp != null  ? Math.round(cwvRaw.lcp)  : null,
+      clsScore: cwvRaw.cls != null  ? cwvRaw.cls               : null,
+      inpMs:    cwvRaw.inp != null  ? Math.round(cwvRaw.inp)  : null,
+      fcpMs:    cwvRaw.fcp != null  ? Math.round(cwvRaw.fcp)  : null,
+    } : null
 
     const consentResult = await dismissCookieConsent(page)
     await simulateMouseMovement(page)
@@ -123,7 +226,20 @@ export async function visitUrl(
       )]
     }
 
-    logger.info({ url, finalUrl, ttfbMs, loadTimeMs, consentFound: consentResult.found, discoveredLinks: discoveredLinks.length }, 'visit complete')
+    // Capture screenshot (opt-in)
+    let screenshotBase64: string | null = null
+    if (options.screenshot) {
+      const buf = await page.screenshot({ type: 'jpeg', quality: 60 }).catch(() => null)
+      if (buf) screenshotBase64 = buf.toString('base64')
+    }
+
+    logger.info({ url, finalUrl, ttfbMs, loadTimeMs, redirectCount, consentFound: consentResult.found, discoveredLinks: discoveredLinks.length }, 'visit complete')
+
+    // HEAD-check discovered links for broken link detection (opt-in)
+    let brokenLinks: BrokenLink[] = []
+    if (options.checkBrokenLinks && discoveredLinks.length > 0) {
+      brokenLinks = await checkBrokenLinks(discoveredLinks)
+    }
 
     return {
       url,
@@ -131,12 +247,17 @@ export async function visitUrl(
       statusCode,
       ttfbMs,
       loadTimeMs,
+      redirectCount,
       consentFound: consentResult.found,
       consentStrategy: consentResult.strategy,
       error: null,
       visitedAt: new Date(),
       discoveredLinks,
       seo,
+      cwv,
+      headers,
+      screenshotBase64,
+      brokenLinks,
     }
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err)
@@ -147,14 +268,36 @@ export async function visitUrl(
       statusCode: null,
       ttfbMs: null,
       loadTimeMs: Date.now() - start,
+      redirectCount: 0,
       consentFound: false,
       consentStrategy: null,
       error,
       visitedAt: new Date(),
       discoveredLinks: [],
       seo: null,
+      cwv: null,
+      headers: null,
+      screenshotBase64: null,
+      brokenLinks: [],
     }
   } finally {
     await context?.close()
   }
+}
+
+async function checkBrokenLinks(urls: string[]): Promise<BrokenLink[]> {
+  const broken: BrokenLink[] = []
+  await Promise.all(
+    urls.map(async (url) => {
+      try {
+        const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5_000) })
+        if (res.status >= 400) {
+          broken.push({ url, statusCode: res.status, error: null })
+        }
+      } catch (err) {
+        broken.push({ url, statusCode: null, error: err instanceof Error ? err.message : String(err) })
+      }
+    }),
+  )
+  return broken
 }

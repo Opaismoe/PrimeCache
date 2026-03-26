@@ -13,6 +13,7 @@ import { runGroup, startRunGroup } from '../warmer/runner'
 import { cancelRun } from '../warmer/registry'
 import { putConfigRoute } from './routes/config'
 import { groupRoutes } from './routes/groups'
+import { getGroupUptime as getPublicStatus } from './routes/publicStatus'
 
 interface ServerDeps {
   db: Db
@@ -34,6 +35,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
   // ── Health (no auth) ──────────────────────────────────────────────────────
   app.get('/health', async () => ({ status: 'ok', uptime: process.uptime() }))
+
+  // ── Public status (no auth) ───────────────────────────────────────────────
+  app.get('/api/public/status', async () => getPublicStatus(db))
 
   // ── Auth preHandler for all protected routes ──────────────────────────────
   async function requireApiKey(request: any, reply: any) {

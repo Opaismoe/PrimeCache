@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HistoryRunIdRouteImport } from './routes/history_.$runId'
 import { Route as GroupsGroupNameRouteImport } from './routes/groups_.$groupName'
 
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/config': typeof ConfigRoute
   '/history': typeof HistoryRoute
+  '/status': typeof StatusRoute
   '/groups/$groupName': typeof GroupsGroupNameRoute
   '/history/$runId': typeof HistoryRunIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/config': typeof ConfigRoute
   '/history': typeof HistoryRoute
+  '/status': typeof StatusRoute
   '/groups/$groupName': typeof GroupsGroupNameRoute
   '/history/$runId': typeof HistoryRunIdRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/config': typeof ConfigRoute
   '/history': typeof HistoryRoute
+  '/status': typeof StatusRoute
   '/groups_/$groupName': typeof GroupsGroupNameRoute
   '/history_/$runId': typeof HistoryRunIdRoute
 }
@@ -69,15 +78,23 @@ export interface FileRouteTypes {
     | '/'
     | '/config'
     | '/history'
+    | '/status'
     | '/groups/$groupName'
     | '/history/$runId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/config' | '/history' | '/groups/$groupName' | '/history/$runId'
+  to:
+    | '/'
+    | '/config'
+    | '/history'
+    | '/status'
+    | '/groups/$groupName'
+    | '/history/$runId'
   id:
     | '__root__'
     | '/'
     | '/config'
     | '/history'
+    | '/status'
     | '/groups_/$groupName'
     | '/history_/$runId'
   fileRoutesById: FileRoutesById
@@ -86,12 +103,20 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConfigRoute: typeof ConfigRoute
   HistoryRoute: typeof HistoryRoute
+  StatusRoute: typeof StatusRoute
   GroupsGroupNameRoute: typeof GroupsGroupNameRoute
   HistoryRunIdRoute: typeof HistoryRunIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
@@ -134,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConfigRoute: ConfigRoute,
   HistoryRoute: HistoryRoute,
+  StatusRoute: StatusRoute,
   GroupsGroupNameRoute: GroupsGroupNameRoute,
   HistoryRunIdRoute: HistoryRunIdRoute,
 }

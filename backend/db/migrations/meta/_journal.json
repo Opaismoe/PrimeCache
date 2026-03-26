@@ -15,6 +15,13 @@
       "when": 1774536739758,
       "tag": "0001_lush_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774538039739,
+      "tag": "0002_cooing_redwing",
+      "breakpoints": true
     }
   ]
 }
