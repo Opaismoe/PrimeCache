@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,7 +15,7 @@ import { useState } from 'react';
 import { getRuns, getConfig, deleteRuns, cancelRun } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
-import { Spinner } from '../components/Spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { formatDate, formatDuration } from '../lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,13 +33,70 @@ const PAGE_SIZE = 20;
 
 const columnHelper = createColumnHelper<Run>();
 
+const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
+
 export const Route = createFileRoute('/history')({
   validateSearch: (search: Record<string, unknown>) => ({
     page: typeof search.page === 'number' ? search.page : Number(search.page) || 1,
     group: typeof search.group === 'string' ? search.group : '',
   }),
+  loader: ({ context: { queryClient } }) =>
+    Promise.all([
+      queryClient.ensureQueryData(configQueryOptions),
+      queryClient.ensureQueryData(
+        queryOptions({
+          queryKey: queryKeys.runs.list(1, ''),
+          queryFn: () => getRuns({ limit: PAGE_SIZE, offset: 0 }),
+        }),
+      ),
+    ]),
+  pendingComponent: HistorySkeleton,
+  pendingMs: 200,
+  pendingMinMs: 300,
   component: HistoryPage,
 });
+
+function HistorySkeleton() {
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-7 w-32" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-16" />
+        </div>
+      </div>
+      <div className="mb-3 flex items-center gap-3">
+        <Skeleton className="h-4 w-12" />
+        <Skeleton className="h-9 w-40" />
+      </div>
+      <div className="rounded-lg border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {['Run ID', 'Group', 'Started', 'Duration', 'Status', 'Results', ''].map((h) => (
+                <TableHead key={h}>{h}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                <TableCell />
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 function HistoryPage() {
   const { page, group } = Route.useSearch();
@@ -52,10 +110,7 @@ function HistoryPage() {
     queryFn: () => getRuns({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, group: group || undefined }),
   });
 
-  const { data: config } = useQuery({
-    queryKey: queryKeys.config.all(),
-    queryFn: getConfig,
-  });
+  const { data: config } = useQuery(configQueryOptions);
 
   const deleteMutation = useMutation({
     mutationFn: (g?: string) => deleteRuns(g),
@@ -189,9 +244,7 @@ function HistoryPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-16">
-          <Spinner className="text-muted-foreground" />
-        </div>
+        <HistorySkeleton />
       ) : !runs?.length ? (
         <p className="text-muted-foreground">No runs found.</p>
       ) : (

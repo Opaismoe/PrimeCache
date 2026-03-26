@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import { getRunById, cancelRun } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '../components/Spinner';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { Button } from '@/components/ui/button';
@@ -17,15 +19,78 @@ import {
 } from '@/components/ui/table';
 
 export const Route = createFileRoute('/history_/$runId')({
+  loader: ({ context: { queryClient }, params }) => {
+    const id = parseInt(params.runId);
+    return queryClient.ensureQueryData(
+      queryOptions({
+        queryKey: queryKeys.runs.detail(id),
+        queryFn: () => getRunById(id),
+      }),
+    );
+  },
+  pendingComponent: RunDetailSkeleton,
+  pendingMs: 200,
+  pendingMinMs: 300,
   component: RunDetailPage,
 });
+
+function RunDetailSkeleton() {
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+        <Skeleton className="h-4 w-14" />
+        <span>/</span>
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Skeleton className="h-7 w-24" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <Skeleton className="h-5 w-20 rounded-full" />
+      </div>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="pt-4">
+              <Skeleton className="mb-1.5 h-3 w-12" />
+              <Skeleton className="h-5 w-24" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <div className="rounded-lg border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {['URL', 'Status', 'TTFB', 'Load', 'Error'].map((h) => (
+                <TableHead key={h}>{h}</TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-64" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                <TableCell />
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
 
 function RunDetailPage() {
   const { runId } = Route.useParams();
   const id = parseInt(runId);
   const queryClient = useQueryClient();
 
-  const { data: run, isLoading } = useQuery({
+  const { data: run } = useQuery({
     queryKey: queryKeys.runs.detail(id),
     queryFn: () => getRunById(id),
     refetchInterval: (query) => (query.state.data?.status === 'running' ? 2000 : false),
@@ -35,14 +100,6 @@ function RunDetailPage() {
     mutationFn: () => cancelRun(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.detail(id) }),
   });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-16">
-        <Spinner className="text-muted-foreground" />
-      </div>
-    );
-  }
 
   if (!run) {
     return <p className="text-muted-foreground">Run not found.</p>;
