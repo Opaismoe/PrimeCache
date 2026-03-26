@@ -81,7 +81,7 @@ function HistoryPage() {
 
   const columns = [
     columnHelper.accessor('id', {
-      header: '#',
+      header: 'Run ID',
       cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
     }),
     columnHelper.accessor('group_name', {
