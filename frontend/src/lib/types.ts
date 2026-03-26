@@ -136,3 +136,34 @@ export interface GroupUptime {
   urls: UrlUptime[];
   timeline: UptimeTimelinePoint[];
 }
+
+export interface SeoData {
+  title: string | null;
+  metaDescription: string | null;
+  h1: string | null;
+  canonicalUrl: string | null;
+  ogTitle: string | null;
+  ogDescription: string | null;
+  ogImage: string | null;
+  robotsMeta: string | null;
+}
+
+export interface UrlSeoHistory {
+  visitId: number;
+  runId: number;
+  visitedAt: string;
+  seo: SeoData;
+}
+
+export interface UrlSeoSummary {
+  url: string;
+  latestSeo: SeoData | null;
+  score: number;
+  issues: string[];
+  changed: boolean;
+  history: UrlSeoHistory[];
+}
+
+export interface GroupSeo {
+  urls: UrlSeoSummary[];
+}
