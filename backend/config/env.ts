@@ -1,5 +1,9 @@
-import 'dotenv/config'
+import { config } from 'dotenv'
+import path from 'path'
 import { z } from 'zod'
+
+// Load .env from repo root (one level above backend/)
+config({ path: path.resolve(__dirname, '..', '..', '.env') })
 
 // Treat empty strings as undefined so .default() values apply
 const empty = (val: unknown) => (val === '' ? undefined : val)
