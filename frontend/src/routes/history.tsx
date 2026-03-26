@@ -200,16 +200,15 @@ function HistoryPage() {
           <div className="mb-3 flex items-center gap-3">
             <span className="text-sm text-muted-foreground">Status</span>
             <Select
-              value={(table.getColumn('status')?.getFilterValue() as string) ?? '__all__'}
+              value={(table.getColumn('status')?.getFilterValue() as string) ?? ''}
               onValueChange={(v) =>
-                table.getColumn('status')?.setFilterValue(v === '__all__' ? undefined : v)
+                table.getColumn('status')?.setFilterValue(v || undefined)
               }
             >
               <SelectTrigger className="w-40">
-                <SelectValue />
+                <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All statuses</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="partial_failure">Partial failure</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
