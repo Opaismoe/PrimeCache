@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryOptions } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getGroupOverview, getGroupPerformance, getGroupUptime, getGroupSeo, triggerAsync, getConfig } from '../lib/api';
+import { getGroupOverview, getGroupPerformance, getGroupUptime, getGroupSeo, getGroupBrokenLinks, getGroupExportUrl, triggerAsync, getConfig } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { describeCron } from '../lib/cronUtils';
-import type { UrlPerformance, UrlUptime, UrlSeoSummary } from '../lib/types';
+import type { UrlPerformance, UrlUptime, UrlSeoSummary, BrokenLinkSummary } from '../lib/types';
 
 const LINE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
 const getColor = (i: number) => LINE_COLORS[i % LINE_COLORS.length];
@@ -121,6 +121,12 @@ function GroupDetailPage() {
     enabled: activeTab === 'seo',
   });
 
+  const { data: brokenLinks, isLoading: linksLoading } = useQuery({
+    queryKey: queryKeys.groups.brokenLinks(groupName),
+    queryFn: () => getGroupBrokenLinks(groupName),
+    enabled: activeTab === 'links',
+  });
+
   const trigger = useMutation({
     mutationFn: () => triggerAsync(groupName),
     onSuccess: (data) => {
@@ -165,12 +171,24 @@ function GroupDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="uptime">Uptime</TabsTrigger>
-          <TabsTrigger value="seo">SEO</TabsTrigger>
-        </TabsList>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="uptime">Uptime</TabsTrigger>
+            <TabsTrigger value="seo">SEO</TabsTrigger>
+            <TabsTrigger value="links">Links</TabsTrigger>
+          </TabsList>
+          {['performance', 'uptime', 'seo', 'links'].includes(activeTab) && (
+            <a
+              href={getGroupExportUrl(groupName, activeTab)}
+              download
+              className="text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              Export CSV
+            </a>
+          )}
+        </div>
 
         {/* ── Overview ── */}
         <TabsContent value="overview">
@@ -203,6 +221,17 @@ function GroupDetailPage() {
             <SeoTab data={seo} />
           ) : (
             <p className="text-sm text-muted-foreground">No SEO data yet — run the group to collect it.</p>
+          )}
+        </TabsContent>
+
+        {/* ── Links ── */}
+        <TabsContent value="links">
+          {linksLoading ? (
+            <TabLoadingSkeleton rows={5} cols={5} />
+          ) : brokenLinks ? (
+            <LinksTab data={brokenLinks} />
+          ) : (
+            <p className="text-sm text-muted-foreground">No broken link data yet. Enable <code>checkBrokenLinks: true</code> in config and run the group.</p>
           )}
         </TabsContent>
       </Tabs>
@@ -690,6 +719,63 @@ function SeoTab({ data }: { data: { urls: UrlSeoSummary[] } }) {
             </CardContent>
           </Card>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Links Tab ─────────────────────────────────────────────────────────────────
+
+function LinksTab({ data }: { data: BrokenLinkSummary[] }) {
+  if (data.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">No broken links found — all discovered links returned 2xx/3xx responses.</p>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <span className="font-medium">{data.length} broken {data.length === 1 ? 'link' : 'links'} detected</span>
+      </div>
+      <div className="rounded-lg border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>URL</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Error</TableHead>
+              <TableHead>Occurrences</TableHead>
+              <TableHead>Last seen</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((l) => (
+              <TableRow key={l.url}>
+                <TableCell className="max-w-xs truncate font-mono text-xs">
+                  <a
+                    href={l.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-foreground hover:underline text-muted-foreground"
+                  >
+                    {l.url}
+                  </a>
+                </TableCell>
+                <TableCell>
+                  {l.statusCode != null ? (
+                    <Badge variant="destructive" className="text-xs">{l.statusCode}</Badge>
+                  ) : '—'}
+                </TableCell>
+                <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
+                  {l.error ?? '—'}
+                </TableCell>
+                <TableCell className="text-muted-foreground">{l.occurrences}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{formatDate(l.lastSeenAt)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

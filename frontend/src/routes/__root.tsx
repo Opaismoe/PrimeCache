@@ -40,7 +40,9 @@ function useTheme() {
 
 function RootLayout() {
   const queryClient = useQueryClient();
-  const [showModal, setShowModal] = useState(() => !getApiKey());
+  const routerState = useRouterState();
+  const isPublicRoute = routerState.location.pathname === '/status';
+  const [showModal, setShowModal] = useState(() => !isPublicRoute && !getApiKey());
   const { dark, toggle } = useTheme();
 
   const { data: config } = useQuery({
@@ -68,12 +70,13 @@ function RootLayout() {
             <img src={logo} alt="PrimeCache" width={32} height={32} />
           </span>
           <div className="ml-auto flex items-center gap-6">
-            <NavLink to="/">Dashboard</NavLink>
-            <NavLink to="/history">History</NavLink>
-            {groups.length > 0 && (
+            {!isPublicRoute && <NavLink to="/">Dashboard</NavLink>}
+            {!isPublicRoute && <NavLink to="/history">History</NavLink>}
+            {!isPublicRoute && groups.length > 0 && (
               <DetailsDropdown groups={groups} />
             )}
-            <NavLink to="/config">Config</NavLink>
+            {!isPublicRoute && <NavLink to="/config">Config</NavLink>}
+            <NavLink to="/status">Status</NavLink>
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>

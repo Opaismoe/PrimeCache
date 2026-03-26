@@ -19,6 +19,7 @@ export interface Visit {
   final_url: string | null;
   ttfb_ms: number | null;
   load_time_ms: number;
+  redirect_count: number;
   consent_found: number;
   consent_strategy: string | null;
   error: string | null;
@@ -55,6 +56,8 @@ export interface GroupOptions {
   delayMaxMs?: number;
   stealth?: boolean;
   fetchAssets?: boolean;
+  screenshot?: boolean;
+  checkBrokenLinks?: boolean;
 }
 
 export interface Group {
@@ -166,4 +169,22 @@ export interface UrlSeoSummary {
 
 export interface GroupSeo {
   urls: UrlSeoSummary[];
+}
+
+// ── Phase 3 types ─────────────────────────────────────────────────────────────
+
+export interface BrokenLinkSummary {
+  url: string;
+  statusCode: number | null;
+  error: string | null;
+  occurrences: number;
+  lastSeenAt: string;
+}
+
+export interface GroupStatus {
+  groupName: string;
+  uptimePct: number;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  urlCount: number;
 }
