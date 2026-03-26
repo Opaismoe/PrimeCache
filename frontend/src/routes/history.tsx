@@ -197,6 +197,28 @@ function HistoryPage() {
         <p className="text-muted-foreground">No runs found.</p>
       ) : (
         <>
+          <div className="mb-3 flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Status</span>
+            <Select
+              value={(table.getColumn('status')?.getFilterValue() as string) ?? '__all__'}
+              onValueChange={(v) =>
+                table.getColumn('status')?.setFilterValue(v === '__all__' ? undefined : v)
+              }
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All statuses</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="partial_failure">Partial failure</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="running">Running</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="rounded-lg border border-border">
             <Table>
               <TableHeader>
@@ -216,32 +238,6 @@ function HistoryPage() {
                     ))}
                   </TableRow>
                 ))}
-                <TableRow className="hover:bg-transparent">
-                  {table.getHeaderGroups()[0].headers.map((header) => (
-                    <TableHead key={`filter-${header.id}`} className="py-1">
-                      {header.column.getCanFilter() ? (
-                        <Select
-                          value={(header.column.getFilterValue() as string) ?? '__all__'}
-                          onValueChange={(v) =>
-                            header.column.setFilterValue(v === '__all__' ? undefined : v)
-                          }
-                        >
-                          <SelectTrigger className="h-7 w-36 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__all__">All statuses</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="partial_failure">Partial failure</SelectItem>
-                            <SelectItem value="failed">Failed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                            <SelectItem value="running">Running</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : null}
-                    </TableHead>
-                  ))}
-                </TableRow>
               </TableHeader>
               <TableBody>
                 {table.getRowModel().rows.map((row) => (
