@@ -26,6 +26,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/
 RUN pnpm install --prod --filter primecache-backend
 COPY --from=builder /app/backend/dist ./backend/dist
+COPY --from=builder /app/backend/db/migrations ./backend/dist/db/migrations
 COPY --from=builder /app/frontend/dist ./frontend/dist
 VOLUME ["/app/data", "/app/config"]
 EXPOSE 3000
