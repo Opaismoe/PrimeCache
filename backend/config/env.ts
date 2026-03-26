@@ -8,7 +8,7 @@ const EnvSchema = z.object({
   BROWSERLESS_WS_URL:  z.string().min(1, 'BROWSERLESS_WS_URL is required'),
   BROWSERLESS_TOKEN:   z.string().min(1, 'BROWSERLESS_TOKEN is required'),
   API_KEY:             z.string().min(16, 'API_KEY must be at least 16 characters'),
-  DB_PATH:             z.preprocess(empty, z.string().default('/app/data/warmer.db')),
+  DATABASE_URL:        z.string().min(1, 'DATABASE_URL is required'),
   CONFIG_PATH:         z.preprocess(empty, z.string().default('/app/config/config.yaml')),
   PORT:                z.preprocess(empty, z.coerce.number().default(3000)),
   LOG_LEVEL:           z.preprocess(empty, z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info')),

@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import fastifyStatic from '@fastify/static'
 import { timingSafeEqual } from 'crypto'
 import path from 'path'
-import type { Knex } from 'knex'
+import type { Db } from '../db/client'
 import { env } from '../config/env'
 import { logger } from '../utils/logger'
 import type { Config } from '../config/urls'
@@ -14,7 +14,7 @@ import { cancelRun } from '../warmer/registry'
 import { putConfigRoute } from './routes/config'
 
 interface ServerDeps {
-  db: Knex
+  db: Db
   getConfig: () => Config
 }
 
