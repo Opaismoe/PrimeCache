@@ -40,9 +40,15 @@ export async function visitUrl(
       )
     }
 
-    // Inject cookies before the page loads
+    // Inject cookies before the page loads.
+    // Playwright requires either `url` or both `domain` + `path`.
+    // Default path to "/" when domain is present but path is omitted.
     if (options.cookies?.length) {
-      await context.addCookies(options.cookies)
+      await context.addCookies(
+        options.cookies.map((c) =>
+          c.domain && !c.path ? { ...c, path: '/' } : c,
+        ),
+      )
     }
 
     // Inject localStorage entries before the page loads (runs as init script)
