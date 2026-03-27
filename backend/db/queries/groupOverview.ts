@@ -1,6 +1,13 @@
 import { eq, desc, sql } from 'drizzle-orm'
-import { runs, visits } from '../schema'
+import { runs, visits, visit_seo } from '../schema'
 import type { Db } from '../client'
+
+/** Normalise db.execute() result — postgres driver returns T[], PGlite returns { rows: T[] } */
+function toRows(result: unknown): any[] {
+  if (Array.isArray(result)) return result as any[]
+  if (result && typeof result === 'object' && 'rows' in result) return (result as any).rows as any[]
+  return []
+}
 
 export interface GroupOverviewStats {
   totalRuns: number
@@ -14,6 +21,8 @@ export interface GroupRunSeries {
   startedAt: string
   successRate: number   // 0-100
   avgLoadTimeMs: number
+  uptimePct: number     // 0-100, % of visits with no error
+  avgSeoScore: number | null  // 0-100 avg SEO score, null if no SEO data
 }
 
 export interface GroupOverview {
@@ -71,6 +80,9 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
       successCount: runs.success_count,
       totalUrls:    runs.total_urls,
       avgLoadTimeMs: sql<number>`AVG(${visits.load_time_ms})::int`,
+      uptimePct: sql<number>`
+        COUNT(*) FILTER (WHERE ${visits.error} IS NULL) * 100.0 / NULLIF(COUNT(*), 0)
+      `,
     })
     .from(runs)
     .leftJoin(visits, eq(visits.run_id, runs.id))
@@ -78,6 +90,32 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     .groupBy(runs.id)
     .orderBy(desc(runs.started_at))
     .limit(30)
+
+  // Per-run avg SEO score (SQL approximation of the scoreSeo() logic)
+  const seoScoreRows = await db.execute(sql`
+    SELECT
+      r.id AS run_id,
+      AVG(
+        CASE WHEN s.title IS NOT NULL AND length(s.title) BETWEEN 10 AND 60 THEN 20
+             WHEN s.title IS NOT NULL THEN 10 ELSE 0 END +
+        CASE WHEN s.meta_description IS NOT NULL AND length(s.meta_description) BETWEEN 50 AND 160 THEN 20
+             WHEN s.meta_description IS NOT NULL THEN 10 ELSE 0 END +
+        CASE WHEN s.h1 IS NOT NULL THEN 20 ELSE 0 END +
+        CASE WHEN s.canonical_url IS NOT NULL THEN 15 ELSE 0 END +
+        CASE WHEN s.og_title IS NOT NULL AND s.og_description IS NOT NULL THEN 15
+             WHEN s.og_title IS NOT NULL OR s.og_description IS NOT NULL THEN 7 ELSE 0 END +
+        CASE WHEN s.robots_meta IS NULL OR s.robots_meta NOT ILIKE '%noindex%' THEN 10 ELSE 0 END
+      ) AS avg_seo_score
+    FROM runs r
+    INNER JOIN visits v ON v.run_id = r.id
+    INNER JOIN visit_seo s ON s.visit_id = v.id
+    WHERE r.group_name = ${groupName}
+    GROUP BY r.id
+  `)
+  const seoByRunId = new Map<number, number>()
+  for (const row of toRows(seoScoreRows)) {
+    seoByRunId.set(Number(row.run_id), Math.round(Number(row.avg_seo_score) * 10) / 10)
+  }
 
   const series: GroupRunSeries[] = seriesRows
     .reverse()
@@ -88,6 +126,8 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
         ? ((r.successCount ?? 0) / r.totalUrls) * 100
         : 0,
       avgLoadTimeMs: r.avgLoadTimeMs ?? 0,
+      uptimePct: Math.round(Number(r.uptimePct) * 10) / 10,
+      avgSeoScore: seoByRunId.get(r.runId) ?? null,
     }))
 
   return {
