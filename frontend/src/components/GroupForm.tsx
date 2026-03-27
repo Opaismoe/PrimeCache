@@ -22,7 +22,7 @@ const defaultGroup: Group = {
   name: '',
   schedule: '0 * * * *',
   urls: [],
-  options: { scrollToBottom: false, crawl: false, stealth: true, fetchAssets: true },
+  options: { scrollToBottom: false, crawl: false, stealth: true, fetchAssets: true, retryCount: 3 },
 };
 
 export function GroupForm({ initial, onSave, onCancel }: Props) {
@@ -218,6 +218,22 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   Use <code>load</code> if pages time out due to endless background requests.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="retryCount">Retry attempts on failure</Label>
+                <Input
+                  id="retryCount"
+                  type="number"
+                  min={0}
+                  max={10}
+                  value={group.options.retryCount ?? 3}
+                  onChange={(e) => setOpt('retryCount', parseInt(e.target.value) || 0)}
+                  className="w-24"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Number of times to retry a failed URL visit before marking it as failed. Default: 3.
                 </p>
               </div>
             </div>
