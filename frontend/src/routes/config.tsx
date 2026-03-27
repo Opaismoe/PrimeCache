@@ -59,17 +59,23 @@ function ConfigPage() {
   const { data: config } = useQuery(configQueryOptions);
 
   const saveConfig = useMutation({
-    mutationFn: putConfig,
+    mutationFn: ({ config, renames }: { config: Config; renames?: { from: string; to: string }[] }) =>
+      putConfig(config, renames),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.config.all() }),
   });
 
   const handleSave = async (group: Group) => {
     if (!config) return;
+    const renames: { from: string; to: string }[] = [];
     const groups: Group[] =
       formMode?.mode === 'edit'
-        ? config.groups.map((g, i) => (i === formMode.index ? group : g))
+        ? config.groups.map((g, i) => {
+            if (i !== formMode.index) return g;
+            if (g.name !== group.name) renames.push({ from: g.name, to: group.name });
+            return group;
+          })
         : [...config.groups, group];
-    await saveConfig.mutateAsync({ groups } as Config);
+    await saveConfig.mutateAsync({ config: { groups } as Config, renames });
     setFormMode(null);
   };
 
@@ -78,7 +84,7 @@ function ConfigPage() {
     const name = config.groups[index]?.name ?? '';
     if (!confirm(`Delete group "${name}"?`)) return;
     const groups = config.groups.filter((_, i) => i !== index);
-    await saveConfig.mutateAsync({ groups } as Config);
+    await saveConfig.mutateAsync({ config: { groups } as Config });
   };
 
   return (

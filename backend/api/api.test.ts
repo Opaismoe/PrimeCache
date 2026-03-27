@@ -21,6 +21,7 @@ vi.mock('../db/queries/runs', () => ({
   getLatestPerGroup: vi.fn().mockResolvedValue([]),
   finalizeRun: vi.fn().mockResolvedValue(undefined),
   deleteRuns: vi.fn().mockResolvedValue(3),
+  renameGroup: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('../warmer/registry', () => ({
   cancelRun: vi.fn().mockReturnValue(true),
@@ -45,6 +46,7 @@ let app: FastifyInstance
 
 beforeEach(async () => {
   vi.resetModules()
+  vi.clearAllMocks()
   const { buildServer } = await import('./server')
   app = await buildServer({ db: {} as any, getConfig: () => mockConfig })
   await app.ready()
@@ -290,6 +292,31 @@ describe('PUT /config', () => {
       body: JSON.stringify(validConfigBody),
     })
     expect(res.statusCode).toBe(401)
+  })
+
+  it('calls renameGroup for each entry in renames array', async () => {
+    const { renameGroup } = await import('../db/queries/runs')
+    const res = await app.inject({
+      method: 'PUT', url: '/api/config',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ...validConfigBody,
+        renames: [{ from: 'homepage', to: 'Homepage' }],
+      }),
+    })
+    expect(res.statusCode).toBe(200)
+    expect(vi.mocked(renameGroup)).toHaveBeenCalledWith(expect.anything(), 'homepage', 'Homepage')
+  })
+
+  it('succeeds when renames array is omitted', async () => {
+    const { renameGroup } = await import('../db/queries/runs')
+    const res = await app.inject({
+      method: 'PUT', url: '/api/config',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify(validConfigBody),
+    })
+    expect(res.statusCode).toBe(200)
+    expect(vi.mocked(renameGroup)).not.toHaveBeenCalled()
   })
 })
 
