@@ -56,7 +56,13 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
       visited.add(url)
 
       log.info({ url, depth }, 'visiting')
-      const result = await visitUrl(url, group.options)
+      let result = await visitUrl(url, group.options)
+
+      for (let attempt = 1; attempt <= group.options.retryCount && result.error !== null && !signal.aborted; attempt++) {
+        log.warn({ url, attempt, maxRetries: group.options.retryCount, error: result.error }, 'visit failed — retrying')
+        await randomDelay(1000, 2000)
+        result = await visitUrl(url, group.options)
+      }
 
       const visitId = await insertVisit(db, runId, {
         url: result.url,
@@ -75,7 +81,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
       if (result.headers) await insertVisitHeaders(db, visitId, result.headers).catch(() => {})
       if (result.cwv) await insertVisitCwv(db, visitId, result.cwv).catch(() => {})
       if (result.screenshotBase64) await insertVisitScreenshot(db, visitId, result.screenshotBase64).catch(() => {})
-      if (result.brokenLinks.length > 0) await insertVisitBrokenLinks(db, visitId, result.brokenLinks).catch(() => {})
+      if (result.brokenLinks?.length > 0) await insertVisitBrokenLinks(db, visitId, result.brokenLinks).catch(() => {})
 
       if (result.error === null) successCount++
       else failureCount++
