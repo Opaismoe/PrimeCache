@@ -199,3 +199,34 @@ export interface GroupStatus {
   lastRunStatus: string | null;
   urlCount: number;
 }
+
+// ── CWV types ─────────────────────────────────────────────────────────────────
+
+export type CwvStatus = 'good' | 'needs-improvement' | 'poor';
+
+export interface UrlCwv {
+  url: string;
+  sampleCount: number;
+  lcpP75: number | null;
+  fcpP75: number | null;
+  clsP75: number | null;
+  inpP75: number | null;
+  lcpStatus: CwvStatus | null;
+  fcpStatus: CwvStatus | null;
+  clsStatus: CwvStatus | null;
+  inpStatus: CwvStatus | null;
+}
+
+export interface CwvTrendPoint {
+  runId: number;
+  startedAt: string;
+  avgLcpMs: number | null;
+  avgFcpMs: number | null;
+  avgClsScore: number | null;
+  avgInpMs: number | null;
+}
+
+export interface GroupCwv {
+  urls: UrlCwv[];
+  trend: CwvTrendPoint[];
+}

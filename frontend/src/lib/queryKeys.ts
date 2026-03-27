@@ -17,6 +17,7 @@ export const queryKeys = {
     uptime:       (name: string) => ['groups', name, 'uptime'] as const,
     seo:          (name: string) => ['groups', name, 'seo'] as const,
     brokenLinks:  (name: string) => ['groups', name, 'broken-links'] as const,
+    cwv:          (name: string) => ['groups', name, 'cwv'] as const,
   },
   publicStatus: {
     all: () => ['public-status'] as const,
