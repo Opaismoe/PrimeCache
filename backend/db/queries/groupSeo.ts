@@ -136,7 +136,7 @@ export async function getGroupSeo(db: Db, groupName: string): Promise<GroupSeo> 
       history.push({
         visitId:   Number(row.visit_id),
         runId:     Number(row.run_id),
-        visitedAt: (row.visited_at as Date).toISOString(),
+        visitedAt: new Date(row.visited_at as string).toISOString(),
         seo: {
           title:           row.title,
           metaDescription: row.meta_description,

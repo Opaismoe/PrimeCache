@@ -33,6 +33,12 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
     prefix: '/',
   })
 
+  // ── Global error logging ──────────────────────────────────────────────────
+  app.setErrorHandler((error: any, _request, reply) => {
+    logger.error({ err: error, url: _request.url }, 'unhandled route error')
+    reply.code(error.statusCode ?? 500).send({ error: error.message })
+  })
+
   // ── Health (no auth) ──────────────────────────────────────────────────────
   app.get('/health', async () => ({ status: 'ok', uptime: process.uptime() }))
 

@@ -50,7 +50,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     totalChecks: Number(row.total_checks),
     downCount: Number(row.down_count),
     lastStatus: row.last_is_down ? 'down' : 'up',
-    lastCheckedAt: (row.last_checked_at as Date).toISOString(),
+    lastCheckedAt: new Date(row.last_checked_at as string).toISOString(),
   }))
 
   // Timeline: last 200 visit results per group for status chart (most recent visits)
@@ -68,7 +68,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
 
   const timeline: UptimeTimelinePoint[] = (timelineRows as any[]).map((row) => ({
     url: row.url as string,
-    visitedAt: (row.visited_at as Date).toISOString(),
+    visitedAt: new Date(row.visited_at as string).toISOString(),
     isDown: Boolean(row.is_down),
   }))
 

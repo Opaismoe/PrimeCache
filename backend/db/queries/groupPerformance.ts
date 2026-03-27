@@ -74,7 +74,7 @@ export async function getGroupPerformance(
 
   const loadTimeTrend: LoadTimeTrendPoint[] = (trendRows as any[]).map((row) => ({
     runId: Number(row.run_id),
-    startedAt: (row.started_at as Date).toISOString(),
+    startedAt: new Date(row.started_at as string).toISOString(),
     url: row.url as string,
     avgLoadTimeMs: Number(row.avg_load_time_ms),
   }))
