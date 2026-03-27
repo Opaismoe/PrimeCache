@@ -1,6 +1,13 @@
 import { sql } from 'drizzle-orm'
 import type { Db } from '../client'
 
+/** Normalise db.execute() result — postgres driver returns T[], PGlite returns { rows: T[] } */
+function toRows(result: unknown): any[] {
+  if (Array.isArray(result)) return result as any[]
+  if (result && typeof result === 'object' && 'rows' in result) return (result as any).rows as any[]
+  return []
+}
+
 export interface UrlUptime {
   url: string
   uptimePct: number
@@ -16,9 +23,17 @@ export interface UptimeTimelinePoint {
   isDown: boolean
 }
 
+export interface UptimeTrendPoint {
+  runId: number
+  startedAt: string
+  url: string
+  wasDown: boolean
+}
+
 export interface GroupUptime {
   urls: UrlUptime[]
   timeline: UptimeTimelinePoint[]
+  uptimeTrend: UptimeTrendPoint[]
 }
 
 export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUptime> {
@@ -44,7 +59,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     ORDER BY uptime_pct ASC
   `)
 
-  const urls: UrlUptime[] = (uptimeRows as any[]).map((row) => ({
+  const urls: UrlUptime[] = toRows(uptimeRows).map((row) => ({
     url: row.url as string,
     uptimePct: Math.round(Number(row.uptime_pct) * 10) / 10,
     totalChecks: Number(row.total_checks),
@@ -66,11 +81,32 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     LIMIT 200
   `)
 
-  const timeline: UptimeTimelinePoint[] = (timelineRows as any[]).map((row) => ({
+  const timeline: UptimeTimelinePoint[] = toRows(timelineRows).map((row) => ({
     url: row.url as string,
     visitedAt: new Date(row.visited_at as string).toISOString(),
     isDown: Boolean(row.is_down),
   }))
 
-  return { urls, timeline }
+  // Per-run per-URL trend: oldest first for charting
+  const trendRows = await db.execute(sql`
+    SELECT
+      r.id AS run_id,
+      r.started_at,
+      v.url,
+      (v.error IS NOT NULL) AS was_down
+    FROM visits v
+    INNER JOIN runs r ON v.run_id = r.id
+    WHERE r.group_name = ${groupName}
+    ORDER BY r.started_at ASC
+    LIMIT 600
+  `)
+
+  const uptimeTrend: UptimeTrendPoint[] = toRows(trendRows).map((row) => ({
+    runId: Number(row.run_id),
+    startedAt: new Date(row.started_at as string).toISOString(),
+    url: row.url as string,
+    wasDown: Boolean(row.was_down),
+  }))
+
+  return { urls, timeline, uptimeTrend }
 }

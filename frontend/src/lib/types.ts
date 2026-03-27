@@ -136,9 +136,17 @@ export interface UptimeTimelinePoint {
   isDown: boolean;
 }
 
+export interface UptimeTrendPoint {
+  runId: number;
+  startedAt: string;
+  url: string;
+  wasDown: boolean;
+}
+
 export interface GroupUptime {
   urls: UrlUptime[];
   timeline: UptimeTimelinePoint[];
+  uptimeTrend: UptimeTrendPoint[];
 }
 
 export interface SeoData {
