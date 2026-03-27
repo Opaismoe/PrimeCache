@@ -21,14 +21,22 @@ function makeMockPage(statusCode = 200, links: string[] = []) {
   const page: any = {
     on: vi.fn((event, handler) => {
       if (event === 'response') {
-        handler({ url: () => 'https://example.com/', status: () => statusCode })
+        handler({ url: () => 'https://example.com/', status: () => statusCode, headers: () => ({}) })
       }
     }),
-    goto: vi.fn().mockResolvedValue({ status: () => statusCode, url: () => 'https://example.com/' }),
+    route: vi.fn().mockResolvedValue(undefined),
+    addInitScript: vi.fn().mockResolvedValue(undefined),
+    goto: vi.fn().mockResolvedValue({
+      status: () => statusCode,
+      url: () => 'https://example.com/',
+      request: () => ({ redirectedFrom: () => null }),
+    }),
     url: vi.fn().mockReturnValue('https://example.com/'),
     waitForSelector: vi.fn().mockResolvedValue(undefined),
     waitForTimeout: vi.fn().mockResolvedValue(undefined),
-    evaluate: vi.fn().mockResolvedValue(links),
+    evaluate: vi.fn()
+      .mockResolvedValueOnce(null)   // nav timing — returns null → fallback to wall clock
+      .mockResolvedValue(links),     // SEO, CWV, link extraction
   }
   return page
 }
