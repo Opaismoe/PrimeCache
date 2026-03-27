@@ -1,4 +1,4 @@
-import type { Config, Run, RunDetail, Stats, GroupOverview, GroupPerformance, GroupUptime, GroupSeo, BrokenLinkSummary, GroupStatus } from './types';
+import type { Config, Run, RunDetail, Stats, GroupOverview, GroupPerformance, GroupUptime, GroupSeo, BrokenLinkSummary, GroupStatus, GroupCwv } from './types';
 import { authEvents } from './events';
 
 const API_KEY_STORAGE = 'primecache-api-key';
@@ -97,6 +97,9 @@ export const getGroupSeo = (name: string) =>
 
 export const getGroupBrokenLinks = (name: string) =>
   request<BrokenLinkSummary[]>('GET', `/api/groups/${encodeURIComponent(name)}/broken-links`);
+
+export const getGroupCwv = (name: string) =>
+  request<GroupCwv>('GET', `/api/groups/${encodeURIComponent(name)}/cwv`);
 
 export const getPublicStatus = () =>
   fetch('/api/public/status').then((r) => r.json() as Promise<GroupStatus[]>);
