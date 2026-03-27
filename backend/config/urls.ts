@@ -29,6 +29,7 @@ const GroupOptionsSchema = z.object({
   stealth:             z.boolean().default(true),
   screenshot:          z.boolean().default(false),
   checkBrokenLinks:    z.boolean().default(false),
+  retryCount:          z.number().int().min(0).max(10).default(3),
 }).refine(
   (opts) => !opts.crawl || opts.crawl_depth !== undefined,
   { message: 'crawl_depth is required when crawl is true' },

@@ -122,6 +122,39 @@ groups:
     expect(config.groups[0].options.fetchAssets).toBe(true)
   })
 
+  it('defaults retryCount to 3 when omitted', () => {
+    const config = parseConfig(VALID_YAML)
+    expect(config.groups[0].options.retryCount).toBe(3)
+  })
+
+  it('accepts retryCount: 0', () => {
+    const yaml = `
+groups:
+  - name: no-retry
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/
+    options:
+      retryCount: 0
+`
+    const config = parseConfig(yaml)
+    expect(config.groups[0].options.retryCount).toBe(0)
+  })
+
+  it('accepts retryCount: 5', () => {
+    const yaml = `
+groups:
+  - name: retry-test
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/
+    options:
+      retryCount: 5
+`
+    const config = parseConfig(yaml)
+    expect(config.groups[0].options.retryCount).toBe(5)
+  })
+
   it('accepts fetchAssets: false', () => {
     const yaml = `
 groups:

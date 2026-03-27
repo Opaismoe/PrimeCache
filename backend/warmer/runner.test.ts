@@ -16,6 +16,7 @@ const BASE_OPTIONS = {
   crawl: false as const,
   navigationTimeout: 30_000,
   waitUntil: 'networkidle' as const,
+  retryCount: 0,
 }
 
 vi.mock('./visitor', () => ({
@@ -192,6 +193,66 @@ describe('runGroup', () => {
     expect(v).toHaveLength(2)
     const urls = v.map((r) => r.url)
     expect(urls).not.toContain('https://example.com/depth2')
+  })
+
+  describe('retries', () => {
+    it('counts a visit as success when a retry succeeds after initial failure', async () => {
+      const { visitUrl } = await import('./visitor')
+      vi.mocked(visitUrl)
+        .mockResolvedValueOnce({ url: 'https://a.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date(), discoveredLinks: [] })
+        .mockResolvedValueOnce({ url: 'https://a.com/', finalUrl: 'https://a.com/', statusCode: 200, ttfbMs: 80, loadTimeMs: 400, consentFound: false, consentStrategy: null, error: null, visitedAt: new Date(), discoveredLinks: [] })
+
+      const { runGroup } = await import('./runner')
+      const runId = await runGroup(db, {
+        name: 'retry-success',
+        schedule: '* * * * *',
+        urls: ['https://a.com/'],
+        options: { ...BASE_OPTIONS, retryCount: 2 },
+      })
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId))
+      expect(run.status).toBe('completed')
+      expect(run.success_count).toBe(1)
+      expect(run.failure_count).toBe(0)
+      expect(vi.mocked(visitUrl)).toHaveBeenCalledTimes(2)
+    })
+
+    it('counts as failed when all retries are exhausted', async () => {
+      const { visitUrl } = await import('./visitor')
+      vi.mocked(visitUrl).mockResolvedValue({
+        url: 'https://a.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0,
+        consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date(), discoveredLinks: [],
+      })
+
+      const { runGroup } = await import('./runner')
+      const runId = await runGroup(db, {
+        name: 'retry-fail',
+        schedule: '* * * * *',
+        urls: ['https://a.com/'],
+        options: { ...BASE_OPTIONS, retryCount: 2 },
+      })
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId))
+      expect(run.status).toBe('failed')
+      expect(run.failure_count).toBe(1)
+      // 1 initial attempt + 2 retries = 3 calls
+      expect(vi.mocked(visitUrl)).toHaveBeenCalledTimes(3)
+    })
+
+    it('inserts only one visit record after retries', async () => {
+      const { visitUrl } = await import('./visitor')
+      vi.mocked(visitUrl)
+        .mockResolvedValueOnce({ url: 'https://a.com/', finalUrl: null, statusCode: null, ttfbMs: null, loadTimeMs: 0, consentFound: false, consentStrategy: null, error: 'Timeout', visitedAt: new Date(), discoveredLinks: [] })
+        .mockResolvedValueOnce({ url: 'https://a.com/', finalUrl: 'https://a.com/', statusCode: 200, ttfbMs: 80, loadTimeMs: 400, consentFound: false, consentStrategy: null, error: null, visitedAt: new Date(), discoveredLinks: [] })
+
+      const { runGroup } = await import('./runner')
+      const runId = await runGroup(db, {
+        name: 'retry-one-record',
+        schedule: '* * * * *',
+        urls: ['https://a.com/'],
+        options: { ...BASE_OPTIONS, retryCount: 2 },
+      })
+      const v = await db.select().from(visits).where(eq(visits.run_id, runId))
+      expect(v).toHaveLength(1)
+    })
   })
 
   describe('run timeout', () => {

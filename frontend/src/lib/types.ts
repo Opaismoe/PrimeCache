@@ -58,6 +58,7 @@ export interface GroupOptions {
   fetchAssets?: boolean;
   screenshot?: boolean;
   checkBrokenLinks?: boolean;
+  retryCount?: number;
 }
 
 export interface Group {
