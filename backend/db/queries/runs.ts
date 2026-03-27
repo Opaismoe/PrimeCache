@@ -55,6 +55,10 @@ export async function deleteRuns(
   return deleted.length
 }
 
+export async function renameGroup(db: Db, oldName: string, newName: string): Promise<void> {
+  await db.update(runs).set({ group_name: newName }).where(eq(runs.group_name, oldName))
+}
+
 export async function getLatestPerGroup(db: Db): Promise<RunRow[]> {
   const maxIdPerGroup = db
     .select({ id: sql<number>`max(${runs.id})`.as('id') })
