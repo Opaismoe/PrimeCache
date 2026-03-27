@@ -80,8 +80,8 @@ export const getConfig = () => request<Config>('GET', '/api/config');
 
 export const getStats = () => request<Stats>('GET', '/api/stats');
 
-export const putConfig = (config: Config) =>
-  request<{ ok: boolean }>('PUT', '/api/config', config);
+export const putConfig = (config: Config, renames?: { from: string; to: string }[]) =>
+  request<{ ok: boolean }>('PUT', '/api/config', renames?.length ? { ...config, renames } : config);
 
 export const getGroupOverview = (name: string) =>
   request<GroupOverview>('GET', `/api/groups/${encodeURIComponent(name)}/overview`);
