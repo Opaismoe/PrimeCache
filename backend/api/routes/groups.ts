@@ -5,6 +5,7 @@ import { getGroupPerformance } from '../../db/queries/groupPerformance'
 import { getGroupUptime } from '../../db/queries/groupUptime'
 import { getGroupSeo } from '../../db/queries/groupSeo'
 import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks'
+import { getGroupCwv } from '../../db/queries/groupCwv'
 
 export function groupRoutes(db: Db): FastifyPluginAsync {
   return async (app) => {
@@ -27,6 +28,11 @@ export function groupRoutes(db: Db): FastifyPluginAsync {
     app.get('/groups/:name/seo', async (request: any) => {
       const name = decodeURIComponent(request.params.name as string)
       return getGroupSeo(db, name)
+    })
+
+    app.get('/groups/:name/cwv', async (request: any) => {
+      const name = decodeURIComponent(request.params.name as string)
+      return getGroupCwv(db, name)
     })
 
     app.get('/groups/:name/broken-links', async (request: any) => {
