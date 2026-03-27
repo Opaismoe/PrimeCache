@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryOptions } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getGroupOverview, getGroupPerformance, getGroupUptime, getGroupSeo, getGroupBrokenLinks, getGroupExportUrl, triggerAsync, getConfig } from '../lib/api';
+import { getGroupOverview, getGroupPerformance, getGroupUptime, getGroupSeo, getGroupBrokenLinks, getGroupCwv, getGroupExportUrl, triggerAsync, getConfig } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import { StatusBadge } from '../components/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +29,7 @@ import {
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { formatChartDate } from '../lib/formatChartDate';
 import { describeCron } from '../lib/cronUtils';
-import type { UrlPerformance, UrlSeoSummary, BrokenLinkSummary, GroupUptime, GroupOverview } from '../lib/types';
+import type { UrlPerformance, UrlSeoSummary, BrokenLinkSummary, GroupUptime, GroupOverview, GroupCwv, CwvStatus } from '../lib/types';
 
 const LINE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
 const getColor = (i: number) => LINE_COLORS[i % LINE_COLORS.length];
@@ -118,6 +118,12 @@ function GroupDetailPage() {
   const { data: seo, isLoading: seoLoading } = useQuery({
     queryKey: queryKeys.groups.seo(groupName),
     queryFn: () => getGroupSeo(groupName),
+    enabled: activeTab === 'seo',
+  });
+
+  const { data: cwv, isLoading: cwvLoading } = useQuery({
+    queryKey: queryKeys.groups.cwv(groupName),
+    queryFn: () => getGroupCwv(groupName),
     enabled: activeTab === 'seo',
   });
 
@@ -219,10 +225,10 @@ function GroupDetailPage() {
 
         {/* ── SEO ── */}
         <TabsContent value="seo">
-          {seoLoading ? (
+          {seoLoading || cwvLoading ? (
             <TabLoadingSkeleton rows={5} cols={4} />
           ) : seo ? (
-            <SeoTab data={seo} />
+            <SeoTab data={seo} cwv={cwv} />
           ) : (
             <p className="text-sm text-muted-foreground">No SEO data collected — visits may be failing. Check the Uptime tab for errors.</p>
           )}
@@ -631,6 +637,91 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
   );
 }
 
+// ── CWV Section ───────────────────────────────────────────────────────────────
+
+const CWV_STATUS_COLOR: Record<CwvStatus, string> = {
+  good: 'text-green-500',
+  'needs-improvement': 'text-yellow-500',
+  poor: 'text-destructive',
+};
+
+function CwvTile({ label, value, unit, status }: { label: string; value: number | null; unit: string; status: CwvStatus | null }) {
+  const color = status ? CWV_STATUS_COLOR[status] : 'text-muted-foreground';
+  return (
+    <div className="flex flex-col items-center rounded-lg border border-border p-3 text-center">
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      {value != null ? (
+        <>
+          <p className={`text-xl font-semibold tabular-nums ${color}`}>{value}{unit}</p>
+          {status && <p className={`text-xs mt-0.5 ${color}`}>{status === 'needs-improvement' ? 'Needs work' : status.charAt(0).toUpperCase() + status.slice(1)}</p>}
+        </>
+      ) : (
+        <p className="text-lg text-muted-foreground">—</p>
+      )}
+    </div>
+  );
+}
+
+function CwvSection({ cwv }: { cwv: GroupCwv }) {
+  // Aggregate: worst P75 across all URLs (most conservative view)
+  const aggregate = cwv.urls.reduce<{
+    lcp: number | null; fcp: number | null; cls: number | null; inp: number | null;
+    lcpStatus: CwvStatus | null; fcpStatus: CwvStatus | null; clsStatus: CwvStatus | null; inpStatus: CwvStatus | null;
+  }>(
+    (acc, u) => ({
+      lcp: acc.lcp === null ? u.lcpP75 : u.lcpP75 !== null ? Math.max(acc.lcp, u.lcpP75) : acc.lcp,
+      fcp: acc.fcp === null ? u.fcpP75 : u.fcpP75 !== null ? Math.max(acc.fcp, u.fcpP75) : acc.fcp,
+      cls: acc.cls === null ? u.clsP75 : u.clsP75 !== null ? Math.max(acc.cls, u.clsP75) : acc.cls,
+      inp: acc.inp === null ? u.inpP75 : u.inpP75 !== null ? Math.max(acc.inp, u.inpP75) : acc.inp,
+      lcpStatus: acc.lcpStatus === null ? u.lcpStatus : u.lcpStatus === 'poor' ? 'poor' : acc.lcpStatus === 'poor' ? 'poor' : u.lcpStatus ?? acc.lcpStatus,
+      fcpStatus: acc.fcpStatus === null ? u.fcpStatus : u.fcpStatus === 'poor' ? 'poor' : acc.fcpStatus === 'poor' ? 'poor' : u.fcpStatus ?? acc.fcpStatus,
+      clsStatus: acc.clsStatus === null ? u.clsStatus : u.clsStatus === 'poor' ? 'poor' : acc.clsStatus === 'poor' ? 'poor' : u.clsStatus ?? acc.clsStatus,
+      inpStatus: acc.inpStatus === null ? u.inpStatus : u.inpStatus === 'poor' ? 'poor' : acc.inpStatus === 'poor' ? 'poor' : u.inpStatus ?? acc.inpStatus,
+    }),
+    { lcp: null, fcp: null, cls: null, inp: null, lcpStatus: null, fcpStatus: null, clsStatus: null, inpStatus: null },
+  );
+
+  return (
+    <div className="mb-6">
+      <h3 className="mb-3 text-sm font-medium text-muted-foreground">Core Web Vitals (P75)</h3>
+
+      {/* Score tiles */}
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <CwvTile label="LCP" value={aggregate.lcp} unit="ms" status={aggregate.lcpStatus} />
+        <CwvTile label="FCP" value={aggregate.fcp} unit="ms" status={aggregate.fcpStatus} />
+        <CwvTile label="CLS" value={aggregate.cls} unit="" status={aggregate.clsStatus} />
+        <CwvTile label="INP" value={aggregate.inp} unit="ms" status={aggregate.inpStatus} />
+      </div>
+
+      {/* Trend chart */}
+      {cwv.trend.length > 1 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <h3 className="text-sm font-medium">CWV trend (avg per run)</h3>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={cwv.trend} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${v}ms`} />
+                <Tooltip
+                  contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                  labelFormatter={formatChartDate}
+                  formatter={(v, name) => [`${v}ms`, String(name).toUpperCase()]}
+                />
+                <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => String(v).toUpperCase()} />
+                <Line type="monotone" dataKey="avgLcpMs" name="lcp" stroke="#60a5fa" dot={false} strokeWidth={2} activeDot={{ r: 3 }} connectNulls />
+                <Line type="monotone" dataKey="avgFcpMs" name="fcp" stroke="#4ade80" dot={false} strokeWidth={2} activeDot={{ r: 3 }} connectNulls />
+                <Line type="monotone" dataKey="avgInpMs" name="inp" stroke="#fb923c" dot={false} strokeWidth={2} activeDot={{ r: 3 }} connectNulls />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ── SEO Tab ───────────────────────────────────────────────────────────────────
 
 function scoreColor(score: number) {
@@ -650,7 +741,7 @@ function SeoFieldRow({ label, value }: { label: string; value: string | null }) 
   );
 }
 
-function SeoTab({ data }: { data: { urls: UrlSeoSummary[] } }) {
+function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv | undefined }) {
   const issueCount = data.urls.reduce((n, u) => n + u.issues.length, 0);
   const changedCount = data.urls.filter((u) => u.changed).length;
 
@@ -674,6 +765,9 @@ function SeoTab({ data }: { data: { urls: UrlSeoSummary[] } }) {
           <p className="text-sm text-muted-foreground">No SEO data collected — visits may be failing. Check the Uptime tab for errors.</p>
         )}
       </div>
+
+      {/* CWV section */}
+      {cwv && cwv.urls.length > 0 && <CwvSection cwv={cwv} />}
 
       {/* Per-URL cards */}
       <div className="flex flex-col gap-3">
