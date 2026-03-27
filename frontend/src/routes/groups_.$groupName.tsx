@@ -28,6 +28,7 @@ import {
   ScatterChart, Scatter, ZAxis,
 } from 'recharts';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
+import { formatChartDate } from '../lib/formatChartDate';
 import { describeCron } from '../lib/cronUtils';
 import type { UrlPerformance, UrlUptime, UrlSeoSummary, BrokenLinkSummary } from '../lib/types';
 
@@ -300,10 +301,11 @@ function OverviewTab({ overview }: { overview: ReturnType<typeof useQuery<any>>[
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <XAxis dataKey="runId" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `#${v}`} />
+                  <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                   <Tooltip
                     contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                    labelFormatter={formatChartDate}
                     formatter={(v) => [`${Number(v).toFixed(1)}%`, 'Success rate']}
                   />
                   <Line type="monotone" dataKey="successRate" stroke="#4ade80" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
@@ -319,10 +321,11 @@ function OverviewTab({ overview }: { overview: ReturnType<typeof useQuery<any>>[
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <XAxis dataKey="runId" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `#${v}`} />
+                  <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => formatMs(v)} />
                   <Tooltip
                     contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                    labelFormatter={formatChartDate}
                     formatter={(v) => [formatMs(Number(v)), 'Avg load']}
                   />
                   <Line type="monotone" dataKey="avgLoadTimeMs" stroke="#60a5fa" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
@@ -398,12 +401,12 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
 
   const slowCount = data.urls.filter((u) => u.isSlow).length;
 
-  // Build multi-line chart data: group by runId, each URL is a key
+  // Build multi-line chart data: group by startedAt, each URL is a key
   const urlList = [...new Set(data.loadTimeTrend.map((p) => p.url))].slice(0, 6);
-  const byRun = new Map<number, Record<string, any>>();
+  const byRun = new Map<string, Record<string, any>>();
   for (const p of data.loadTimeTrend) {
-    if (!byRun.has(p.runId)) byRun.set(p.runId, { runId: p.runId, startedAt: p.startedAt });
-    byRun.get(p.runId)![p.url] = p.avgLoadTimeMs;
+    if (!byRun.has(p.startedAt)) byRun.set(p.startedAt, { startedAt: p.startedAt });
+    byRun.get(p.startedAt)![p.url] = p.avgLoadTimeMs;
   }
   const chartData = [...byRun.values()];
 
@@ -467,10 +470,11 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
           <CardContent>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                <XAxis dataKey="runId" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `#${v}`} />
+                <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => formatMs(v)} />
                 <Tooltip
                   contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                  labelFormatter={formatChartDate}
                   formatter={(v, name) => [formatMs(Number(v)), String(name).split('/').pop() ?? String(name)]}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => v.split('/').pop() ?? v} />
