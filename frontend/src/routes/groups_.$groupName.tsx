@@ -25,12 +25,11 @@ import {
 } from '@/components/ui/table';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  ScatterChart, Scatter, ZAxis,
 } from 'recharts';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { formatChartDate } from '../lib/formatChartDate';
 import { describeCron } from '../lib/cronUtils';
-import type { UrlPerformance, UrlUptime, UrlSeoSummary, BrokenLinkSummary } from '../lib/types';
+import type { UrlPerformance, UrlSeoSummary, BrokenLinkSummary, GroupUptime, GroupOverview } from '../lib/types';
 
 const LINE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
 const getColor = (i: number) => LINE_COLORS[i % LINE_COLORS.length];
@@ -113,7 +112,7 @@ function GroupDetailPage() {
   const { data: uptime, isLoading: uptimeLoading } = useQuery({
     queryKey: queryKeys.groups.uptime(groupName),
     queryFn: () => getGroupUptime(groupName),
-    enabled: activeTab === 'uptime',
+    enabled: activeTab === 'uptime' || activeTab === 'overview',
   });
 
   const { data: seo, isLoading: seoLoading } = useQuery({
@@ -193,7 +192,7 @@ function GroupDetailPage() {
 
         {/* ── Overview ── */}
         <TabsContent value="overview">
-          <OverviewTab overview={overview} />
+          <OverviewTab overview={overview} uptime={uptime} />
         </TabsContent>
 
         {/* ── Performance ── */}
@@ -212,7 +211,7 @@ function GroupDetailPage() {
           {uptimeLoading ? (
             <TabLoadingSkeleton rows={5} cols={4} />
           ) : uptime ? (
-            <UptimeTab data={uptime} />
+            <UptimeTab data={uptime} colors={LINE_COLORS} />
           ) : (
             <p className="text-sm text-muted-foreground">No uptime data yet — run the group to start collecting data.</p>
           )}
@@ -284,10 +283,27 @@ function TabLoadingSkeleton({ rows, cols }: { rows: number; cols: number }) {
 
 // ── Overview Tab ─────────────────────────────────────────────────────────────
 
-function OverviewTab({ overview }: { overview: ReturnType<typeof useQuery<any>>['data'] }) {
+function OverviewTab({ overview, uptime }: { overview: GroupOverview | undefined; uptime: GroupUptime | undefined }) {
   if (!overview) return null;
 
   const { recentRuns, series } = overview;
+
+  // Uptime mini chart data (first URL only)
+  const uptimeMiniData = uptime?.uptimeTrend
+    ? (() => {
+        const firstUrl = uptime.uptimeTrend[0]?.url;
+        if (!firstUrl) return { data: [], url: '' };
+        const byRun = new Map<string, Record<string, any>>();
+        for (const pt of uptime.uptimeTrend) {
+          if (!byRun.has(pt.startedAt)) byRun.set(pt.startedAt, { startedAt: pt.startedAt });
+          byRun.get(pt.startedAt)![pt.url] = pt.wasDown ? 0 : 100;
+        }
+        return {
+          data: [...byRun.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
+          url: firstUrl,
+        };
+      })()
+    : { data: [], url: '' };
 
   return (
     <div>
@@ -329,6 +345,32 @@ function OverviewTab({ overview }: { overview: ReturnType<typeof useQuery<any>>[
                     formatter={(v) => [formatMs(Number(v)), 'Avg load']}
                   />
                   <Line type="monotone" dataKey="avgLoadTimeMs" stroke="#60a5fa" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Mini uptime chart — first URL only */}
+      {uptimeMiniData.data.length > 1 && (
+        <div className="mb-6">
+          <Card>
+            <CardHeader className="pb-2">
+              <h3 className="text-sm font-medium">Uptime trend</h3>
+              <p className="text-xs text-muted-foreground truncate">{uptimeMiniData.url}</p>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={uptimeMiniData.data} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                  <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                    labelFormatter={formatChartDate}
+                    formatter={(v) => [`${v}%`, 'Uptime']}
+                  />
+                  <Line type="monotone" dataKey={uptimeMiniData.url} stroke="#a78bfa" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -492,19 +534,21 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
 
 // ── Uptime Tab ────────────────────────────────────────────────────────────────
 
-function UptimeTab({ data }: { data: { urls: UrlUptime[]; timeline: any[] } }) {
+function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
   if (data.urls.length === 0) {
     return <p className="text-sm text-muted-foreground">No uptime data yet — run the group to start collecting data.</p>;
   }
 
   const downNow = data.urls.filter((u) => u.lastStatus === 'down').length;
 
-  // Build scatter chart data for status timeline
-  const timelineData = data.timeline.map((p) => ({
-    ...p,
-    y: data.urls.findIndex((u) => u.url === p.url),
-    value: p.isDown ? 0 : 1,
-  }));
+  // Build per-run uptime line chart — 1 = up, 0 = down per URL per run
+  const urlList = [...new Set(data.uptimeTrend.map((p) => p.url))];
+  const byRun = new Map<string, Record<string, any>>();
+  for (const pt of data.uptimeTrend) {
+    if (!byRun.has(pt.startedAt)) byRun.set(pt.startedAt, { startedAt: pt.startedAt });
+    byRun.get(pt.startedAt)![pt.url] = pt.wasDown ? 0 : 100;
+  }
+  const trendChartData = [...byRun.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
 
   return (
     <div>
@@ -558,51 +602,27 @@ function UptimeTab({ data }: { data: { urls: UrlUptime[]; timeline: any[] } }) {
         </Table>
       </div>
 
-      {timelineData.length > 0 && (
+      {trendChartData.length > 1 && (
         <Card>
           <CardHeader className="pb-2">
-            <h3 className="text-sm font-medium">Status history (recent visits)</h3>
-            <p className="text-xs text-muted-foreground">Green = up, Red = down</p>
+            <h3 className="text-sm font-medium">Uptime trend per run</h3>
+            <p className="text-xs text-muted-foreground">100% = all checks up, 0% = down</p>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={Math.max(120, data.urls.length * 28 + 40)}>
-              <ScatterChart margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
-                <XAxis
-                  dataKey="visitedAt"
-                  type="category"
-                  hide
-                />
-                <YAxis
-                  dataKey="y"
-                  type="number"
-                  domain={[-1, data.urls.length]}
-                  tick={false}
-                  width={0}
-                />
-                <ZAxis range={[30, 30]} />
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={trendChartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
+                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                 <Tooltip
-                  content={({ payload }) => {
-                    if (!payload?.length) return null;
-                    const d = payload[0]?.payload;
-                    if (!d) return null;
-                    return (
-                      <div style={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, padding: '6px 10px', fontSize: 11 }}>
-                        <p className="font-mono text-xs truncate max-w-[200px]">{d.url}</p>
-                        <p>{formatDate(d.visitedAt)}</p>
-                        <p className={d.isDown ? 'text-destructive' : 'text-green-500'}>{d.isDown ? 'Down' : 'Up'}</p>
-                      </div>
-                    );
-                  }}
+                  contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                  labelFormatter={formatChartDate}
+                  formatter={(v, name) => [`${v}%`, String(name).split('/').pop() ?? String(name)]}
                 />
-                <Scatter
-                  data={timelineData}
-                  fill="#4ade80"
-                  shape={(props: any) => {
-                    const { cx, cy, payload } = props;
-                    return <circle cx={cx} cy={cy} r={5} fill={payload.isDown ? '#f87171' : '#4ade80'} opacity={0.85} />;
-                  }}
-                />
-              </ScatterChart>
+                <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => v.split('/').pop() ?? v} />
+                {urlList.slice(0, 6).map((url, i) => (
+                  <Line key={url} type="monotone" dataKey={url} stroke={colors[i % colors.length]} dot={false} strokeWidth={2} activeDot={{ r: 3 }} />
+                ))}
+              </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
