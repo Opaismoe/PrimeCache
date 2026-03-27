@@ -181,6 +181,18 @@ export async function visitUrl(
       await page.waitForSelector(options.waitForSelector, { timeout: 5_000 }).catch(() => {})
     }
 
+    // Read load time from the browser's Navigation Timing API (load event, relative to navigationStart).
+    // Falls back to wall-clock only when the timing entry is unavailable (e.g. cross-origin navigation).
+    const navTiming = await page.evaluate((): number | null => {
+      const nav = (performance.getEntriesByType('navigation')[0]) as PerformanceNavigationTiming | undefined
+      if (nav) {
+        if (nav.loadEventEnd > 0) return Math.round(nav.loadEventEnd)
+        if (nav.domContentLoadedEventEnd > 0) return Math.round(nav.domContentLoadedEventEnd)
+      }
+      return null
+    }).catch(() => null) as number | null
+    const loadTimeMs = navTiming ?? (Date.now() - start)
+
     // Collect SEO metadata — never throws, failure returns null
     const seo: SeoSnapshot | null = await page.evaluate(() => ({
       title:           document.title || null,
@@ -208,7 +220,6 @@ export async function visitUrl(
     await simulateReading(page)
 
     const finalUrl = page.url()
-    const loadTimeMs = Date.now() - start
 
     // Extract same-origin links when crawl is enabled
     let discoveredLinks: string[] = []
