@@ -91,6 +91,8 @@ export interface GroupRunSeries {
   startedAt: string;
   successRate: number;     // 0-100
   avgLoadTimeMs: number;
+  uptimePct: number;       // 0-100
+  avgSeoScore: number | null;  // 0-100, null if no SEO data
 }
 
 export interface GroupOverview {

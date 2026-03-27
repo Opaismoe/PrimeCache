@@ -112,7 +112,7 @@ function GroupDetailPage() {
   const { data: uptime, isLoading: uptimeLoading } = useQuery({
     queryKey: queryKeys.groups.uptime(groupName),
     queryFn: () => getGroupUptime(groupName),
-    enabled: activeTab === 'uptime' || activeTab === 'overview',
+    enabled: activeTab === 'uptime',
   });
 
   const { data: seo, isLoading: seoLoading } = useQuery({
@@ -192,7 +192,7 @@ function GroupDetailPage() {
 
         {/* ── Overview ── */}
         <TabsContent value="overview">
-          <OverviewTab overview={overview} uptime={uptime} />
+          <OverviewTab overview={overview} />
         </TabsContent>
 
         {/* ── Performance ── */}
@@ -283,27 +283,11 @@ function TabLoadingSkeleton({ rows, cols }: { rows: number; cols: number }) {
 
 // ── Overview Tab ─────────────────────────────────────────────────────────────
 
-function OverviewTab({ overview, uptime }: { overview: GroupOverview | undefined; uptime: GroupUptime | undefined }) {
+function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
   if (!overview) return null;
 
   const { recentRuns, series } = overview;
-
-  // Uptime mini chart data (first URL only)
-  const uptimeMiniData = uptime?.uptimeTrend
-    ? (() => {
-        const firstUrl = uptime.uptimeTrend[0]?.url;
-        if (!firstUrl) return { data: [], url: '' };
-        const byRun = new Map<string, Record<string, any>>();
-        for (const pt of uptime.uptimeTrend) {
-          if (!byRun.has(pt.startedAt)) byRun.set(pt.startedAt, { startedAt: pt.startedAt });
-          byRun.get(pt.startedAt)![pt.url] = pt.wasDown ? 0 : 100;
-        }
-        return {
-          data: [...byRun.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
-          url: firstUrl,
-        };
-      })()
-    : { data: [], url: '' };
+  const hasSeoData = series.some((s) => s.avgSeoScore !== null);
 
   return (
     <div>
@@ -349,32 +333,48 @@ function OverviewTab({ overview, uptime }: { overview: GroupOverview | undefined
               </ResponsiveContainer>
             </CardContent>
           </Card>
-        </div>
-      )}
 
-      {/* Mini uptime chart — first URL only */}
-      {uptimeMiniData.data.length > 1 && (
-        <div className="mb-6">
           <Card>
             <CardHeader className="pb-2">
-              <h3 className="text-sm font-medium">Uptime trend</h3>
-              <p className="text-xs text-muted-foreground truncate">{uptimeMiniData.url}</p>
+              <h3 className="text-sm font-medium">Uptime per run</h3>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={uptimeMiniData.data} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                   <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
                   <Tooltip
                     contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
                     labelFormatter={formatChartDate}
-                    formatter={(v) => [`${v}%`, 'Uptime']}
+                    formatter={(v) => [`${Number(v).toFixed(1)}%`, 'Uptime']}
                   />
-                  <Line type="monotone" dataKey={uptimeMiniData.url} stroke="#a78bfa" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
+                  <Line type="monotone" dataKey="uptimePct" stroke="#a78bfa" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
+
+          {hasSeoData && (
+            <Card>
+              <CardHeader className="pb-2">
+                <h3 className="text-sm font-medium">SEO score per run</h3>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                    <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
+                    <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} />
+                    <Tooltip
+                      contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                      labelFormatter={formatChartDate}
+                      formatter={(v) => [Number(v).toFixed(1), 'SEO score']}
+                    />
+                    <Line type="monotone" dataKey="avgSeoScore" stroke="#fb923c" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
