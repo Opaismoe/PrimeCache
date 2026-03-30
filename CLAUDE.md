@@ -16,7 +16,7 @@ All work follows the states in `.ai/todo.md`: **init → test → code → revie
 - **Never move to `code` state** until tests exist and fail for the right reason.
 - **Never move to `review` state** until all tests pass.
 - Test files live alongside source: `src/config/env.test.ts` next to `src/config/env.ts`.
-- Use in-memory SQLite (`:memory:`) for DB tests — never mock the query layer itself.
+- Use PGlite (in-memory PostgreSQL via `@electric-sql/pglite`) for DB tests — never mock the query layer itself.
 - Mock only external I/O: Browserless WS, filesystem. Never mock the module under test.
 - After completing a task, update its status in `.ai/todo.md`.
 
@@ -34,7 +34,7 @@ pnpm test:watch    # vitest (watch mode)
 
 Run a single test file:
 ```bash
-pnpm test src/warmer/runner.test.ts
+pnpm test backend/warmer/runner.test.ts
 ```
 
 Docker:
@@ -49,9 +49,9 @@ Required (no defaults):
 - `BROWSERLESS_WS_URL` — e.g. `ws://localhost:3000/chromium/playwright`
 - `BROWSERLESS_TOKEN` — any non-empty string for local Browserless
 - `API_KEY` — minimum 16 characters
+- `DATABASE_URL` — e.g. `postgres://primecache:<password>@postgres:5432/primecache`
 
 Optional (defaults shown):
-- `DB_PATH=/app/data/warmer.db`
 - `CONFIG_PATH=/app/config/config.yaml`
 - `PORT=3000`
 - `LOG_LEVEL=info` (trace|debug|info|warn|error)
@@ -60,7 +60,7 @@ Optional (defaults shown):
 
 ## Architecture
 
-`src/index.ts` boots in three sequential steps: run Knex migrations → start Fastify API → register node-cron schedulers. All three depend on the config and DB layers being ready first.
+`backend/index.ts` boots in four sequential steps: load config → run Drizzle migrations → start Fastify API → register node-cron schedulers. All steps depend on the config and DB layers being ready first.
 
 ### Data flow for a warm run
 1. **Trigger**: either node-cron (scheduled) or `POST /webhook/warm` (on-demand)
@@ -82,8 +82,8 @@ Endpoint format: `ws://<browserless-host>/chromium/playwright`
 Create one `BrowserContext` per URL visit for full isolation (cookies, storage). Always close in `finally`. The context factory in `browser/context.ts` applies stealth, random viewport (1280–1920 × 768–1080), rotating user agents, and locale headers.
 
 ### Config loading
-- `src/config/env.ts` — Zod-parses `process.env` at startup. Hard exit if any required var is missing.
-- `src/config/urls.ts` — Parses and Zod-validates `config.yaml`. Uses chokidar to watch for file changes and hot-reloads the scheduler without restarting the process.
+- `backend/config/env.ts` — Zod-parses `process.env` at startup. Hard exit if any required var is missing.
+- `backend/config/urls.ts` — Parses and Zod-validates `config.yaml`. Uses chokidar to watch for file changes and hot-reloads the scheduler without restarting the process.
 
 `config.yaml` group options:
 ```yaml
@@ -121,7 +121,7 @@ Strategies are tried in order with a 3s timeout each:
 After clicking, always wait 500–1000ms before continuing — CMPs fire XHR after accept that re-renders the page.
 
 ### Database
-Knex with `better-sqlite3`. Migrations run automatically at startup. All queries go through `src/db/queries/` helpers — never raw Knex calls in business logic. SQLite file is volume-mounted at `DB_PATH`.
+Drizzle ORM with `postgres` (postgres-js driver) backed by PostgreSQL. Migrations run automatically at startup via `drizzle-orm/postgres-js/migrator`. All queries go through `backend/db/queries/` helpers — never raw Drizzle calls in business logic. Schema is defined in `backend/db/schema.ts`.
 
 ### Logging
 Always use pino child loggers (`logger.child({ runId, url })`). Never `console.log`. Log level via `LOG_LEVEL` env var. Output is JSON on stdout (Coolify captures it).
@@ -129,4 +129,4 @@ Always use pino child loggers (`logger.child({ runId, url })`). Never `console.l
 ## Key invariants
 - A single URL failure must not abort the group run — `visitor.ts` catches per-URL errors and returns them in `VisitResult.error`; `runner.ts` sets status `partial_failure` if some fail, `failed` if all fail
 - `config.yaml` is live-reloadable — do not cache its contents outside `config/urls.ts`
-- The `data/` and `logs/` directories are Docker volumes — never write SQLite or log files relative to `__dirname`
+- Never write log files relative to `__dirname` — log output is JSON on stdout (Coolify captures it)

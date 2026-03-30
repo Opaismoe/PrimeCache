@@ -7,7 +7,7 @@ const VALID_ENV = {
   BROWSERLESS_WS_URL: 'ws://browserless:3000/chromium/playwright',
   BROWSERLESS_TOKEN: 'test-token',
   API_KEY: 'a-valid-api-key-at-least-16-chars',
-  DB_PATH: '/app/data/warmer.db',
+  DATABASE_URL: 'postgres://primecache:test@localhost:5432/primecache',
   CONFIG_PATH: '/app/config/config.yaml',
   PORT: '3000',
   LOG_LEVEL: 'info',
@@ -23,7 +23,7 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
-    vi.stubEnv('DB_PATH', VALID_ENV.DB_PATH)
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
     vi.stubEnv('CONFIG_PATH', VALID_ENV.CONFIG_PATH)
     vi.stubEnv('PORT', VALID_ENV.PORT)
     vi.stubEnv('LOG_LEVEL', VALID_ENV.LOG_LEVEL)
@@ -42,6 +42,7 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
     vi.stubEnv('PORT', '8080')
 
     const { env } = await import('./env')
@@ -53,6 +54,7 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
     vi.stubEnv('PORT', '')
 
     const { env } = await import('./env')
@@ -63,6 +65,7 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
     vi.stubEnv('TIMEZONE', '')
 
     const { env } = await import('./env')
@@ -73,6 +76,7 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', '')
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
 
     await expect(import('./env')).rejects.toThrow()
   })
@@ -81,6 +85,7 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
     vi.stubEnv('BROWSERLESS_TOKEN', '')
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
 
     await expect(import('./env')).rejects.toThrow()
   })
@@ -89,6 +94,16 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
     vi.stubEnv('API_KEY', 'tooshort')
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
+
+    await expect(import('./env')).rejects.toThrow()
+  })
+
+  it('throws when DATABASE_URL is missing', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('DATABASE_URL', '')
 
     await expect(import('./env')).rejects.toThrow()
   })
@@ -97,6 +112,7 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('DATABASE_URL', VALID_ENV.DATABASE_URL)
     vi.stubEnv('LOG_LEVEL', 'verbose')  // not a valid level
 
     await expect(import('./env')).rejects.toThrow()
