@@ -1,5 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { ChevronRight } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -28,6 +29,11 @@ const latestRunsQueryOptions = queryOptions({
   queryFn: getLatestRuns,
 });
 const statsQueryOptions = queryOptions({ queryKey: queryKeys.stats.all(), queryFn: getStats });
+const publicStatusQueryOptions = queryOptions({
+  queryKey: queryKeys.publicStatus.all(),
+  queryFn: getPublicStatus,
+  refetchInterval: 60_000,
+});
 
 export const Route = createFileRoute('/')({
   loader: ({ context: { queryClient } }) =>
@@ -78,12 +84,6 @@ function buildStackedBarData(visitsByDay: Stats['visitsByDay']) {
     groups,
     data: [...byDate.entries()].map(([date, counts]) => ({ date, ...counts })),
   };
-}
-
-function uptimeColor(pct: number): string {
-  if (pct >= 99) return '#22c55e';
-  if (pct >= 95) return '#f59e0b';
-  return '#ef4444';
 }
 
 function DashboardSkeleton() {
@@ -138,11 +138,7 @@ function DashboardPage() {
   const { data: config } = useQuery(configQueryOptions);
   const { data: latestRuns } = useQuery(latestRunsQueryOptions);
   const { data: stats } = useQuery(statsQueryOptions);
-  const { data: statusData } = useQuery({
-    queryKey: queryKeys.publicStatus.all(),
-    queryFn: getPublicStatus,
-    refetchInterval: 60_000,
-  });
+  const { data: publicStatus } = useQuery(publicStatusQueryOptions);
 
   const trigger = useMutation({
     mutationFn: triggerAsync,
@@ -233,41 +229,65 @@ function DashboardPage() {
         </div>
       )}
 
-      {statusData && statusData.length > 0 && (
-        <Card className="mt-10">
-          <CardHeader className="pb-2">
+      {publicStatus && publicStatus.length > 0 && (
+        <div className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium">Uptime Status</h2>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
-            {statusData.map((g) => {
-              const color = uptimeColor(g.uptimePct);
-              return (
-                <div key={g.groupName} className="flex items-center gap-3">
-                  <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: color }}
-                  />
-                  <span className="w-32 shrink-0 truncate text-sm font-medium">{g.groupName}</span>
-                  <div
-                    className="flex-1 overflow-hidden rounded-full bg-muted"
-                    style={{ height: 6 }}
+            <Link
+              to="/status"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              View all
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <Card>
+            <CardContent className="divide-y divide-border p-0">
+              {publicStatus.map((g) => {
+                const isHealthy = g.uptimePct >= 99;
+                const isDegraded = g.uptimePct >= 95 && g.uptimePct < 99;
+                return (
+                  <Link
+                    key={g.groupName}
+                    to="/status"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
                   >
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${g.uptimePct}%`, backgroundColor: color }}
+                    <span
+                      className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${
+                        isHealthy ? 'bg-green-500' : isDegraded ? 'bg-yellow-500' : 'bg-destructive'
+                      }`}
                     />
-                  </div>
-                  <span
-                    className="w-12 shrink-0 text-right text-sm font-semibold"
-                    style={{ color }}
-                  >
-                    {g.uptimePct.toFixed(1)}%
-                  </span>
-                </div>
-              );
-            })}
-          </CardContent>
-        </Card>
+                    <span className="flex-1 text-sm font-medium">{g.groupName}</span>
+                    <span
+                      className={`text-sm font-semibold ${
+                        isHealthy
+                          ? 'text-green-500'
+                          : isDegraded
+                            ? 'text-yellow-500'
+                            : 'text-destructive'
+                      }`}
+                    >
+                      {g.uptimePct.toFixed(1)}%
+                    </span>
+                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className={`h-full rounded-full ${
+                          isHealthy
+                            ? 'bg-green-500'
+                            : isDegraded
+                              ? 'bg-yellow-500'
+                              : 'bg-destructive'
+                        }`}
+                        style={{ width: `${Math.min(100, g.uptimePct)}%` }}
+                      />
+                    </div>
+                    <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+                  </Link>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {stats && (
