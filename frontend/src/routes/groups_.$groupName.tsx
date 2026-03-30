@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { GroupForm } from '../components/GroupForm';
 import { StatusBadge } from '../components/StatusBadge';
 import {
   getConfig,
@@ -25,6 +26,8 @@ import {
   getGroupPerformance,
   getGroupSeo,
   getGroupUptime,
+  getRuns,
+  putConfig,
   triggerAsync,
 } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
@@ -33,7 +36,9 @@ import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
 import type {
   BrokenLinkSummary,
+  Config,
   CwvStatus,
+  Group,
   GroupCwv,
   GroupOverview,
   GroupPerformance,
@@ -103,11 +108,15 @@ function GroupDetailSkeleton() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
+const HISTORY_PAGE_SIZE = 20;
+
 function GroupDetailPage() {
   const { groupName } = Route.useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('overview');
+  const [historyPage, setHistoryPage] = useState(0);
+  const [settingsSaved, setSettingsSaved] = useState(false);
 
   const { data: overview } = useQuery(
     queryOptions({
@@ -150,6 +159,17 @@ function GroupDetailPage() {
     enabled: activeTab === 'links',
   });
 
+  const { data: historyRuns, isLoading: historyLoading } = useQuery({
+    queryKey: [...queryKeys.runs.all(), 'group-tab', groupName, historyPage],
+    queryFn: () =>
+      getRuns({
+        group: groupName,
+        limit: HISTORY_PAGE_SIZE,
+        offset: historyPage * HISTORY_PAGE_SIZE,
+      }),
+    enabled: activeTab === 'history',
+  });
+
   const trigger = useMutation({
     mutationFn: () => triggerAsync(groupName),
     onSuccess: (data) => {
@@ -161,6 +181,21 @@ function GroupDetailPage() {
 
   const group = config?.groups.find((g) => g.name === groupName);
   const stats = overview?.stats;
+
+  const handleSettingsSave = async (updated: Group) => {
+    if (!config) return;
+    const newConfig: Config = {
+      ...config,
+      groups: config.groups.map((g) => (g.name === groupName ? updated : g)),
+    };
+    await putConfig(newConfig);
+    queryClient.invalidateQueries({ queryKey: queryKeys.config.all() });
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 3000);
+    if (updated.name !== groupName) {
+      navigate({ to: '/groups/$groupName', params: { groupName: updated.name } });
+    }
+  };
 
   return (
     <div>
@@ -204,6 +239,8 @@ function GroupDetailPage() {
             <TabsTrigger value="uptime">Uptime</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
             <TabsTrigger value="links">Links</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
           {['performance', 'uptime', 'seo', 'links'].includes(activeTab) && (
             <a
@@ -271,6 +308,105 @@ function GroupDetailPage() {
               No broken link data yet. Enable <code>checkBrokenLinks: true</code> in config and run
               the group.
             </p>
+          )}
+        </TabsContent>
+
+        {/* ── History ── */}
+        <TabsContent value="history">
+          {historyLoading ? (
+            <TabLoadingSkeleton rows={8} cols={5} />
+          ) : !historyRuns?.length ? (
+            <p className="text-sm text-muted-foreground">No runs found for this group.</p>
+          ) : (
+            <>
+              <div className="rounded-lg border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Run #</TableHead>
+                      <TableHead>Started</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Results</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {historyRuns.map((run) => (
+                      <TableRow
+                        key={run.id}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          navigate({
+                            to: '/history/$runId',
+                            params: { runId: String(run.id) },
+                          })
+                        }
+                      >
+                        <TableCell>
+                          <span className="text-muted-foreground">#{run.id}</span>
+                        </TableCell>
+                        <TableCell>{formatDate(run.started_at)}</TableCell>
+                        <TableCell>{formatDuration(run.started_at, run.ended_at)}</TableCell>
+                        <TableCell>
+                          <StatusBadge status={run.status} />
+                        </TableCell>
+                        <TableCell>
+                          {run.success_count !== null ? (
+                            <span>
+                              <span className="text-green-500">{run.success_count} ok</span>
+                              {run.failure_count ? (
+                                <span className="ml-2 text-destructive">
+                                  {run.failure_count} failed
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHistoryPage((p) => p - 1)}
+                  disabled={historyPage <= 0}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">Page {historyPage + 1}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setHistoryPage((p) => p + 1)}
+                  disabled={historyRuns.length < HISTORY_PAGE_SIZE}
+                >
+                  Next
+                </Button>
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {/* ── Settings ── */}
+        <TabsContent value="settings">
+          {settingsSaved && (
+            <div className="mb-4 rounded-md border border-green-700 bg-green-950/40 px-3 py-2 text-sm text-green-400">
+              Settings saved successfully.
+            </div>
+          )}
+          {group ? (
+            <GroupForm
+              initial={group}
+              onSave={handleSettingsSave}
+              onCancel={() => setActiveTab('overview')}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">Loading group configuration…</p>
           )}
         </TabsContent>
       </Tabs>
