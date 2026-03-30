@@ -1,12 +1,12 @@
-import { sql } from 'drizzle-orm'
-import type { Db } from '../../db/client'
+import { sql } from 'drizzle-orm';
+import type { Db } from '../../db/client';
 
 export interface GroupStatus {
-  groupName: string
-  uptimePct: number
-  lastRunAt: string | null
-  lastRunStatus: string | null
-  urlCount: number
+  groupName: string;
+  uptimePct: number;
+  lastRunAt: string | null;
+  lastRunStatus: string | null;
+  urlCount: number;
 }
 
 export async function getGroupUptime(db: Db): Promise<GroupStatus[]> {
@@ -29,12 +29,12 @@ export async function getGroupUptime(db: Db): Promise<GroupStatus[]> {
     WHERE r.started_at >= NOW() - INTERVAL '30 days'
     GROUP BY r.group_name
     ORDER BY r.group_name
-  `)
+  `);
   return (rows as any[]).map((r) => ({
-    groupName:     r.group_name as string,
-    uptimePct:     Number(r.uptime_pct ?? 0),
-    lastRunAt:     r.last_run_at as string | null,
+    groupName: r.group_name as string,
+    uptimePct: Number(r.uptime_pct ?? 0),
+    lastRunAt: r.last_run_at as string | null,
     lastRunStatus: r.last_run_status as string | null,
-    urlCount:      r.url_count as number,
-  }))
+    urlCount: r.url_count as number,
+  }));
 }

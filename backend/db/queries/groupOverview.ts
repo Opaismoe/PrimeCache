@@ -1,43 +1,44 @@
-import { eq, desc, sql } from 'drizzle-orm'
-import { runs, visits, visit_seo } from '../schema'
-import type { Db } from '../client'
+import { desc, eq, sql } from 'drizzle-orm';
+import type { Db } from '../client';
+import { runs, visits } from '../schema';
 
 /** Normalise db.execute() result — postgres driver returns T[], PGlite returns { rows: T[] } */
 function toRows(result: unknown): any[] {
-  if (Array.isArray(result)) return result as any[]
-  if (result && typeof result === 'object' && 'rows' in result) return (result as any).rows as any[]
-  return []
+  if (Array.isArray(result)) return result as any[];
+  if (result && typeof result === 'object' && 'rows' in result)
+    return (result as any).rows as any[];
+  return [];
 }
 
 export interface GroupOverviewStats {
-  totalRuns: number
-  successRate: number   // 0-100
-  avgLoadTimeMs: number
-  avgTtfbMs: number | null
+  totalRuns: number;
+  successRate: number; // 0-100
+  avgLoadTimeMs: number;
+  avgTtfbMs: number | null;
 }
 
 export interface GroupRunSeries {
-  runId: number
-  startedAt: string
-  successRate: number   // 0-100
-  avgLoadTimeMs: number
-  uptimePct: number     // 0-100, % of visits with no error
-  avgSeoScore: number | null  // 0-100 avg SEO score, null if no SEO data
+  runId: number;
+  startedAt: string;
+  successRate: number; // 0-100
+  avgLoadTimeMs: number;
+  uptimePct: number; // 0-100, % of visits with no error
+  avgSeoScore: number | null; // 0-100 avg SEO score, null if no SEO data
 }
 
 export interface GroupOverview {
   recentRuns: {
-    id: number
-    group_name: string
-    started_at: string
-    ended_at: string | null
-    status: string
-    total_urls: number | null
-    success_count: number | null
-    failure_count: number | null
-  }[]
-  stats: GroupOverviewStats
-  series: GroupRunSeries[]
+    id: number;
+    group_name: string;
+    started_at: string;
+    ended_at: string | null;
+    status: string;
+    total_urls: number | null;
+    success_count: number | null;
+    failure_count: number | null;
+  }[];
+  stats: GroupOverviewStats;
+  series: GroupRunSeries[];
 }
 
 export async function getGroupOverview(db: Db, groupName: string): Promise<GroupOverview> {
@@ -46,39 +47,38 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     .from(runs)
     .where(eq(runs.group_name, groupName))
     .orderBy(desc(runs.started_at))
-    .limit(10)
+    .limit(10);
 
   // Overall stats: aggregate over visits joined to this group's runs
   const [visitStats] = await db
     .select({
       avgLoadTimeMs: sql<number>`AVG(${visits.load_time_ms})::int`,
-      avgTtfbMs:    sql<number | null>`AVG(${visits.ttfb_ms})::int`,
+      avgTtfbMs: sql<number | null>`AVG(${visits.ttfb_ms})::int`,
     })
     .from(visits)
     .innerJoin(runs, eq(visits.run_id, runs.id))
-    .where(eq(runs.group_name, groupName))
+    .where(eq(runs.group_name, groupName));
 
   // Run-level stats
   const [runStats] = await db
     .select({
-      totalRuns:       sql<number>`COUNT(*)::int`,
-      totalSuccess:    sql<number>`SUM(COALESCE(${runs.success_count}, 0))::int`,
-      totalUrls:       sql<number>`SUM(COALESCE(${runs.total_urls}, 0))::int`,
+      totalRuns: sql<number>`COUNT(*)::int`,
+      totalSuccess: sql<number>`SUM(COALESCE(${runs.success_count}, 0))::int`,
+      totalUrls: sql<number>`SUM(COALESCE(${runs.total_urls}, 0))::int`,
     })
     .from(runs)
-    .where(eq(runs.group_name, groupName))
+    .where(eq(runs.group_name, groupName));
 
-  const successRate = runStats && runStats.totalUrls > 0
-    ? (runStats.totalSuccess / runStats.totalUrls) * 100
-    : 0
+  const successRate =
+    runStats && runStats.totalUrls > 0 ? (runStats.totalSuccess / runStats.totalUrls) * 100 : 0;
 
   // Per-run series for charts (last 30 runs, returned ascending for chart order)
   const seriesRows = await db
     .select({
-      runId:        runs.id,
-      startedAt:    runs.started_at,
+      runId: runs.id,
+      startedAt: runs.started_at,
       successCount: runs.success_count,
-      totalUrls:    runs.total_urls,
+      totalUrls: runs.total_urls,
       avgLoadTimeMs: sql<number>`AVG(${visits.load_time_ms})::int`,
       uptimePct: sql<number>`
         COUNT(*) FILTER (WHERE ${visits.error} IS NULL) * 100.0 / NULLIF(COUNT(*), 0)
@@ -89,7 +89,7 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     .where(eq(runs.group_name, groupName))
     .groupBy(runs.id)
     .orderBy(desc(runs.started_at))
-    .limit(30)
+    .limit(30);
 
   // Per-run avg SEO score (SQL approximation of the scoreSeo() logic)
   const seoScoreRows = await db.execute(sql`
@@ -111,24 +111,20 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     INNER JOIN visit_seo s ON s.visit_id = v.id
     WHERE r.group_name = ${groupName}
     GROUP BY r.id
-  `)
-  const seoByRunId = new Map<number, number>()
+  `);
+  const seoByRunId = new Map<number, number>();
   for (const row of toRows(seoScoreRows)) {
-    seoByRunId.set(Number(row.run_id), Math.round(Number(row.avg_seo_score) * 10) / 10)
+    seoByRunId.set(Number(row.run_id), Math.round(Number(row.avg_seo_score) * 10) / 10);
   }
 
-  const series: GroupRunSeries[] = seriesRows
-    .reverse()
-    .map((r) => ({
-      runId: r.runId,
-      startedAt: r.startedAt.toISOString(),
-      successRate: r.totalUrls && r.totalUrls > 0
-        ? ((r.successCount ?? 0) / r.totalUrls) * 100
-        : 0,
-      avgLoadTimeMs: r.avgLoadTimeMs ?? 0,
-      uptimePct: Math.round(Number(r.uptimePct) * 10) / 10,
-      avgSeoScore: seoByRunId.get(r.runId) ?? null,
-    }))
+  const series: GroupRunSeries[] = seriesRows.reverse().map((r) => ({
+    runId: r.runId,
+    startedAt: r.startedAt.toISOString(),
+    successRate: r.totalUrls && r.totalUrls > 0 ? ((r.successCount ?? 0) / r.totalUrls) * 100 : 0,
+    avgLoadTimeMs: r.avgLoadTimeMs ?? 0,
+    uptimePct: Math.round(Number(r.uptimePct) * 10) / 10,
+    avgSeoScore: seoByRunId.get(r.runId) ?? null,
+  }));
 
   return {
     recentRuns: recentRuns.map((r) => ({
@@ -143,5 +139,5 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
       avgTtfbMs: visitStats?.avgTtfbMs ?? null,
     },
     series,
-  }
+  };
 }

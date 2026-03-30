@@ -1,26 +1,26 @@
-import { sql } from 'drizzle-orm'
-import type { Db } from '../client'
+import { sql } from 'drizzle-orm';
+import type { Db } from '../client';
 
 export interface UrlPerformance {
-  url: string
-  p50LoadTimeMs: number
-  p95LoadTimeMs: number
-  p50TtfbMs: number | null
-  p95TtfbMs: number | null
-  isSlow: boolean
-  sampleCount: number
+  url: string;
+  p50LoadTimeMs: number;
+  p95LoadTimeMs: number;
+  p50TtfbMs: number | null;
+  p95TtfbMs: number | null;
+  isSlow: boolean;
+  sampleCount: number;
 }
 
 export interface LoadTimeTrendPoint {
-  runId: number
-  startedAt: string
-  url: string
-  avgLoadTimeMs: number
+  runId: number;
+  startedAt: string;
+  url: string;
+  avgLoadTimeMs: number;
 }
 
 export interface GroupPerformance {
-  urls: UrlPerformance[]
-  loadTimeTrend: LoadTimeTrendPoint[]
+  urls: UrlPerformance[];
+  loadTimeTrend: LoadTimeTrendPoint[];
 }
 
 export async function getGroupPerformance(
@@ -42,7 +42,7 @@ export async function getGroupPerformance(
     WHERE r.group_name = ${groupName}
     GROUP BY v.url
     ORDER BY p95_load DESC
-  `)
+  `);
 
   const urls: UrlPerformance[] = (perfRows as any[]).map((row) => ({
     url: row.url as string,
@@ -52,7 +52,7 @@ export async function getGroupPerformance(
     p95TtfbMs: row.p95_ttfb != null ? Number(row.p95_ttfb) : null,
     isSlow: Number(row.p95_load) > thresholdMs,
     sampleCount: Number(row.sample_count),
-  }))
+  }));
 
   // Load time trend per URL over last 20 runs
   const trendRows = await db.execute(sql`
@@ -70,14 +70,14 @@ export async function getGroupPerformance(
       )
     GROUP BY r.id, r.started_at, v.url
     ORDER BY r.started_at ASC, v.url
-  `)
+  `);
 
   const loadTimeTrend: LoadTimeTrendPoint[] = (trendRows as any[]).map((row) => ({
     runId: Number(row.run_id),
     startedAt: new Date(row.started_at as string).toISOString(),
     url: row.url as string,
     avgLoadTimeMs: Number(row.avg_load_time_ms),
-  }))
+  }));
 
-  return { urls, loadTimeTrend }
+  return { urls, loadTimeTrend };
 }

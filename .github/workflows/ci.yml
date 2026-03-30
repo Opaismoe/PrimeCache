@@ -30,11 +30,8 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Lint backend
-        run: pnpm --filter primecache-backend lint
-
-      - name: Lint frontend
-        run: pnpm --filter primecache-frontend lint
+      - name: Lint
+        run: pnpm -r lint
 
       - name: Test
         run: pnpm test

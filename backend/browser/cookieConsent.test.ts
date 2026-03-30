@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest'
-import { dismissCookieConsent } from './cookieConsent'
+import { describe, expect, it, vi } from 'vitest';
+import { dismissCookieConsent } from './cookieConsent';
 
 function makePage(overrides: Record<string, unknown> = {}) {
   return {
@@ -13,7 +13,7 @@ function makePage(overrides: Record<string, unknown> = {}) {
     evaluate: vi.fn().mockResolvedValue(null),
     frames: vi.fn().mockReturnValue([]),
     ...overrides,
-  } as any
+  } as any;
 }
 
 function makeClickableLocator() {
@@ -21,101 +21,114 @@ function makeClickableLocator() {
     first: vi.fn().mockReturnThis(),
     isVisible: vi.fn().mockResolvedValue(true),
     click: vi.fn().mockResolvedValue(undefined),
-  }
+  };
 }
 
 describe('dismissCookieConsent', () => {
   it('returns found: false when no banner is present', async () => {
-    const page = makePage()
-    const result = await dismissCookieConsent(page)
-    expect(result.found).toBe(false)
-    expect(result.strategy).toBeNull()
-    expect(typeof result.durationMs).toBe('number')
-  })
+    const page = makePage();
+    const result = await dismissCookieConsent(page);
+    expect(result.found).toBe(false);
+    expect(result.strategy).toBeNull();
+    expect(typeof result.durationMs).toBe('number');
+  });
 
   it('detects and clicks Cookiebot banner', async () => {
-    const locator = makeClickableLocator()
+    const locator = makeClickableLocator();
     const page = makePage({
       locator: vi.fn((selector: string) =>
-        selector === '#CybotCookiebotDialogBodyButtonAccept' ? locator : {
-          first: vi.fn().mockReturnThis(),
-          isVisible: vi.fn().mockResolvedValue(false),
-          click: vi.fn(),
-        }
+        selector === '#CybotCookiebotDialogBodyButtonAccept'
+          ? locator
+          : {
+              first: vi.fn().mockReturnThis(),
+              isVisible: vi.fn().mockResolvedValue(false),
+              click: vi.fn(),
+            },
       ),
-    })
-    const result = await dismissCookieConsent(page)
-    expect(result.found).toBe(true)
-    expect(result.strategy).toBe('cookiebot')
-    expect(locator.click).toHaveBeenCalledOnce()
-  })
+    });
+    const result = await dismissCookieConsent(page);
+    expect(result.found).toBe(true);
+    expect(result.strategy).toBe('cookiebot');
+    expect(locator.click).toHaveBeenCalledOnce();
+  });
 
   it('detects and clicks OneTrust banner', async () => {
-    const locator = makeClickableLocator()
+    const locator = makeClickableLocator();
     const page = makePage({
       locator: vi.fn((selector: string) =>
-        selector === '#onetrust-accept-btn-handler' ? locator : {
-          first: vi.fn().mockReturnThis(),
-          isVisible: vi.fn().mockResolvedValue(false),
-          click: vi.fn(),
-        }
+        selector === '#onetrust-accept-btn-handler'
+          ? locator
+          : {
+              first: vi.fn().mockReturnThis(),
+              isVisible: vi.fn().mockResolvedValue(false),
+              click: vi.fn(),
+            },
       ),
-    })
-    const result = await dismissCookieConsent(page)
-    expect(result.found).toBe(true)
-    expect(result.strategy).toBe('onetrust')
-  })
+    });
+    const result = await dismissCookieConsent(page);
+    expect(result.found).toBe(true);
+    expect(result.strategy).toBe('onetrust');
+  });
 
   it('detects generic accept button by text', async () => {
-    const locator = makeClickableLocator()
+    const locator = makeClickableLocator();
     const page = makePage({
       locator: vi.fn((selector: string) =>
-        selector.includes('text=') || selector.includes('button') ? locator : {
-          first: vi.fn().mockReturnThis(),
-          isVisible: vi.fn().mockResolvedValue(false),
-          click: vi.fn(),
-        }
+        selector.includes('text=') || selector.includes('button')
+          ? locator
+          : {
+              first: vi.fn().mockReturnThis(),
+              isVisible: vi.fn().mockResolvedValue(false),
+              click: vi.fn(),
+            },
       ),
-    })
+    });
 
     // First two selectors (cookiebot, onetrust) return invisible
     // Generic text match returns visible
-    let callCount = 0
-    const genericLocator = makeClickableLocator()
+    let callCount = 0;
+    const genericLocator = makeClickableLocator();
     page.locator = vi.fn(() => {
-      callCount++
-      if (callCount <= 3) {  // cookiebot, onetrust, trustarc
-        return { first: vi.fn().mockReturnThis(), isVisible: vi.fn().mockResolvedValue(false), click: vi.fn() }
-      }
-      return genericLocator
-    })
-
-    const result = await dismissCookieConsent(page)
-    expect(result.found).toBe(true)
-    expect(result.strategy).toBe('generic')
-  })
-
-  it('waits after clicking to allow CMP to settle', async () => {
-    const locator = makeClickableLocator()
-    const page = makePage({
-      locator: vi.fn((selector: string) =>
-        selector === '#CybotCookiebotDialogBodyButtonAccept' ? locator : {
+      callCount++;
+      if (callCount <= 3) {
+        // cookiebot, onetrust, trustarc
+        return {
           first: vi.fn().mockReturnThis(),
           isVisible: vi.fn().mockResolvedValue(false),
           click: vi.fn(),
-        }
+        };
+      }
+      return genericLocator;
+    });
+
+    const result = await dismissCookieConsent(page);
+    expect(result.found).toBe(true);
+    expect(result.strategy).toBe('generic');
+  });
+
+  it('waits after clicking to allow CMP to settle', async () => {
+    const locator = makeClickableLocator();
+    const page = makePage({
+      locator: vi.fn((selector: string) =>
+        selector === '#CybotCookiebotDialogBodyButtonAccept'
+          ? locator
+          : {
+              first: vi.fn().mockReturnThis(),
+              isVisible: vi.fn().mockResolvedValue(false),
+              click: vi.fn(),
+            },
       ),
-    })
-    await dismissCookieConsent(page)
-    expect(page.waitForTimeout).toHaveBeenCalledOnce()
-    const ms = page.waitForTimeout.mock.calls[0][0]
-    expect(ms).toBeGreaterThanOrEqual(500)
-    expect(ms).toBeLessThanOrEqual(1000)
-  })
+    });
+    await dismissCookieConsent(page);
+    expect(page.waitForTimeout).toHaveBeenCalledOnce();
+    const ms = page.waitForTimeout.mock.calls[0][0];
+    expect(ms).toBeGreaterThanOrEqual(500);
+    expect(ms).toBeLessThanOrEqual(1000);
+  });
 
   it('always returns durationMs', async () => {
-    const page = makePage()
-    const result = await dismissCookieConsent(page)
-    expect(result.durationMs).toBeGreaterThanOrEqual(0)
-  })
-})
+    const page = makePage();
+    const result = await dismissCookieConsent(page);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
+  });
+});

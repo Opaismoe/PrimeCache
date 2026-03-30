@@ -1,26 +1,29 @@
-import { config } from 'dotenv'
-import path from 'path'
-import { z } from 'zod'
+import path from 'node:path';
+import { config } from 'dotenv';
+import { z } from 'zod';
 
 // Load .env from repo root (one level above backend/)
-config({ path: path.resolve(__dirname, '..', '..', '.env') })
+config({ path: path.resolve(__dirname, '..', '..', '.env') });
 
 // Treat empty strings as undefined so .default() values apply
-const empty = (val: unknown) => (val === '' ? undefined : val)
+const empty = (val: unknown) => (val === '' ? undefined : val);
 
 const EnvSchema = z.object({
-  BROWSERLESS_WS_URL:  z.string().min(1, 'BROWSERLESS_WS_URL is required'),
-  BROWSERLESS_TOKEN:   z.string().min(1, 'BROWSERLESS_TOKEN is required'),
-  API_KEY:             z.string().min(16, 'API_KEY must be at least 16 characters'),
-  DATABASE_URL:        z.string().min(1, 'DATABASE_URL is required'),
-  CONFIG_PATH:         z.preprocess(empty, z.string().default('/app/config/config.yaml')),
-  PORT:                z.preprocess(empty, z.coerce.number().default(3000)),
-  LOG_LEVEL:           z.preprocess(empty, z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info')),
-  TIMEZONE:            z.preprocess(empty, z.string().default('Europe/Amsterdam')),
+  BROWSERLESS_WS_URL: z.string().min(1, 'BROWSERLESS_WS_URL is required'),
+  BROWSERLESS_TOKEN: z.string().min(1, 'BROWSERLESS_TOKEN is required'),
+  API_KEY: z.string().min(16, 'API_KEY must be at least 16 characters'),
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  CONFIG_PATH: z.preprocess(empty, z.string().default('/app/config/config.yaml')),
+  PORT: z.preprocess(empty, z.coerce.number().default(3000)),
+  LOG_LEVEL: z.preprocess(
+    empty,
+    z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
+  ),
+  TIMEZONE: z.preprocess(empty, z.string().default('Europe/Amsterdam')),
   BETWEEN_URLS_MIN_MS: z.preprocess(empty, z.coerce.number().default(2000)),
   BETWEEN_URLS_MAX_MS: z.preprocess(empty, z.coerce.number().default(5000)),
-})
+});
 
-export type Env = z.infer<typeof EnvSchema>
+export type Env = z.infer<typeof EnvSchema>;
 
-export const env: Env = EnvSchema.parse(process.env)
+export const env: Env = EnvSchema.parse(process.env);
