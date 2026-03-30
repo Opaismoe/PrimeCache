@@ -82,14 +82,6 @@ function ConfigPage() {
     setFormMode(null);
   };
 
-  const handleDelete = async (index: number) => {
-    if (!config) return;
-    const name = config.groups[index]?.name ?? '';
-    if (!confirm(`Delete group "${name}"?`)) return;
-    const groups = config.groups.filter((_, i) => i !== index);
-    await saveConfig.mutateAsync({ config: { groups } as Config });
-  };
-
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
@@ -136,14 +128,6 @@ function ConfigPage() {
                     disabled={formMode !== null}
                   >
                     Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDelete(i)}
-                    disabled={saveConfig.isPending}
-                  >
-                    Delete
                   </Button>
                 </div>
               </CardContent>

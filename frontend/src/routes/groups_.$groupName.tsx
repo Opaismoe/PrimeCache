@@ -239,8 +239,8 @@ function GroupDetailPage() {
             <TabsTrigger value="uptime">Uptime</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
             <TabsTrigger value="links">Links</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="history">Cache runs</TabsTrigger>
+            <TabsTrigger value="settings">Config</TabsTrigger>
           </TabsList>
           {['performance', 'uptime', 'seo', 'links'].includes(activeTab) && (
             <a
@@ -334,7 +334,7 @@ function GroupDetailPage() {
                     {historyRuns.map((run) => (
                       <TableRow
                         key={run.id}
-                        className="cursor-pointer"
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
                         onClick={() =>
                           navigate({
                             to: '/history/$runId',

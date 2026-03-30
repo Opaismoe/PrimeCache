@@ -1,4 +1,4 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
   type ColumnFiltersState,
@@ -29,7 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { StatusBadge } from '../components/StatusBadge';
-import { cancelRun, deleteRuns, getConfig, getRuns } from '../lib/api';
+import { getConfig, getRuns } from '../lib/api';
 import { formatDate, formatDuration } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
 import type { Run } from '../lib/types';
@@ -118,7 +118,6 @@ function HistorySkeleton() {
 function HistoryPage() {
   const { page, group } = Route.useSearch();
   const navigate = useNavigate({ from: '/history' });
-  const queryClient = useQueryClient();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -130,27 +129,7 @@ function HistoryPage() {
 
   const { data: config } = useQuery(configQueryOptions);
 
-  const deleteMutation = useMutation({
-    mutationFn: (g?: string) => deleteRuns(g),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() });
-      navigate({ search: { page: 1, group } });
-    },
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: (id: number) => cancelRun(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() }),
-  });
-
   const groups = config?.groups.map((g) => g.name) ?? [];
-
-  const handleClear = () => {
-    const label = group ? `all runs for "${group}"` : 'all run history';
-    if (confirm(`Delete ${label}? This cannot be undone.`)) {
-      deleteMutation.mutate(group || undefined);
-    }
-  };
 
   const columns = [
     columnHelper.accessor('id', {
@@ -194,29 +173,6 @@ function HistoryPage() {
       },
       enableSorting: false,
     }),
-    columnHelper.display({
-      id: 'actions',
-      header: '',
-      cell: (info) => {
-        const run = info.row.original;
-        return run.status === 'running' ? (
-          <div className="text-right">
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={cancelMutation.isPending && cancelMutation.variables === run.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                cancelMutation.mutate(run.id);
-              }}
-            >
-              Stop
-            </Button>
-          </div>
-        ) : null;
-      },
-      enableSorting: false,
-    }),
   ];
 
   const table = useReactTable({
@@ -250,14 +206,6 @@ function HistoryPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleClear}
-            disabled={deleteMutation.isPending}
-          >
-            {deleteMutation.isPending ? 'Clearing…' : 'Clear'}
-          </Button>
         </div>
       </div>
 

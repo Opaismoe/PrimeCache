@@ -71,9 +71,9 @@ function RootLayout() {
           </span>
           <div className="ml-auto flex items-center gap-6">
             {!isPublicRoute && <NavLink to="/">Dashboard</NavLink>}
-            {!isPublicRoute && <NavLink to="/history">History</NavLink>}
             {!isPublicRoute && groups.length > 0 && <DetailsDropdown groups={groups} />}
             {!isPublicRoute && <NavLink to="/config">Config</NavLink>}
+            {!isPublicRoute && <NavLink to="/admin">Admin</NavLink>}
             <NavLink to="/status">Status</NavLink>
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
               {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
