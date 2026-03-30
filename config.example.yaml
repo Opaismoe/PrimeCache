@@ -1,0 +1,66 @@
+groups:
+  # Minimal example — visit two pages every 15 minutes
+  - name: homepage
+    schedule: "*/15 * * * *"
+    urls:
+      - https://example.com/
+      - https://example.com/about/
+    options:
+      scrollToBottom: true
+      waitForSelector: "main"
+
+  # Crawl example — follow internal links up to 2 levels deep
+  - name: blog
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/blog/
+    options:
+      crawl: true
+      crawl_depth: 2
+
+  # All options shown with their defaults
+  - name: full-example
+    schedule: "0 6 * * *"
+    urls:
+      - https://example.com/
+    options:
+      # Navigation
+      navigationTimeout: 30000          # ms before navigation times out (default: 30000)
+      waitUntil: networkidle            # networkidle | load | domcontentloaded (default: networkidle)
+      waitForSelector: "main"           # wait for CSS selector before measuring (optional)
+
+      # Behaviour simulation
+      scrollToBottom: false             # scroll to page bottom after load (default: false)
+      delayMinMs: 2000                  # min delay between URLs in ms — overrides global (optional)
+      delayMaxMs: 5000                  # max delay between URLs in ms — overrides global (optional)
+
+      # Browser fingerprint
+      userAgent: "MyBot/1.0"           # override rotating user agent for this group (optional)
+      stealth: true                     # stealth plugin + fingerprint randomisation (default: true)
+      fetchAssets: true                 # set false to block fonts/images/CSS/JS downloads (default: true)
+
+      # Auth & session
+      basicAuth:                        # HTTP Basic Auth credentials (optional)
+        username: myuser
+        password: secret
+      cookies:                          # cookies injected before page load (optional)
+        - name: session
+          value: abc123
+          domain: example.com
+          path: /
+          httpOnly: true
+          secure: true
+      localStorage:                     # localStorage entries injected before page load (optional)
+        feature_flag: "true"
+        locale: "en-US"
+
+      # Crawling
+      crawl: false                      # BFS crawl of same-origin links (default: false)
+      crawl_depth: 2                    # max crawl depth, 1–10 (required when crawl: true)
+
+      # Data collection
+      screenshot: false                 # capture JPEG screenshot per visit (default: false)
+      checkBrokenLinks: false           # HEAD-check all discovered links (default: false)
+
+      # Reliability
+      retryCount: 3                     # retry failed URL visits, 0–10 (default: 3)
