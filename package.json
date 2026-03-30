@@ -6,8 +6,8 @@
     "dev": "pnpm --filter primecache-backend dev",
     "build": "pnpm --filter primecache-backend build && pnpm --filter primecache-frontend build",
     "start": "pnpm --filter primecache-backend start",
-    "test": "pnpm --filter primecache-backend test",
-    "test:watch": "pnpm --filter primecache-backend test:watch",
+    "test": "pnpm -r test",
+    "test:watch": "pnpm -r test:watch",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   }
