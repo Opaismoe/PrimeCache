@@ -42,6 +42,11 @@ export interface Cookie {
   expires?: number;
 }
 
+export interface BasicAuth {
+  username: string;
+  password: string;
+}
+
 export interface GroupOptions {
   scrollToBottom: boolean;
   waitForSelector?: string;
@@ -50,6 +55,7 @@ export interface GroupOptions {
   userAgent?: string;
   localStorage?: Record<string, string>;
   cookies?: Cookie[];
+  basicAuth?: BasicAuth;
   navigationTimeout?: number;
   waitUntil?: 'networkidle' | 'load' | 'domcontentloaded';
   delayMinMs?: number;

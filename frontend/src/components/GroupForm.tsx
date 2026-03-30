@@ -46,6 +46,12 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
     if (!cookies?.length) return '';
     return JSON.stringify(cookies, null, 2);
   });
+  const [basicAuthUsername, setBasicAuthUsername] = useState(
+    initial?.options.basicAuth?.username ?? '',
+  );
+  const [basicAuthPassword, setBasicAuthPassword] = useState(
+    initial?.options.basicAuth?.password ?? '',
+  );
   const [advancedOpen, setAdvancedOpen] = useState(!!initial);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -89,10 +95,20 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
 
     setSaving(true);
     try {
+      const basicAuthValue =
+        basicAuthUsername.trim() && basicAuthPassword
+          ? { username: basicAuthUsername.trim(), password: basicAuthPassword }
+          : undefined;
+
       await onSave({
         ...group,
         urls,
-        options: { ...group.options, localStorage: localStorageValue, cookies: cookiesValue },
+        options: {
+          ...group.options,
+          localStorage: localStorageValue,
+          cookies: cookiesValue,
+          basicAuth: basicAuthValue,
+        },
       });
     } catch (err) {
       if (err instanceof ApiError && err.issues) {
@@ -463,6 +479,37 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                   Injected before page load. Each object supports <code>name</code>,{' '}
                   <code>value</code>, <code>domain</code>, <code>path</code>, <code>httpOnly</code>,{' '}
                   <code>secure</code>, <code>sameSite</code>.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label>
+                  HTTP Basic Auth{' '}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="basicAuthUsername"
+                    type="text"
+                    autoComplete="off"
+                    value={basicAuthUsername}
+                    onChange={(e) => setBasicAuthUsername(e.target.value)}
+                    placeholder="Username"
+                    className="max-w-48"
+                  />
+                  <Input
+                    id="basicAuthPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={basicAuthPassword}
+                    onChange={(e) => setBasicAuthPassword(e.target.value)}
+                    placeholder="Password"
+                    className="max-w-48"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Handles <code>WWW-Authenticate</code> challenges automatically for all requests in
+                  the visit.
                 </p>
               </div>
             </div>
