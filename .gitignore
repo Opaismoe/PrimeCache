@@ -23,6 +23,12 @@ logs/
 # OS
 .DS_Store
 
+# Private config (use config.example.yaml as a template)
+config.yaml
+
+# Planning notes
+.ai/
+
 # Docs
 deploy_coolify.md
 ideas.md
