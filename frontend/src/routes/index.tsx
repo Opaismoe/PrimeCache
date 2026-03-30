@@ -11,13 +11,13 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { formatChartDate } from '../lib/formatChartDate';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '../components/StatusBadge';
 import { getConfig, getLatestRuns, getStats, triggerAsync } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
+import { formatChartDate } from '../lib/formatChartDate';
 import { formatDate } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
 import type { Run, Stats } from '../lib/types';
@@ -149,7 +149,9 @@ function DashboardPage() {
     fill: STATUS_COLORS[status] ?? '#6b7280',
   }));
 
-  const { groups: stackedGroups, data: stackedData } = buildStackedBarData(stats?.visitsByDay ?? []);
+  const { groups: stackedGroups, data: stackedData } = buildStackedBarData(
+    stats?.visitsByDay ?? [],
+  );
 
   return (
     <div>
@@ -271,10 +273,7 @@ function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart
-                    data={stackedData}
-                    margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
-                  >
+                  <BarChart data={stackedData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="date"
@@ -296,12 +295,7 @@ function DashboardPage() {
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     {stackedGroups.map((group, i) => (
-                      <Bar
-                        key={group}
-                        dataKey={group}
-                        stackId="a"
-                        fill={getGroupColor(i)}
-                      />
+                      <Bar key={group} dataKey={group} stackId="a" fill={getGroupColor(i)} />
                     ))}
                   </BarChart>
                 </ResponsiveContainer>
