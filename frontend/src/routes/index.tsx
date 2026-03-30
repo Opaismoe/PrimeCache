@@ -1,17 +1,17 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
   Cell,
   Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatChartDate } from '../lib/formatChartDate';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -43,27 +43,27 @@ export const Route = createFileRoute('/')({
 });
 
 const STATUS_COLORS: Record<string, string> = {
-  completed: '#4ade80',
-  partial_failure: '#fbbf24',
-  failed: '#f87171',
-  cancelled: '#9ca3af',
+  completed: '#22c55e',
+  partial_failure: '#f59e0b',
+  failed: '#ef4444',
+  cancelled: '#6b7280',
 };
 
 const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
-  partial_failure: 'Partial',
+  partial_failure: 'Partial Failure',
   failed: 'Failed',
   cancelled: 'Cancelled',
 };
 
-// Generate a distinct color for each group line
-const LINE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
+// Generate a distinct color for each group bar
+const GROUP_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
 
 function getGroupColor(index: number) {
-  return LINE_COLORS[index % LINE_COLORS.length];
+  return GROUP_COLORS[index % GROUP_COLORS.length];
 }
 
-function buildLineChartData(visitsByDay: Stats['visitsByDay']) {
+function buildStackedBarData(visitsByDay: Stats['visitsByDay']) {
   const groups = [...new Set(visitsByDay.map((v) => v.group))];
   const byDate = new Map<string, Record<string, number>>();
   for (const v of visitsByDay) {
@@ -143,13 +143,13 @@ function DashboardPage() {
 
   const latestByGroup = new Map<string, Run>((latestRuns ?? []).map((r) => [r.group_name, r]));
 
-  const pieData = Object.entries(stats?.statusCounts ?? {}).map(([status, count]) => ({
-    name: STATUS_LABELS[status] ?? status,
-    value: count,
-    color: STATUS_COLORS[status] ?? '#6b7280',
+  const statusBarData = Object.entries(stats?.statusCounts ?? {}).map(([status, count]) => ({
+    status: STATUS_LABELS[status] ?? status,
+    count,
+    fill: STATUS_COLORS[status] ?? '#6b7280',
   }));
 
-  const { groups: lineGroups, data: lineData } = buildLineChartData(stats?.visitsByDay ?? []);
+  const { groups: stackedGroups, data: stackedData } = buildStackedBarData(stats?.visitsByDay ?? []);
 
   return (
     <div>
@@ -222,28 +222,27 @@ function DashboardPage() {
 
       {stats && (
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          {/* Pie chart — run status breakdown */}
-          {pieData.length > 0 && (
+          {/* Bar chart — run status breakdown */}
+          {statusBarData.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium">Run status breakdown</h2>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                    >
-                      {pieData.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
+                  <BarChart
+                    data={statusBarData}
+                    margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="status"
+                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                      allowDecimals={false}
+                    />
                     <Tooltip
                       contentStyle={{
                         background: 'hsl(var(--popover))',
@@ -253,25 +252,34 @@ function DashboardPage() {
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                       itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
                     />
-                  </PieChart>
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {statusBarData.map((entry) => (
+                        <Cell key={entry.status} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           )}
 
-          {/* Line chart — URLs visited per day per group */}
-          {lineData.length > 0 && (
+          {/* Stacked bar chart — URLs visited per day per group */}
+          {stackedData.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <h2 className="text-sm font-medium">URLs visited per day (last 30 days)</h2>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={lineData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                  <BarChart
+                    data={stackedData}
+                    margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="date"
                       tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                      tickFormatter={(v: string) => v.slice(5)}
+                      tickFormatter={(v: unknown) => formatChartDate(v)}
                     />
                     <YAxis
                       tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
@@ -287,18 +295,15 @@ function DashboardPage() {
                       itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {lineGroups.map((group, i) => (
-                      <Line
+                    {stackedGroups.map((group, i) => (
+                      <Bar
                         key={group}
-                        type="monotone"
                         dataKey={group}
-                        stroke={getGroupColor(i)}
-                        dot={false}
-                        strokeWidth={2}
-                        activeDot={{ r: 4 }}
+                        stackId="a"
+                        fill={getGroupColor(i)}
                       />
                     ))}
-                  </LineChart>
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
