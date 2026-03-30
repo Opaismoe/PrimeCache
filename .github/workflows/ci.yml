@@ -33,5 +33,9 @@ jobs:
       - name: Lint
         run: pnpm -r lint
 
+      # Backend api tests serve GET / from frontend/dist; a clean CI checkout has no dist until built.
+      - name: Build frontend
+        run: pnpm --filter primecache-frontend build
+
       - name: Test
         run: pnpm test
