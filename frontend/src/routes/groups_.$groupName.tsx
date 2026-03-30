@@ -279,7 +279,6 @@ function GroupDetailPage() {
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
-
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <Card>
@@ -321,7 +320,6 @@ function TabLoadingSkeleton({ rows, cols }: { rows: number; cols: number }) {
 }
 
 // ── Overview Tab ─────────────────────────────────────────────────────────────
-
 function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
   if (!overview) return null;
 
@@ -712,7 +710,7 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
     }
     row[pt.url] = pt.wasDown ? 0 : 100;
   }
-  const trendChartData = [...byRun.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  const trendChartData = [...byRun.values()].sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt)));
 
   return (
     <div>
