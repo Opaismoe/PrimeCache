@@ -110,7 +110,7 @@ function DetailsDropdown({ groups }: { groups: { name: string }[] }) {
           isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
         }`}
       >
-        Details
+        Projects
         <ChevronDown className="h-3 w-3" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
