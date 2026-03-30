@@ -710,7 +710,9 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
     }
     row[pt.url] = pt.wasDown ? 0 : 100;
   }
-  const trendChartData = [...byRun.values()].sort((a, b) => String(a.startedAt).localeCompare(String(b.startedAt)));
+  const trendChartData = [...byRun.values()].sort((a, b) =>
+    String(a.startedAt).localeCompare(String(b.startedAt)),
+  );
 
   return (
     <div>
