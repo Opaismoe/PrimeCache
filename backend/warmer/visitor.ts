@@ -70,7 +70,7 @@ export async function visitUrl(
 
   try {
     const browser = await getBrowser(options.stealth)
-    context = await createContext(browser, options.userAgent)
+    context = await createContext(browser, options.userAgent, options.basicAuth)
     const page = await context.newPage()
 
     // Block static asset downloads when fetchAssets is disabled.

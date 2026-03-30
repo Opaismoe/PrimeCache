@@ -21,6 +21,10 @@ const GroupOptionsSchema = z.object({
     sameSite:  z.enum(['Strict', 'Lax', 'None']).optional(),
     expires:   z.number().optional(),
   })).optional(),
+  basicAuth:           z.object({
+    username: z.string(),
+    password: z.string(),
+  }).optional(),
   navigationTimeout:   z.number().int().min(5_000).default(30_000),
   waitUntil:           z.enum(['networkidle', 'load', 'domcontentloaded']).default('networkidle'),
   delayMinMs:          z.number().int().min(0).optional(),
