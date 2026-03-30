@@ -1,5 +1,11 @@
 import { useState } from 'react';
-import { type CronState, type CronType, cronToString, parseCron, describeCron } from '../lib/cronUtils';
+import {
+  type CronState,
+  type CronType,
+  cronToString,
+  describeCron,
+  parseCron,
+} from '../lib/cronUtils';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -41,7 +47,7 @@ export function CronBuilder({ value, onChange }: Props) {
             min={1}
             max={59}
             value={state.minuteInterval}
-            onChange={(e) => update({ minuteInterval: parseInt(e.target.value) || 1 })}
+            onChange={(e) => update({ minuteInterval: parseInt(e.target.value, 10) || 1 })}
             className={`w-20 ${inputCls}`}
           />
         )}
@@ -52,7 +58,7 @@ export function CronBuilder({ value, onChange }: Props) {
             min={1}
             max={23}
             value={state.hourInterval}
-            onChange={(e) => update({ hourInterval: parseInt(e.target.value) || 1 })}
+            onChange={(e) => update({ hourInterval: parseInt(e.target.value, 10) || 1 })}
             className={`w-20 ${inputCls}`}
           />
         )}
@@ -72,7 +78,7 @@ export function CronBuilder({ value, onChange }: Props) {
         {state.type === 'weekly' && (
           <select
             value={state.dayOfWeek}
-            onChange={(e) => update({ dayOfWeek: parseInt(e.target.value) })}
+            onChange={(e) => update({ dayOfWeek: parseInt(e.target.value, 10) })}
             className={inputCls}
           >
             {DAY_NAMES.map((d, i) => (

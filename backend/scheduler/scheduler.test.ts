@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Db } from '../db/client';
 
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token');
@@ -30,7 +31,7 @@ describe('scheduler', () => {
     const cron = (await import('node-cron')).default;
     const { registerJobs } = await import('./index');
 
-    registerJobs([group('a', '*/15 * * * *'), group('b', '0 * * * *')], {} as any);
+    registerJobs([group('a', '*/15 * * * *'), group('b', '0 * * * *')], {} as unknown as Db);
     expect(cron.schedule).toHaveBeenCalledTimes(2);
   });
 
@@ -39,7 +40,7 @@ describe('scheduler', () => {
     const cron = (await import('node-cron')).default;
     const { registerJobs } = await import('./index');
 
-    registerJobs([group('homepage', '*/15 * * * *')], {} as any);
+    registerJobs([group('homepage', '*/15 * * * *')], {} as unknown as Db);
     expect(cron.schedule).toHaveBeenCalledWith(
       '*/15 * * * *',
       expect.any(Function),
@@ -51,8 +52,8 @@ describe('scheduler', () => {
     vi.resetModules();
     const { registerJobs } = await import('./index');
 
-    registerJobs([group('a', '* * * * *')], {} as any);
-    registerJobs([group('b', '* * * * *')], {} as any);
+    registerJobs([group('a', '* * * * *')], {} as unknown as Db);
+    registerJobs([group('b', '* * * * *')], {} as unknown as Db);
     expect(mockTask.destroy).toHaveBeenCalledOnce();
   });
 
@@ -62,7 +63,7 @@ describe('scheduler', () => {
     const { runGroup } = await import('../warmer/runner');
     const { registerJobs } = await import('./index');
 
-    const db = {} as any;
+    const db = {} as unknown as Db;
     registerJobs([group('homepage', '*/15 * * * *')], db);
 
     // Extract and invoke the cron callback

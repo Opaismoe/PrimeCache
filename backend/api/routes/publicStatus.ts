@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../../db/client';
+import { sqlExecuteRows } from '../../db/sqlExecuteRows';
 
 export interface GroupStatus {
   groupName: string;
@@ -30,7 +31,7 @@ export async function getGroupUptime(db: Db): Promise<GroupStatus[]> {
     GROUP BY r.group_name
     ORDER BY r.group_name
   `);
-  return (rows as any[]).map((r) => ({
+  return sqlExecuteRows(rows).map((r) => ({
     groupName: r.group_name as string,
     uptimePct: Number(r.uptime_pct ?? 0),
     lastRunAt: r.last_run_at as string | null,

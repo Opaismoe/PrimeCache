@@ -8,87 +8,75 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as StatusRouteImport } from './routes/status'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as ConfigRouteImport } from './routes/config'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as HistoryRunIdRouteImport } from './routes/history_.$runId'
-import { Route as GroupsGroupNameRouteImport } from './routes/groups_.$groupName'
+import { Route as rootRouteImport } from './routes/__root';
+import { Route as ConfigRouteImport } from './routes/config';
+import { Route as GroupsGroupNameRouteImport } from './routes/groups_.$groupName';
+import { Route as HistoryRouteImport } from './routes/history';
+import { Route as HistoryRunIdRouteImport } from './routes/history_.$runId';
+import { Route as IndexRouteImport } from './routes/index';
+import { Route as StatusRouteImport } from './routes/status';
 
 const StatusRoute = StatusRouteImport.update({
   id: '/status',
   path: '/status',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const ConfigRoute = ConfigRouteImport.update({
   id: '/config',
   path: '/config',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const HistoryRunIdRoute = HistoryRunIdRouteImport.update({
   id: '/history_/$runId',
   path: '/history/$runId',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 const GroupsGroupNameRoute = GroupsGroupNameRouteImport.update({
   id: '/groups_/$groupName',
   path: '/groups/$groupName',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/config': typeof ConfigRoute
-  '/history': typeof HistoryRoute
-  '/status': typeof StatusRoute
-  '/groups/$groupName': typeof GroupsGroupNameRoute
-  '/history/$runId': typeof HistoryRunIdRoute
+  '/': typeof IndexRoute;
+  '/config': typeof ConfigRoute;
+  '/history': typeof HistoryRoute;
+  '/status': typeof StatusRoute;
+  '/groups/$groupName': typeof GroupsGroupNameRoute;
+  '/history/$runId': typeof HistoryRunIdRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/config': typeof ConfigRoute
-  '/history': typeof HistoryRoute
-  '/status': typeof StatusRoute
-  '/groups/$groupName': typeof GroupsGroupNameRoute
-  '/history/$runId': typeof HistoryRunIdRoute
+  '/': typeof IndexRoute;
+  '/config': typeof ConfigRoute;
+  '/history': typeof HistoryRoute;
+  '/status': typeof StatusRoute;
+  '/groups/$groupName': typeof GroupsGroupNameRoute;
+  '/history/$runId': typeof HistoryRunIdRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/config': typeof ConfigRoute
-  '/history': typeof HistoryRoute
-  '/status': typeof StatusRoute
-  '/groups_/$groupName': typeof GroupsGroupNameRoute
-  '/history_/$runId': typeof HistoryRunIdRoute
+  __root__: typeof rootRouteImport;
+  '/': typeof IndexRoute;
+  '/config': typeof ConfigRoute;
+  '/history': typeof HistoryRoute;
+  '/status': typeof StatusRoute;
+  '/groups_/$groupName': typeof GroupsGroupNameRoute;
+  '/history_/$runId': typeof HistoryRunIdRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/config'
-    | '/history'
-    | '/status'
-    | '/groups/$groupName'
-    | '/history/$runId'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/config'
-    | '/history'
-    | '/status'
-    | '/groups/$groupName'
-    | '/history/$runId'
+  fileRoutesByFullPath: FileRoutesByFullPath;
+  fullPaths: '/' | '/config' | '/history' | '/status' | '/groups/$groupName' | '/history/$runId';
+  fileRoutesByTo: FileRoutesByTo;
+  to: '/' | '/config' | '/history' | '/status' | '/groups/$groupName' | '/history/$runId';
   id:
     | '__root__'
     | '/'
@@ -96,62 +84,62 @@ export interface FileRouteTypes {
     | '/history'
     | '/status'
     | '/groups_/$groupName'
-    | '/history_/$runId'
-  fileRoutesById: FileRoutesById
+    | '/history_/$runId';
+  fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  ConfigRoute: typeof ConfigRoute
-  HistoryRoute: typeof HistoryRoute
-  StatusRoute: typeof StatusRoute
-  GroupsGroupNameRoute: typeof GroupsGroupNameRoute
-  HistoryRunIdRoute: typeof HistoryRunIdRoute
+  IndexRoute: typeof IndexRoute;
+  ConfigRoute: typeof ConfigRoute;
+  HistoryRoute: typeof HistoryRoute;
+  StatusRoute: typeof StatusRoute;
+  GroupsGroupNameRoute: typeof GroupsGroupNameRoute;
+  HistoryRunIdRoute: typeof HistoryRunIdRoute;
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
     '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/status';
+      path: '/status';
+      fullPath: '/status';
+      preLoaderRoute: typeof StatusRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/history';
+      path: '/history';
+      fullPath: '/history';
+      preLoaderRoute: typeof HistoryRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/config': {
-      id: '/config'
-      path: '/config'
-      fullPath: '/config'
-      preLoaderRoute: typeof ConfigRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/config';
+      path: '/config';
+      fullPath: '/config';
+      preLoaderRoute: typeof ConfigRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/';
+      path: '/';
+      fullPath: '/';
+      preLoaderRoute: typeof IndexRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/history_/$runId': {
-      id: '/history_/$runId'
-      path: '/history/$runId'
-      fullPath: '/history/$runId'
-      preLoaderRoute: typeof HistoryRunIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/history_/$runId';
+      path: '/history/$runId';
+      fullPath: '/history/$runId';
+      preLoaderRoute: typeof HistoryRunIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/groups_/$groupName': {
-      id: '/groups_/$groupName'
-      path: '/groups/$groupName'
-      fullPath: '/groups/$groupName'
-      preLoaderRoute: typeof GroupsGroupNameRouteImport
-      parentRoute: typeof rootRouteImport
-    }
+      id: '/groups_/$groupName';
+      path: '/groups/$groupName';
+      fullPath: '/groups/$groupName';
+      preLoaderRoute: typeof GroupsGroupNameRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -162,7 +150,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatusRoute: StatusRoute,
   GroupsGroupNameRoute: GroupsGroupNameRoute,
   HistoryRunIdRoute: HistoryRunIdRoute,
-}
+};
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+  ._addFileTypes<FileRouteTypes>();

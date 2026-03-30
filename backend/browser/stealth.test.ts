@@ -1,3 +1,4 @@
+import type { Page } from 'playwright';
 import { describe, expect, it, vi } from 'vitest';
 import { randomDelay, simulateMouseMovement, simulateReading, simulateScroll } from './stealth';
 
@@ -8,7 +9,7 @@ function makePage(overrides: Record<string, unknown> = {}) {
     viewportSize: vi.fn().mockReturnValue({ width: 1280, height: 900 }),
     waitForTimeout: vi.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as any;
+  } as unknown as Page;
 }
 
 describe('simulateMouseMovement', () => {

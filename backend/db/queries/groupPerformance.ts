@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
+import { sqlExecuteRows } from '../sqlExecuteRows';
 
 export interface UrlPerformance {
   url: string;
@@ -44,7 +45,7 @@ export async function getGroupPerformance(
     ORDER BY p95_load DESC
   `);
 
-  const urls: UrlPerformance[] = (perfRows as any[]).map((row) => ({
+  const urls: UrlPerformance[] = sqlExecuteRows(perfRows).map((row) => ({
     url: row.url as string,
     p50LoadTimeMs: Number(row.p50_load),
     p95LoadTimeMs: Number(row.p95_load),
@@ -72,7 +73,7 @@ export async function getGroupPerformance(
     ORDER BY r.started_at ASC, v.url
   `);
 
-  const loadTimeTrend: LoadTimeTrendPoint[] = (trendRows as any[]).map((row) => ({
+  const loadTimeTrend: LoadTimeTrendPoint[] = sqlExecuteRows(trendRows).map((row) => ({
     runId: Number(row.run_id),
     startedAt: new Date(row.started_at as string).toISOString(),
     url: row.url as string,

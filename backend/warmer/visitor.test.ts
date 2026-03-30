@@ -1,3 +1,4 @@
+import type { Browser, BrowserContext, Page } from 'playwright';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
@@ -20,7 +21,7 @@ vi.mock('../browser/cookieConsent', () => ({
 }));
 
 function makeMockPage(statusCode = 200, links: string[] = []) {
-  const page: any = {
+  const page = {
     on: vi.fn((event, handler) => {
       if (event === 'response') {
         handler({
@@ -45,14 +46,14 @@ function makeMockPage(statusCode = 200, links: string[] = []) {
       .mockResolvedValueOnce(null) // nav timing — returns null → fallback to wall clock
       .mockResolvedValue(links), // SEO, CWV, link extraction
   };
-  return page;
+  return page as unknown as Page;
 }
 
-function makeMockContext(page: any) {
+function makeMockContext(page: Page): BrowserContext {
   return {
     newPage: vi.fn().mockResolvedValue(page),
     close: vi.fn().mockResolvedValue(undefined),
-  };
+  } as unknown as BrowserContext;
 }
 
 describe('visitUrl', () => {
@@ -62,8 +63,8 @@ describe('visitUrl', () => {
     const { createContext } = await import('../browser/context');
     const page = makeMockPage();
     const ctx = makeMockContext(page);
-    vi.mocked(getBrowser).mockResolvedValue({} as any);
-    vi.mocked(createContext).mockResolvedValue(ctx as any);
+    vi.mocked(getBrowser).mockResolvedValue({} as unknown as Browser);
+    vi.mocked(createContext).mockResolvedValue(ctx);
   });
 
   it('returns a VisitResult with statusCode and url', async () => {
@@ -86,7 +87,7 @@ describe('visitUrl', () => {
     const page = makeMockPage();
     page.goto = vi.fn().mockRejectedValue(new Error('Navigation timeout'));
     const ctx = makeMockContext(page);
-    vi.mocked(createContext).mockResolvedValue(ctx as any);
+    vi.mocked(createContext).mockResolvedValue(ctx);
 
     const { visitUrl } = await import('./visitor');
     const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false });
@@ -123,7 +124,7 @@ describe('visitUrl', () => {
       'https://example.com/contact',
       'https://other.com/external', // different origin — should be filtered
     ]);
-    vi.mocked(createContext).mockResolvedValue(makeMockContext(page) as any);
+    vi.mocked(createContext).mockResolvedValue(makeMockContext(page));
 
     const { visitUrl } = await import('./visitor');
     const result = await visitUrl('https://example.com/', {
@@ -161,6 +162,6 @@ describe('visitUrl', () => {
       crawl: false,
       userAgent: customUA,
     });
-    expect(vi.mocked(createContext)).toHaveBeenCalledWith(expect.anything(), customUA);
+    expect(vi.mocked(createContext)).toHaveBeenCalledWith(expect.anything(), customUA, undefined);
   });
 });

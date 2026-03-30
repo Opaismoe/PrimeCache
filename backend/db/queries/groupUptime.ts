@@ -1,13 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
-
-/** Normalise db.execute() result — postgres driver returns T[], PGlite returns { rows: T[] } */
-function toRows(result: unknown): any[] {
-  if (Array.isArray(result)) return result as any[];
-  if (result && typeof result === 'object' && 'rows' in result)
-    return (result as any).rows as any[];
-  return [];
-}
+import { sqlExecuteRows } from '../sqlExecuteRows';
 
 export interface UrlUptime {
   url: string;
@@ -60,7 +53,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     ORDER BY uptime_pct ASC
   `);
 
-  const urls: UrlUptime[] = toRows(uptimeRows).map((row) => ({
+  const urls: UrlUptime[] = sqlExecuteRows(uptimeRows).map((row) => ({
     url: row.url as string,
     uptimePct: Math.round(Number(row.uptime_pct) * 10) / 10,
     totalChecks: Number(row.total_checks),
@@ -82,7 +75,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     LIMIT 200
   `);
 
-  const timeline: UptimeTimelinePoint[] = toRows(timelineRows).map((row) => ({
+  const timeline: UptimeTimelinePoint[] = sqlExecuteRows(timelineRows).map((row) => ({
     url: row.url as string,
     visitedAt: new Date(row.visited_at as string).toISOString(),
     isDown: Boolean(row.is_down),
@@ -102,7 +95,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     LIMIT 600
   `);
 
-  const uptimeTrend: UptimeTrendPoint[] = toRows(trendRows).map((row) => ({
+  const uptimeTrend: UptimeTrendPoint[] = sqlExecuteRows(trendRows).map((row) => ({
     runId: Number(row.run_id),
     startedAt: new Date(row.started_at as string).toISOString(),
     url: row.url as string,

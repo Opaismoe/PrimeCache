@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { getPublicStatus } from '../lib/api';
-import { queryKeys } from '../lib/queryKeys';
-import { formatDate } from '../lib/formatters';
+import { createFileRoute } from '@tanstack/react-router';
 import { StatusBadge } from '../components/StatusBadge';
+import { getPublicStatus } from '../lib/api';
+import { formatDate } from '../lib/formatters';
+import { queryKeys } from '../lib/queryKeys';
 import type { RunStatus } from '../lib/types';
 
 export const Route = createFileRoute('/status')({
@@ -61,12 +61,14 @@ function StatusPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {g.lastRunStatus && (
-                    <StatusBadge status={g.lastRunStatus as RunStatus} />
-                  )}
+                  {g.lastRunStatus && <StatusBadge status={g.lastRunStatus as RunStatus} />}
                   <span
                     className={`text-sm font-semibold ${
-                      isHealthy ? 'text-green-500' : isDegraded ? 'text-yellow-500' : 'text-destructive'
+                      isHealthy
+                        ? 'text-green-500'
+                        : isDegraded
+                          ? 'text-yellow-500'
+                          : 'text-destructive'
                     }`}
                   >
                     {g.uptimePct.toFixed(1)}%

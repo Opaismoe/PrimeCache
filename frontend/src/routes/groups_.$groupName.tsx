@@ -1,20 +1,11 @@
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryOptions } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getGroupOverview, getGroupPerformance, getGroupUptime, getGroupSeo, getGroupBrokenLinks, getGroupCwv, getGroupExportUrl, triggerAsync, getConfig } from '../lib/api';
-import { queryKeys } from '../lib/queryKeys';
-import { StatusBadge } from '../components/StatusBadge';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -23,13 +14,33 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StatusBadge } from '../components/StatusBadge';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
-import { formatDate, formatDuration, formatMs } from '../lib/formatters';
-import { formatChartDate } from '../lib/formatChartDate';
+  getConfig,
+  getGroupBrokenLinks,
+  getGroupCwv,
+  getGroupExportUrl,
+  getGroupOverview,
+  getGroupPerformance,
+  getGroupSeo,
+  getGroupUptime,
+  triggerAsync,
+} from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
-import type { UrlPerformance, UrlSeoSummary, BrokenLinkSummary, GroupUptime, GroupOverview, GroupCwv, CwvStatus } from '../lib/types';
+import { formatChartDate } from '../lib/formatChartDate';
+import { formatDate, formatDuration, formatMs } from '../lib/formatters';
+import { queryKeys } from '../lib/queryKeys';
+import type {
+  BrokenLinkSummary,
+  CwvStatus,
+  GroupCwv,
+  GroupOverview,
+  GroupPerformance,
+  GroupUptime,
+  Run,
+  UrlSeoSummary,
+} from '../lib/types';
 
 const LINE_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
 const getColor = (i: number) => LINE_COLORS[i % LINE_COLORS.length];
@@ -39,7 +50,10 @@ export const Route = createFileRoute('/groups_/$groupName')({
     const name = params.groupName;
     return Promise.all([
       queryClient.ensureQueryData(
-        queryOptions({ queryKey: queryKeys.groups.overview(name), queryFn: () => getGroupOverview(name) }),
+        queryOptions({
+          queryKey: queryKeys.groups.overview(name),
+          queryFn: () => getGroupOverview(name),
+        }),
       ),
       queryClient.ensureQueryData(
         queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig }),
@@ -96,7 +110,10 @@ function GroupDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
 
   const { data: overview } = useQuery(
-    queryOptions({ queryKey: queryKeys.groups.overview(groupName), queryFn: () => getGroupOverview(groupName) }),
+    queryOptions({
+      queryKey: queryKeys.groups.overview(groupName),
+      queryFn: () => getGroupOverview(groupName),
+    }),
   );
 
   const { data: config } = useQuery(
@@ -149,7 +166,9 @@ function GroupDetailPage() {
     <div>
       {/* Breadcrumb */}
       <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/" className="hover:text-foreground">Dashboard</Link>
+        <Link to="/" className="hover:text-foreground">
+          Dashboard
+        </Link>
         <span>/</span>
         <span>{groupName}</span>
       </div>
@@ -158,9 +177,7 @@ function GroupDetailPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">{groupName}</h1>
-          {group && (
-            <p className="text-sm text-muted-foreground">{describeCron(group.schedule)}</p>
-          )}
+          {group && <p className="text-sm text-muted-foreground">{describeCron(group.schedule)}</p>}
         </div>
         <Button onClick={() => trigger.mutate()} disabled={trigger.isPending}>
           {trigger.isPending ? 'Starting…' : 'Run now'}
@@ -172,7 +189,10 @@ function GroupDetailPage() {
         <StatCard label="Total runs" value={stats ? String(stats.totalRuns) : '—'} />
         <StatCard label="Success rate" value={stats ? `${stats.successRate.toFixed(1)}%` : '—'} />
         <StatCard label="Avg load time" value={stats ? formatMs(stats.avgLoadTimeMs) : '—'} />
-        <StatCard label="Avg TTFB" value={stats?.avgTtfbMs != null ? formatMs(stats.avgTtfbMs) : '—'} />
+        <StatCard
+          label="Avg TTFB"
+          value={stats?.avgTtfbMs != null ? formatMs(stats.avgTtfbMs) : '—'}
+        />
       </div>
 
       {/* Tabs */}
@@ -208,7 +228,9 @@ function GroupDetailPage() {
           ) : performance ? (
             <PerformanceTab data={performance} />
           ) : (
-            <p className="text-sm text-muted-foreground">No performance data yet — run the group to start collecting data.</p>
+            <p className="text-sm text-muted-foreground">
+              No performance data yet — run the group to start collecting data.
+            </p>
           )}
         </TabsContent>
 
@@ -219,7 +241,9 @@ function GroupDetailPage() {
           ) : uptime ? (
             <UptimeTab data={uptime} colors={LINE_COLORS} />
           ) : (
-            <p className="text-sm text-muted-foreground">No uptime data yet — run the group to start collecting data.</p>
+            <p className="text-sm text-muted-foreground">
+              No uptime data yet — run the group to start collecting data.
+            </p>
           )}
         </TabsContent>
 
@@ -230,7 +254,9 @@ function GroupDetailPage() {
           ) : seo ? (
             <SeoTab data={seo} cwv={cwv} />
           ) : (
-            <p className="text-sm text-muted-foreground">No SEO data collected — visits may be failing. Check the Uptime tab for errors.</p>
+            <p className="text-sm text-muted-foreground">
+              No SEO data collected — visits may be failing. Check the Uptime tab for errors.
+            </p>
           )}
         </TabsContent>
 
@@ -241,7 +267,10 @@ function GroupDetailPage() {
           ) : brokenLinks ? (
             <LinksTab data={brokenLinks} />
           ) : (
-            <p className="text-sm text-muted-foreground">No broken link data yet. Enable <code>checkBrokenLinks: true</code> in config and run the group.</p>
+            <p className="text-sm text-muted-foreground">
+              No broken link data yet. Enable <code>checkBrokenLinks: true</code> in config and run
+              the group.
+            </p>
           )}
         </TabsContent>
       </Tabs>
@@ -269,7 +298,9 @@ function TabLoadingSkeleton({ rows, cols }: { rows: number; cols: number }) {
         <TableHeader>
           <TableRow>
             {Array.from({ length: cols }).map((_, i) => (
-              <TableHead key={i}><Skeleton className="h-4 w-20" /></TableHead>
+              <TableHead key={i}>
+                <Skeleton className="h-4 w-20" />
+              </TableHead>
             ))}
           </TableRow>
         </TableHeader>
@@ -277,7 +308,9 @@ function TabLoadingSkeleton({ rows, cols }: { rows: number; cols: number }) {
           {Array.from({ length: rows }).map((_, i) => (
             <TableRow key={i}>
               {Array.from({ length: cols }).map((_, j) => (
-                <TableCell key={j}><Skeleton className="h-4 w-full max-w-[120px]" /></TableCell>
+                <TableCell key={j}>
+                  <Skeleton className="h-4 w-full max-w-[120px]" />
+                </TableCell>
               ))}
             </TableRow>
           ))}
@@ -307,14 +340,33 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                  <XAxis
+                    dataKey="startedAt"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={formatChartDate}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    domain={[0, 100]}
+                    tickFormatter={(v) => `${v}%`}
+                  />
                   <Tooltip
-                    contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                    contentStyle={{
+                      background: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                    }}
                     labelFormatter={formatChartDate}
                     formatter={(v) => [`${Number(v).toFixed(1)}%`, 'Success rate']}
                   />
-                  <Line type="monotone" dataKey="successRate" stroke="#4ade80" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="successRate"
+                    stroke="#4ade80"
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 4 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -327,14 +379,32 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => formatMs(v)} />
+                  <XAxis
+                    dataKey="startedAt"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={formatChartDate}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(v) => formatMs(v)}
+                  />
                   <Tooltip
-                    contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                    contentStyle={{
+                      background: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                    }}
                     labelFormatter={formatChartDate}
                     formatter={(v) => [formatMs(Number(v)), 'Avg load']}
                   />
-                  <Line type="monotone" dataKey="avgLoadTimeMs" stroke="#60a5fa" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="avgLoadTimeMs"
+                    stroke="#60a5fa"
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 4 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -347,14 +417,33 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                  <XAxis
+                    dataKey="startedAt"
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={formatChartDate}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    domain={[0, 100]}
+                    tickFormatter={(v) => `${v}%`}
+                  />
                   <Tooltip
-                    contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                    contentStyle={{
+                      background: 'hsl(var(--popover))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                    }}
                     labelFormatter={formatChartDate}
                     formatter={(v) => [`${Number(v).toFixed(1)}%`, 'Uptime']}
                   />
-                  <Line type="monotone" dataKey="uptimePct" stroke="#a78bfa" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="uptimePct"
+                    stroke="#a78bfa"
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 4 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -368,14 +457,32 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
               <CardContent>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                    <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
-                    <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} />
+                    <XAxis
+                      dataKey="startedAt"
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      tickFormatter={formatChartDate}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                      domain={[0, 100]}
+                    />
                     <Tooltip
-                      contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                      contentStyle={{
+                        background: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px',
+                      }}
                       labelFormatter={formatChartDate}
                       formatter={(v) => [Number(v).toFixed(1), 'SEO score']}
                     />
-                    <Line type="monotone" dataKey="avgSeoScore" stroke="#fb923c" dot={false} strokeWidth={2} activeDot={{ r: 4 }} />
+                    <Line
+                      type="monotone"
+                      dataKey="avgSeoScore"
+                      stroke="#fb923c"
+                      dot={false}
+                      strokeWidth={2}
+                      activeDot={{ r: 4 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -401,11 +508,13 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentRuns.map((run: any) => (
+              {recentRuns.map((run: Run) => (
                 <TableRow
                   key={run.id}
                   className="cursor-pointer"
-                  onClick={() => {/* navigate handled by link below */}}
+                  onClick={() => {
+                    /* navigate handled by link below */
+                  }}
                 >
                   <TableCell>
                     <Link
@@ -419,7 +528,9 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                   </TableCell>
                   <TableCell>{formatDate(run.started_at)}</TableCell>
                   <TableCell>{formatDuration(run.started_at, run.ended_at)}</TableCell>
-                  <TableCell><StatusBadge status={run.status} /></TableCell>
+                  <TableCell>
+                    <StatusBadge status={run.status} />
+                  </TableCell>
                   <TableCell>
                     {run.success_count !== null ? (
                       <span>
@@ -428,7 +539,9 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                           <span className="ml-2 text-destructive">{run.failure_count} failed</span>
                         ) : null}
                       </span>
-                    ) : '—'}
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -442,19 +555,27 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
 
 // ── Performance Tab ───────────────────────────────────────────────────────────
 
-function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTrend: any[] } }) {
+function PerformanceTab({ data }: { data: GroupPerformance }) {
   if (data.urls.length === 0) {
-    return <p className="text-sm text-muted-foreground">No performance data yet — run the group to start collecting data.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        No performance data yet — run the group to start collecting data.
+      </p>
+    );
   }
 
   const slowCount = data.urls.filter((u) => u.isSlow).length;
 
   // Build multi-line chart data: group by startedAt, each URL is a key
   const urlList = [...new Set(data.loadTimeTrend.map((p) => p.url))].slice(0, 6);
-  const byRun = new Map<string, Record<string, any>>();
+  const byRun = new Map<string, Record<string, string | number>>();
   for (const p of data.loadTimeTrend) {
-    if (!byRun.has(p.startedAt)) byRun.set(p.startedAt, { startedAt: p.startedAt });
-    byRun.get(p.startedAt)![p.url] = p.avgLoadTimeMs;
+    let row = byRun.get(p.startedAt);
+    if (!row) {
+      row = { startedAt: p.startedAt };
+      byRun.set(p.startedAt, row);
+    }
+    row[p.url] = p.avgLoadTimeMs;
   }
   const chartData = [...byRun.values()];
 
@@ -462,7 +583,9 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
     <div>
       {slowCount > 0 && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <span className="font-medium">{slowCount} slow {slowCount === 1 ? 'page' : 'pages'}</span>
+          <span className="font-medium">
+            {slowCount} slow {slowCount === 1 ? 'page' : 'pages'}
+          </span>
           <span className="text-muted-foreground">— P95 load time exceeds 3s</span>
         </div>
       )}
@@ -485,7 +608,9 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
                 <TableCell className="max-w-xs truncate font-mono text-xs">
                   <div className="flex items-center gap-2">
                     {u.isSlow && (
-                      <Badge variant="destructive" className="shrink-0 text-xs">Slow</Badge>
+                      <Badge variant="destructive" className="shrink-0 text-xs">
+                        Slow
+                      </Badge>
                     )}
                     <a
                       href={u.url}
@@ -518,16 +643,41 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
           <CardContent>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => formatMs(v)} />
-                <Tooltip
-                  contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
-                  labelFormatter={formatChartDate}
-                  formatter={(v, name) => [formatMs(Number(v)), String(name).split('/').pop() ?? String(name)]}
+                <XAxis
+                  dataKey="startedAt"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={formatChartDate}
                 />
-                <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => v.split('/').pop() ?? v} />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={(v) => formatMs(v)}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                  }}
+                  labelFormatter={formatChartDate}
+                  formatter={(v, name) => [
+                    formatMs(Number(v)),
+                    String(name).split('/').pop() ?? String(name),
+                  ]}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 10 }}
+                  formatter={(v) => v.split('/').pop() ?? v}
+                />
                 {urlList.map((url, i) => (
-                  <Line key={url} type="monotone" dataKey={url} stroke={getColor(i)} dot={false} strokeWidth={2} activeDot={{ r: 3 }} />
+                  <Line
+                    key={url}
+                    type="monotone"
+                    dataKey={url}
+                    stroke={getColor(i)}
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 3 }}
+                  />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -542,17 +692,25 @@ function PerformanceTab({ data }: { data: { urls: UrlPerformance[]; loadTimeTren
 
 function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
   if (data.urls.length === 0) {
-    return <p className="text-sm text-muted-foreground">No uptime data yet — run the group to start collecting data.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        No uptime data yet — run the group to start collecting data.
+      </p>
+    );
   }
 
   const downNow = data.urls.filter((u) => u.lastStatus === 'down').length;
 
   // Build per-run uptime line chart — 1 = up, 0 = down per URL per run
   const urlList = [...new Set(data.uptimeTrend.map((p) => p.url))];
-  const byRun = new Map<string, Record<string, any>>();
+  const byRun = new Map<string, Record<string, string | number>>();
   for (const pt of data.uptimeTrend) {
-    if (!byRun.has(pt.startedAt)) byRun.set(pt.startedAt, { startedAt: pt.startedAt });
-    byRun.get(pt.startedAt)![pt.url] = pt.wasDown ? 0 : 100;
+    let row = byRun.get(pt.startedAt);
+    if (!row) {
+      row = { startedAt: pt.startedAt };
+      byRun.set(pt.startedAt, row);
+    }
+    row[pt.url] = pt.wasDown ? 0 : 100;
   }
   const trendChartData = [...byRun.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt));
 
@@ -560,7 +718,9 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
     <div>
       {downNow > 0 && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <span className="font-medium">{downNow} {downNow === 1 ? 'URL' : 'URLs'} currently down</span>
+          <span className="font-medium">
+            {downNow} {downNow === 1 ? 'URL' : 'URLs'} currently down
+          </span>
         </div>
       )}
 
@@ -590,18 +750,31 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
                   </a>
                 </TableCell>
                 <TableCell>
-                  <span className={u.uptimePct >= 99 ? 'text-green-500 font-medium' : u.uptimePct >= 95 ? 'text-yellow-500 font-medium' : 'text-destructive font-medium'}>
+                  <span
+                    className={
+                      u.uptimePct >= 99
+                        ? 'text-green-500 font-medium'
+                        : u.uptimePct >= 95
+                          ? 'text-yellow-500 font-medium'
+                          : 'text-destructive font-medium'
+                    }
+                  >
                     {u.uptimePct.toFixed(1)}%
                   </span>
                 </TableCell>
                 <TableCell className="text-muted-foreground">{u.downCount}</TableCell>
                 <TableCell className="text-muted-foreground">{u.totalChecks}</TableCell>
                 <TableCell>
-                  <Badge variant={u.lastStatus === 'up' ? 'default' : 'destructive'} className="text-xs">
+                  <Badge
+                    variant={u.lastStatus === 'up' ? 'default' : 'destructive'}
+                    className="text-xs"
+                  >
                     {u.lastStatus === 'up' ? 'Up' : 'Down'}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground text-xs">{formatDate(u.lastCheckedAt)}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">
+                  {formatDate(u.lastCheckedAt)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -617,16 +790,39 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
           <CardContent>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={trendChartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                <XAxis
+                  dataKey="startedAt"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={formatChartDate}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  domain={[0, 100]}
+                  tickFormatter={(v) => `${v}%`}
+                />
                 <Tooltip
-                  contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                  }}
                   labelFormatter={formatChartDate}
                   formatter={(v, name) => [`${v}%`, String(name).split('/').pop() ?? String(name)]}
                 />
-                <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => v.split('/').pop() ?? v} />
+                <Legend
+                  wrapperStyle={{ fontSize: 10 }}
+                  formatter={(v) => v.split('/').pop() ?? v}
+                />
                 {urlList.slice(0, 6).map((url, i) => (
-                  <Line key={url} type="monotone" dataKey={url} stroke={colors[i % colors.length]} dot={false} strokeWidth={2} activeDot={{ r: 3 }} />
+                  <Line
+                    key={url}
+                    type="monotone"
+                    dataKey={url}
+                    stroke={colors[i % colors.length]}
+                    dot={false}
+                    strokeWidth={2}
+                    activeDot={{ r: 3 }}
+                  />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -645,15 +841,34 @@ const CWV_STATUS_COLOR: Record<CwvStatus, string> = {
   poor: 'text-destructive',
 };
 
-function CwvTile({ label, value, unit, status }: { label: string; value: number | null; unit: string; status: CwvStatus | null }) {
+function CwvTile({
+  label,
+  value,
+  unit,
+  status,
+}: {
+  label: string;
+  value: number | null;
+  unit: string;
+  status: CwvStatus | null;
+}) {
   const color = status ? CWV_STATUS_COLOR[status] : 'text-muted-foreground';
   return (
     <div className="flex flex-col items-center rounded-lg border border-border p-3 text-center">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
       {value != null ? (
         <>
-          <p className={`text-xl font-semibold tabular-nums ${color}`}>{value}{unit}</p>
-          {status && <p className={`text-xs mt-0.5 ${color}`}>{status === 'needs-improvement' ? 'Needs work' : status.charAt(0).toUpperCase() + status.slice(1)}</p>}
+          <p className={`text-xl font-semibold tabular-nums ${color}`}>
+            {value}
+            {unit}
+          </p>
+          {status && (
+            <p className={`text-xs mt-0.5 ${color}`}>
+              {status === 'needs-improvement'
+                ? 'Needs work'
+                : status.charAt(0).toUpperCase() + status.slice(1)}
+            </p>
+          )}
         </>
       ) : (
         <p className="text-lg text-muted-foreground">—</p>
@@ -665,20 +880,63 @@ function CwvTile({ label, value, unit, status }: { label: string; value: number 
 function CwvSection({ cwv }: { cwv: GroupCwv }) {
   // Aggregate: worst P75 across all URLs (most conservative view)
   const aggregate = cwv.urls.reduce<{
-    lcp: number | null; fcp: number | null; cls: number | null; inp: number | null;
-    lcpStatus: CwvStatus | null; fcpStatus: CwvStatus | null; clsStatus: CwvStatus | null; inpStatus: CwvStatus | null;
+    lcp: number | null;
+    fcp: number | null;
+    cls: number | null;
+    inp: number | null;
+    lcpStatus: CwvStatus | null;
+    fcpStatus: CwvStatus | null;
+    clsStatus: CwvStatus | null;
+    inpStatus: CwvStatus | null;
   }>(
     (acc, u) => ({
       lcp: acc.lcp === null ? u.lcpP75 : u.lcpP75 !== null ? Math.max(acc.lcp, u.lcpP75) : acc.lcp,
       fcp: acc.fcp === null ? u.fcpP75 : u.fcpP75 !== null ? Math.max(acc.fcp, u.fcpP75) : acc.fcp,
       cls: acc.cls === null ? u.clsP75 : u.clsP75 !== null ? Math.max(acc.cls, u.clsP75) : acc.cls,
       inp: acc.inp === null ? u.inpP75 : u.inpP75 !== null ? Math.max(acc.inp, u.inpP75) : acc.inp,
-      lcpStatus: acc.lcpStatus === null ? u.lcpStatus : u.lcpStatus === 'poor' ? 'poor' : acc.lcpStatus === 'poor' ? 'poor' : u.lcpStatus ?? acc.lcpStatus,
-      fcpStatus: acc.fcpStatus === null ? u.fcpStatus : u.fcpStatus === 'poor' ? 'poor' : acc.fcpStatus === 'poor' ? 'poor' : u.fcpStatus ?? acc.fcpStatus,
-      clsStatus: acc.clsStatus === null ? u.clsStatus : u.clsStatus === 'poor' ? 'poor' : acc.clsStatus === 'poor' ? 'poor' : u.clsStatus ?? acc.clsStatus,
-      inpStatus: acc.inpStatus === null ? u.inpStatus : u.inpStatus === 'poor' ? 'poor' : acc.inpStatus === 'poor' ? 'poor' : u.inpStatus ?? acc.inpStatus,
+      lcpStatus:
+        acc.lcpStatus === null
+          ? u.lcpStatus
+          : u.lcpStatus === 'poor'
+            ? 'poor'
+            : acc.lcpStatus === 'poor'
+              ? 'poor'
+              : (u.lcpStatus ?? acc.lcpStatus),
+      fcpStatus:
+        acc.fcpStatus === null
+          ? u.fcpStatus
+          : u.fcpStatus === 'poor'
+            ? 'poor'
+            : acc.fcpStatus === 'poor'
+              ? 'poor'
+              : (u.fcpStatus ?? acc.fcpStatus),
+      clsStatus:
+        acc.clsStatus === null
+          ? u.clsStatus
+          : u.clsStatus === 'poor'
+            ? 'poor'
+            : acc.clsStatus === 'poor'
+              ? 'poor'
+              : (u.clsStatus ?? acc.clsStatus),
+      inpStatus:
+        acc.inpStatus === null
+          ? u.inpStatus
+          : u.inpStatus === 'poor'
+            ? 'poor'
+            : acc.inpStatus === 'poor'
+              ? 'poor'
+              : (u.inpStatus ?? acc.inpStatus),
     }),
-    { lcp: null, fcp: null, cls: null, inp: null, lcpStatus: null, fcpStatus: null, clsStatus: null, inpStatus: null },
+    {
+      lcp: null,
+      fcp: null,
+      cls: null,
+      inp: null,
+      lcpStatus: null,
+      fcpStatus: null,
+      clsStatus: null,
+      inpStatus: null,
+    },
   );
 
   return (
@@ -702,17 +960,58 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={cwv.trend} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                <XAxis dataKey="startedAt" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatChartDate} />
-                <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `${v}ms`} />
+                <XAxis
+                  dataKey="startedAt"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={formatChartDate}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={(v) => `${v}ms`}
+                />
                 <Tooltip
-                  contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                  contentStyle={{
+                    background: 'hsl(var(--popover))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                  }}
                   labelFormatter={formatChartDate}
                   formatter={(v, name) => [`${v}ms`, String(name).toUpperCase()]}
                 />
-                <Legend wrapperStyle={{ fontSize: 10 }} formatter={(v) => String(v).toUpperCase()} />
-                <Line type="monotone" dataKey="avgLcpMs" name="lcp" stroke="#60a5fa" dot={false} strokeWidth={2} activeDot={{ r: 3 }} connectNulls />
-                <Line type="monotone" dataKey="avgFcpMs" name="fcp" stroke="#4ade80" dot={false} strokeWidth={2} activeDot={{ r: 3 }} connectNulls />
-                <Line type="monotone" dataKey="avgInpMs" name="inp" stroke="#fb923c" dot={false} strokeWidth={2} activeDot={{ r: 3 }} connectNulls />
+                <Legend
+                  wrapperStyle={{ fontSize: 10 }}
+                  formatter={(v) => String(v).toUpperCase()}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgLcpMs"
+                  name="lcp"
+                  stroke="#60a5fa"
+                  dot={false}
+                  strokeWidth={2}
+                  activeDot={{ r: 3 }}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgFcpMs"
+                  name="fcp"
+                  stroke="#4ade80"
+                  dot={false}
+                  strokeWidth={2}
+                  activeDot={{ r: 3 }}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="avgInpMs"
+                  name="inp"
+                  stroke="#fb923c"
+                  dot={false}
+                  strokeWidth={2}
+                  activeDot={{ r: 3 }}
+                  connectNulls
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -751,18 +1050,26 @@ function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv 
       <div className="mb-4 flex flex-wrap gap-3">
         {issueCount > 0 && (
           <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            <span className="font-medium">{issueCount} SEO {issueCount === 1 ? 'issue' : 'issues'}</span>
-            <span className="text-muted-foreground">across {data.urls.filter(u => u.issues.length > 0).length} URLs</span>
+            <span className="font-medium">
+              {issueCount} SEO {issueCount === 1 ? 'issue' : 'issues'}
+            </span>
+            <span className="text-muted-foreground">
+              across {data.urls.filter((u) => u.issues.length > 0).length} URLs
+            </span>
           </div>
         )}
         {changedCount > 0 && (
           <div className="flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-600 dark:text-yellow-400">
-            <span className="font-medium">{changedCount} {changedCount === 1 ? 'URL' : 'URLs'} changed</span>
+            <span className="font-medium">
+              {changedCount} {changedCount === 1 ? 'URL' : 'URLs'} changed
+            </span>
             <span className="text-muted-foreground">since last run</span>
           </div>
         )}
         {data.urls.length === 0 && (
-          <p className="text-sm text-muted-foreground">No SEO data collected — visits may be failing. Check the Uptime tab for errors.</p>
+          <p className="text-sm text-muted-foreground">
+            No SEO data collected — visits may be failing. Check the Uptime tab for errors.
+          </p>
         )}
       </div>
 
@@ -778,7 +1085,12 @@ function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv 
               <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   {u.changed && (
-                    <Badge variant="outline" className="shrink-0 border-yellow-500 text-yellow-600 dark:text-yellow-400 text-xs">Changed</Badge>
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 border-yellow-500 text-yellow-600 dark:text-yellow-400 text-xs"
+                    >
+                      Changed
+                    </Badge>
                   )}
                   <a
                     href={u.url}
@@ -826,19 +1138,31 @@ function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv 
               {/* History diff (last 2 runs) */}
               {u.changed && u.history.length >= 2 && (
                 <div className="mt-3">
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Changes since previous run</p>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                    Changes since previous run
+                  </p>
                   <div className="space-y-1">
                     {(['title', 'metaDescription', 'h1', 'canonicalUrl'] as const).map((field) => {
                       const prev = u.history[1].seo[field];
                       const curr = u.history[0].seo[field];
                       if (prev === curr) return null;
                       const labels: Record<string, string> = {
-                        title: 'Title', metaDescription: 'Meta description', h1: 'H1', canonicalUrl: 'Canonical',
+                        title: 'Title',
+                        metaDescription: 'Meta description',
+                        h1: 'H1',
+                        canonicalUrl: 'Canonical',
                       };
                       return (
-                        <div key={field} className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs">
-                          <span className="font-medium text-yellow-600 dark:text-yellow-400">{labels[field]}</span>
-                          <div className="mt-1 text-muted-foreground line-through">{prev ?? '(empty)'}</div>
+                        <div
+                          key={field}
+                          className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs"
+                        >
+                          <span className="font-medium text-yellow-600 dark:text-yellow-400">
+                            {labels[field]}
+                          </span>
+                          <div className="mt-1 text-muted-foreground line-through">
+                            {prev ?? '(empty)'}
+                          </div>
                           <div className="mt-0.5 text-foreground">{curr ?? '(empty)'}</div>
                         </div>
                       );
@@ -859,14 +1183,18 @@ function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv 
 function LinksTab({ data }: { data: BrokenLinkSummary[] }) {
   if (data.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No broken links found — all discovered links returned 2xx/3xx responses.</p>
+      <p className="text-sm text-muted-foreground">
+        No broken links found — all discovered links returned 2xx/3xx responses.
+      </p>
     );
   }
 
   return (
     <div>
       <div className="mb-4 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-        <span className="font-medium">{data.length} broken {data.length === 1 ? 'link' : 'links'} detected</span>
+        <span className="font-medium">
+          {data.length} broken {data.length === 1 ? 'link' : 'links'} detected
+        </span>
       </div>
       <div className="rounded-lg border border-border">
         <Table>
@@ -894,14 +1222,20 @@ function LinksTab({ data }: { data: BrokenLinkSummary[] }) {
                 </TableCell>
                 <TableCell>
                   {l.statusCode != null ? (
-                    <Badge variant="destructive" className="text-xs">{l.statusCode}</Badge>
-                  ) : '—'}
+                    <Badge variant="destructive" className="text-xs">
+                      {l.statusCode}
+                    </Badge>
+                  ) : (
+                    '—'
+                  )}
                 </TableCell>
                 <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
                   {l.error ?? '—'}
                 </TableCell>
                 <TableCell className="text-muted-foreground">{l.occurrences}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">{formatDate(l.lastSeenAt)}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {formatDate(l.lastSeenAt)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

@@ -1,11 +1,8 @@
-import { Link, Outlet, createRootRouteWithContext, useRouterState } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import { useQueryClient, useQuery } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
-import { getApiKey, getConfig } from '../lib/api';
-import { queryKeys } from '../lib/queryKeys';
-import { authEvents } from '../lib/events';
-import { ApiKeyModal } from '../components/ApiKeyModal';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createRootRouteWithContext, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { ChevronDown, Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,8 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Moon, Sun, ChevronDown } from 'lucide-react';
-import logo from '../assets/logo.png'
+import logo from '../assets/logo.png';
+import { ApiKeyModal } from '../components/ApiKeyModal';
+import { getApiKey, getConfig } from '../lib/api';
+import { authEvents } from '../lib/events';
+import { queryKeys } from '../lib/queryKeys';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -72,9 +72,7 @@ function RootLayout() {
           <div className="ml-auto flex items-center gap-6">
             {!isPublicRoute && <NavLink to="/">Dashboard</NavLink>}
             {!isPublicRoute && <NavLink to="/history">History</NavLink>}
-            {!isPublicRoute && groups.length > 0 && (
-              <DetailsDropdown groups={groups} />
-            )}
+            {!isPublicRoute && groups.length > 0 && <DetailsDropdown groups={groups} />}
             {!isPublicRoute && <NavLink to="/config">Config</NavLink>}
             <NavLink to="/status">Status</NavLink>
             <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
@@ -118,11 +116,7 @@ function DetailsDropdown({ groups }: { groups: { name: string }[] }) {
       <DropdownMenuContent align="start">
         {groups.map((g) => (
           <DropdownMenuItem key={g.name}>
-            <Link
-              to="/groups/$groupName"
-              params={{ groupName: g.name }}
-              className="w-full"
-            >
+            <Link to="/groups/$groupName" params={{ groupName: g.name }} className="w-full">
               {g.name}
             </Link>
           </DropdownMenuItem>

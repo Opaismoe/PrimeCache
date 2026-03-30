@@ -1,7 +1,12 @@
 import { timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import fastifyStatic from '@fastify/static';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, {
+  type FastifyError,
+  type FastifyInstance,
+  type FastifyReply,
+  type FastifyRequest,
+} from 'fastify';
 import { env } from '../config/env';
 import type { Config } from '../config/urls';
 import type { Db } from '../db/client';
@@ -40,7 +45,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   });
 
   // ── Global error logging ──────────────────────────────────────────────────
-  app.setErrorHandler((error: any, _request, reply) => {
+  app.setErrorHandler((error: FastifyError, _request: FastifyRequest, reply: FastifyReply) => {
     logger.error({ err: error, url: _request.url }, 'unhandled route error');
     reply.code(error.statusCode ?? 500).send({ error: error.message });
   });
@@ -52,7 +57,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   app.get('/api/public/status', async () => getPublicStatus(db));
 
   // ── Auth preHandler for all protected routes ──────────────────────────────
-  async function requireApiKey(request: any, reply: any) {
+  async function requireApiKey(request: FastifyRequest, reply: FastifyReply) {
     const key = request.headers['x-api-key'] as string | undefined;
     if (!key) return reply.code(401).send({ error: 'Unauthorized' });
     try {
@@ -69,18 +74,21 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       protected_.addHook('preHandler', requireApiKey);
 
       // GET /runs
-      protected_.get('/runs', async (request: any) => {
-        const limit = Number(request.query.limit ?? 20);
-        const offset = Number(request.query.offset ?? 0);
-        const group = (request.query.group as string | undefined) || undefined;
-        return getRuns(db, { limit, offset, ...(group ? { group } : {}) });
-      });
+      protected_.get<{ Querystring: { limit?: string; offset?: string; group?: string } }>(
+        '/runs',
+        async (request) => {
+          const limit = Number(request.query.limit ?? 20);
+          const offset = Number(request.query.offset ?? 0);
+          const group = request.query.group || undefined;
+          return getRuns(db, { limit, offset, ...(group ? { group } : {}) });
+        },
+      );
 
       // GET /runs/latest  — must be registered before /runs/:id
       protected_.get('/runs/latest', async () => getLatestPerGroup(db));
 
       // GET /runs/:id
-      protected_.get('/runs/:id', async (request: any, reply: any) => {
+      protected_.get<{ Params: { id: string } }>('/runs/:id', async (request, reply) => {
         const run = await getRunById(db, Number(request.params.id));
         if (!run) return reply.code(404).send({ error: 'Run not found' });
         const visits = await getVisitsByRunId(db, run.id);
@@ -88,8 +96,8 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       });
 
       // POST /trigger (synchronous — waits for completion)
-      protected_.post('/trigger', async (request: any, reply: any) => {
-        const { group: groupName } = request.body as { group: string };
+      protected_.post<{ Body: { group: string } }>('/trigger', async (request, reply) => {
+        const { group: groupName } = request.body;
         const group = getConfig().groups.find((g) => g.name === groupName);
         if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
         const runId = await runGroup(db, group);
@@ -97,8 +105,8 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       });
 
       // POST /trigger/async — returns runId immediately, runs in background
-      protected_.post('/trigger/async', async (request: any, reply: any) => {
-        const { group: groupName } = request.body as { group: string };
+      protected_.post<{ Body: { group: string } }>('/trigger/async', async (request, reply) => {
+        const { group: groupName } = request.body;
         const group = getConfig().groups.find((g) => g.name === groupName);
         if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
         const { runId, promise } = await startRunGroup(db, group);
@@ -111,8 +119,8 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       });
 
       // POST /webhook/warm
-      protected_.post('/webhook/warm', async (request: any, reply: any) => {
-        const { group: groupName } = request.body as { group: string };
+      protected_.post<{ Body: { group: string } }>('/webhook/warm', async (request, reply) => {
+        const { group: groupName } = request.body;
         const groups = getConfig().groups;
         const targets = groupName === 'all' ? groups : groups.filter((g) => g.name === groupName);
 
@@ -131,7 +139,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       });
 
       // POST /runs/:id/cancel — must be before /runs/:id
-      protected_.post('/runs/:id/cancel', async (request: any, reply: any) => {
+      protected_.post<{ Params: { id: string } }>('/runs/:id/cancel', async (request, reply) => {
         const id = Number(request.params.id);
         const run = await getRunById(db, id);
         if (!run) return reply.code(404).send({ error: 'Run not found' });
@@ -147,8 +155,8 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       });
 
       // DELETE /runs — clears history (optional ?group= filter)
-      protected_.delete('/runs', async (request: any) => {
-        const group = (request.query as any).group as string | undefined;
+      protected_.delete<{ Querystring: { group?: string } }>('/runs', async (request) => {
+        const group = request.query.group;
         const deleted = await deleteRuns(db, group ? { group } : undefined);
         return { deleted };
       });
@@ -169,7 +177,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   );
 
   // SPA catch-all: serve index.html for any unmatched non-API path
-  app.setNotFoundHandler((_request, reply: any) => {
+  app.setNotFoundHandler((_request, reply: FastifyReply) => {
     reply.sendFile('index.html');
   });
 

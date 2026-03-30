@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { BrokenLink } from '../../warmer/visitor';
 import type { Db } from '../client';
 import { visit_broken_links } from '../schema';
+import { sqlExecuteRows } from '../sqlExecuteRows';
 
 export async function insertVisitBrokenLinks(
   db: Db,
@@ -42,7 +43,7 @@ export async function getGroupBrokenLinks(db: Db, groupName: string): Promise<Br
     GROUP BY bl.url, bl.status_code, bl.error
     ORDER BY occurrences DESC, bl.url
   `);
-  return (rows as any[]).map((r) => ({
+  return sqlExecuteRows(rows).map((r) => ({
     url: r.url as string,
     statusCode: r.status_code as number | null,
     error: r.error as string | null,

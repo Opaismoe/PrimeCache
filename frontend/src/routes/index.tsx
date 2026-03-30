@@ -1,23 +1,32 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryOptions } from '@tanstack/react-query';
-import { getConfig, getLatestRuns, triggerAsync, getStats } from '../lib/api';
-import { queryKeys } from '../lib/queryKeys';
-import { StatusBadge } from '../components/StatusBadge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { describeCron } from '../lib/cronUtils';
-import { formatDate } from '../lib/formatters';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import {
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Link } from '@tanstack/react-router';
+import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '../components/StatusBadge';
+import { getConfig, getLatestRuns, getStats, triggerAsync } from '../lib/api';
+import { describeCron } from '../lib/cronUtils';
+import { formatDate } from '../lib/formatters';
+import { queryKeys } from '../lib/queryKeys';
 import type { Run, Stats } from '../lib/types';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
-  PieChart, Pie, Cell,
-} from 'recharts';
 
 const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
-const latestRunsQueryOptions = queryOptions({ queryKey: queryKeys.runs.latest(), queryFn: getLatestRuns });
+const latestRunsQueryOptions = queryOptions({
+  queryKey: queryKeys.runs.latest(),
+  queryFn: getLatestRuns,
+});
 const statsQueryOptions = queryOptions({ queryKey: queryKeys.stats.all(), queryFn: getStats });
 
 export const Route = createFileRoute('/')({
@@ -58,8 +67,12 @@ function buildLineChartData(visitsByDay: Stats['visitsByDay']) {
   const groups = [...new Set(visitsByDay.map((v) => v.group))];
   const byDate = new Map<string, Record<string, number>>();
   for (const v of visitsByDay) {
-    if (!byDate.has(v.date)) byDate.set(v.date, {});
-    byDate.get(v.date)![v.group] = v.count;
+    let row = byDate.get(v.date);
+    if (!row) {
+      row = {};
+      byDate.set(v.date, row);
+    }
+    row[v.group] = v.count;
   }
   return {
     groups,
@@ -167,7 +180,9 @@ function DashboardPage() {
                       >
                         {group.name}
                       </Link>
-                      <p className="text-xs text-muted-foreground">{describeCron(group.schedule)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {describeCron(group.schedule)}
+                      </p>
                     </div>
                     {latest && <StatusBadge status={latest.status} />}
                   </div>
@@ -180,7 +195,9 @@ function DashboardPage() {
                         <span>
                           <span className="text-green-500">{latest.success_count} ok</span>
                           {latest.failure_count ? (
-                            <span className="ml-1 text-destructive">{latest.failure_count} failed</span>
+                            <span className="ml-1 text-destructive">
+                              {latest.failure_count} failed
+                            </span>
                           ) : null}
                         </span>
                       )}
@@ -221,16 +238,18 @@ function DashboardPage() {
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={({ name, percent }) =>
-                        `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                      }
+                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                     >
                       {pieData.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                      contentStyle={{
+                        background: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px',
+                      }}
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                       itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
                     />
@@ -254,9 +273,16 @@ function DashboardPage() {
                       tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                       tickFormatter={(v: string) => v.slice(5)}
                     />
-                    <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                      allowDecimals={false}
+                    />
                     <Tooltip
-                      contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '6px' }}
+                      contentStyle={{
+                        background: 'hsl(var(--popover))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px',
+                      }}
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                       itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
                     />

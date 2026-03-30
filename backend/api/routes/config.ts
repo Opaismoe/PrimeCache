@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { env } from '../../config/env';
@@ -11,8 +11,9 @@ const RenameSchema = z.array(z.object({ from: z.string(), to: z.string() })).opt
 
 export function putConfigRoute(db: Db): FastifyPluginAsync {
   return async (app) => {
-    app.put('/config', async (request: any, reply: any) => {
-      const { renames: rawRenames, ...rest } = request.body ?? {};
+    app.put('/config', async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = (request.body ?? {}) as Record<string, unknown>;
+      const { renames: rawRenames, ...rest } = body;
 
       const configResult = ConfigSchema.safeParse(rest);
       if (!configResult.success) {

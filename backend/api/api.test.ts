@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Db } from '../db/client';
+import type { RunRow } from '../db/queries/runs';
 
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token');
@@ -53,7 +55,7 @@ beforeEach(async () => {
   vi.resetModules();
   vi.clearAllMocks();
   const { buildServer } = await import('./server');
-  app = await buildServer({ db: {} as any, getConfig: () => mockConfig });
+  app = await buildServer({ db: {} as unknown as Db, getConfig: () => mockConfig });
   await app.ready();
 });
 
@@ -395,7 +397,7 @@ describe('POST /runs/:id/cancel', () => {
       total_urls: 1,
       success_count: 1,
       failure_count: 0,
-    } as any);
+    } as RunRow);
     const res = await app.inject({
       method: 'POST',
       url: '/api/runs/1/cancel',
@@ -415,7 +417,7 @@ describe('POST /runs/:id/cancel', () => {
       total_urls: 1,
       success_count: null,
       failure_count: null,
-    } as any);
+    } as RunRow);
     const res = await app.inject({
       method: 'POST',
       url: '/api/runs/1/cancel',

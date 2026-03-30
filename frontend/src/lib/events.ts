@@ -8,6 +8,8 @@ export const authEvents = {
     return () => unauthorizedHandlers.delete(handler);
   },
   emitUnauthorized(): void {
-    unauthorizedHandlers.forEach((h) => h());
+    for (const h of unauthorizedHandlers) {
+      h();
+    }
   },
 };

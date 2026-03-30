@@ -1,14 +1,7 @@
 import { desc, eq, sql } from 'drizzle-orm';
 import type { Db } from '../client';
 import { runs, visits } from '../schema';
-
-/** Normalise db.execute() result — postgres driver returns T[], PGlite returns { rows: T[] } */
-function toRows(result: unknown): any[] {
-  if (Array.isArray(result)) return result as any[];
-  if (result && typeof result === 'object' && 'rows' in result)
-    return (result as any).rows as any[];
-  return [];
-}
+import { sqlExecuteRows } from '../sqlExecuteRows';
 
 export interface GroupOverviewStats {
   totalRuns: number;
@@ -113,7 +106,7 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     GROUP BY r.id
   `);
   const seoByRunId = new Map<number, number>();
-  for (const row of toRows(seoScoreRows)) {
+  for (const row of sqlExecuteRows(seoScoreRows)) {
     seoByRunId.set(Number(row.run_id), Math.round(Number(row.avg_seo_score) * 10) / 10);
   }
 

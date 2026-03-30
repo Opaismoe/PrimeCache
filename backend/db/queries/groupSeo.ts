@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
+import { sqlExecuteRows } from '../sqlExecuteRows';
 import type { SeoData } from './visitSeo';
 
 export interface SeoScore {
@@ -128,24 +129,27 @@ export async function getGroupSeo(db: Db, groupName: string): Promise<GroupSeo> 
 
   // Group by URL
   const byUrl = new Map<string, UrlSeoHistory[]>();
-  for (const row of rows as any[]) {
+  for (const row of sqlExecuteRows(rows)) {
     const url = row.url as string;
-    if (!byUrl.has(url)) byUrl.set(url, []);
-    const history = byUrl.get(url)!;
+    let history = byUrl.get(url);
+    if (!history) {
+      history = [];
+      byUrl.set(url, history);
+    }
     if (history.length < 5) {
       history.push({
         visitId: Number(row.visit_id),
         runId: Number(row.run_id),
         visitedAt: new Date(row.visited_at as string).toISOString(),
         seo: {
-          title: row.title,
-          metaDescription: row.meta_description,
-          h1: row.h1,
-          canonicalUrl: row.canonical_url,
-          ogTitle: row.og_title,
-          ogDescription: row.og_description,
-          ogImage: row.og_image,
-          robotsMeta: row.robots_meta,
+          title: row.title as string | null,
+          metaDescription: row.meta_description as string | null,
+          h1: row.h1 as string | null,
+          canonicalUrl: row.canonical_url as string | null,
+          ogTitle: row.og_title as string | null,
+          ogDescription: row.og_description as string | null,
+          ogImage: row.og_image as string | null,
+          robotsMeta: row.robots_meta as string | null,
         },
       });
     }

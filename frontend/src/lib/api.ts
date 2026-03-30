@@ -1,5 +1,17 @@
-import type { Config, Run, RunDetail, Stats, GroupOverview, GroupPerformance, GroupUptime, GroupSeo, BrokenLinkSummary, GroupStatus, GroupCwv } from './types';
 import { authEvents } from './events';
+import type {
+  BrokenLinkSummary,
+  Config,
+  GroupCwv,
+  GroupOverview,
+  GroupPerformance,
+  GroupSeo,
+  GroupStatus,
+  GroupUptime,
+  Run,
+  RunDetail,
+  Stats,
+} from './types';
 
 const API_KEY_STORAGE = 'primecache-api-key';
 
@@ -73,8 +85,7 @@ export const deleteRuns = (group?: string) =>
 export const triggerAsync = (group: string) =>
   request<{ runId: number }>('POST', '/api/trigger/async', { group });
 
-export const cancelRun = (id: number) =>
-  request<{ ok: boolean }>('POST', `/api/runs/${id}/cancel`);
+export const cancelRun = (id: number) => request<{ ok: boolean }>('POST', `/api/runs/${id}/cancel`);
 
 export const getConfig = () => request<Config>('GET', '/api/config');
 
@@ -87,7 +98,10 @@ export const getGroupOverview = (name: string) =>
   request<GroupOverview>('GET', `/api/groups/${encodeURIComponent(name)}/overview`);
 
 export const getGroupPerformance = (name: string, threshold = 3000) =>
-  request<GroupPerformance>('GET', `/api/groups/${encodeURIComponent(name)}/performance?threshold=${threshold}`);
+  request<GroupPerformance>(
+    'GET',
+    `/api/groups/${encodeURIComponent(name)}/performance?threshold=${threshold}`,
+  );
 
 export const getGroupUptime = (name: string) =>
   request<GroupUptime>('GET', `/api/groups/${encodeURIComponent(name)}/uptime`);

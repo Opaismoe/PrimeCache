@@ -54,7 +54,9 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
         break;
       }
 
-      const { url, depth } = queue.shift()!;
+      const next = queue.shift();
+      if (next === undefined) break;
+      const { url, depth } = next;
       if (visited.has(url)) continue;
       visited.add(url);
 

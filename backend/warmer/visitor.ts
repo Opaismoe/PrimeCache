@@ -23,6 +23,18 @@ export interface CwvSnapshot {
   fcpMs: number | null;
 }
 
+/** Set on window inside addInitScript (not in standard Window typings) */
+interface WindowWithCwv extends Window {
+  __cwv?: {
+    lcp: number | null;
+    cls: number;
+    inp: number | null;
+    fcp: number | null;
+  };
+}
+
+type LayoutShiftEntry = PerformanceEntry & { value: number; hadRecentInput?: boolean };
+
 export interface HeadersSnapshot {
   cacheControl: string | null;
   xCache: string | null;
@@ -98,11 +110,18 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
 
     // Inject Core Web Vitals observer before navigation
     await page.addInitScript(() => {
-      (window as any).__cwv = { lcp: null, cls: 0, inp: null, fcp: null };
+      const w = window as unknown as WindowWithCwv;
+      const cwv = {
+        lcp: null as number | null,
+        cls: 0,
+        inp: null as number | null,
+        fcp: null as number | null,
+      };
+      w.__cwv = cwv;
       try {
         new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            (window as any).__cwv.lcp = entry.startTime;
+            cwv.lcp = entry.startTime;
           }
         }).observe({ type: 'largest-contentful-paint', buffered: true });
       } catch (_) {
@@ -111,8 +130,9 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       try {
         new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            if (!(entry as any).hadRecentInput) {
-              (window as any).__cwv.cls = ((window as any).__cwv.cls ?? 0) + (entry as any).value;
+            const ls = entry as LayoutShiftEntry;
+            if (!ls.hadRecentInput) {
+              cwv.cls = (cwv.cls ?? 0) + ls.value;
             }
           }
         }).observe({ type: 'layout-shift', buffered: true });
@@ -122,12 +142,13 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       try {
         new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            const dur = (entry as any).processingEnd - entry.startTime;
-            if ((window as any).__cwv.inp === null || dur > (window as any).__cwv.inp) {
-              (window as any).__cwv.inp = dur;
+            const ev = entry as PerformanceEventTiming;
+            const dur = ev.processingEnd - ev.startTime;
+            if (cwv.inp === null || dur > cwv.inp) {
+              cwv.inp = dur;
             }
           }
-        }).observe({ type: 'event', buffered: true } as any);
+        }).observe({ type: 'event', buffered: true } as PerformanceObserverInit);
       } catch (_) {
         /* unsupported */
       }
@@ -135,7 +156,7 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
         new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
             if (entry.name === 'first-contentful-paint') {
-              (window as any).__cwv.fcp = entry.startTime;
+              cwv.fcp = entry.startTime;
             }
           }
         }).observe({ type: 'paint', buffered: true });
@@ -226,7 +247,12 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       .catch(() => null);
 
     // Read CWV values collected by the init script observer
-    const cwvRaw = await page.evaluate(() => (window as any).__cwv ?? null).catch(() => null);
+    const cwvRaw = await page
+      .evaluate((): WindowWithCwv['__cwv'] | null => {
+        const w = window as unknown as WindowWithCwv;
+        return w.__cwv ?? null;
+      })
+      .catch(() => null);
     const cwv: CwvSnapshot | null = cwvRaw
       ? {
           lcpMs: cwvRaw.lcp != null ? Math.round(cwvRaw.lcp) : null,

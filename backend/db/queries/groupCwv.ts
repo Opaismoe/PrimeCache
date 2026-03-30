@@ -1,13 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
-
-/** Normalise db.execute() result — postgres driver returns T[], PGlite returns { rows: T[] } */
-function toRows(result: unknown): any[] {
-  if (Array.isArray(result)) return result as any[];
-  if (result && typeof result === 'object' && 'rows' in result)
-    return (result as any).rows as any[];
-  return [];
-}
+import { sqlExecuteRows } from '../sqlExecuteRows';
 
 type CwvStatus = 'good' | 'needs-improvement' | 'poor';
 
@@ -84,7 +77,7 @@ export async function getGroupCwv(db: Db, groupName: string): Promise<GroupCwv> 
     ORDER BY lcp_p75 DESC NULLS LAST
   `);
 
-  const urls: UrlCwv[] = toRows(urlRows).map((row) => {
+  const urls: UrlCwv[] = sqlExecuteRows(urlRows).map((row) => {
     const lcp = row.lcp_p75 != null ? Math.round(Number(row.lcp_p75)) : null;
     const fcp = row.fcp_p75 != null ? Math.round(Number(row.fcp_p75)) : null;
     const cls = row.cls_p75 != null ? Math.round(Number(row.cls_p75) * 1000) / 1000 : null;
@@ -121,7 +114,7 @@ export async function getGroupCwv(db: Db, groupName: string): Promise<GroupCwv> 
     LIMIT 30
   `);
 
-  const trend: CwvTrendPoint[] = toRows(trendRows).map((row) => ({
+  const trend: CwvTrendPoint[] = sqlExecuteRows(trendRows).map((row) => ({
     runId: Number(row.run_id),
     startedAt: new Date(row.started_at as string).toISOString(),
     avgLcpMs: row.avg_lcp_ms != null ? Number(row.avg_lcp_ms) : null,

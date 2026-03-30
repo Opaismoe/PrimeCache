@@ -81,7 +81,7 @@ export interface Stats {
 
 export interface GroupOverviewStats {
   totalRuns: number;
-  successRate: number;     // 0-100
+  successRate: number; // 0-100
   avgLoadTimeMs: number;
   avgTtfbMs: number | null;
 }
@@ -89,10 +89,10 @@ export interface GroupOverviewStats {
 export interface GroupRunSeries {
   runId: number;
   startedAt: string;
-  successRate: number;     // 0-100
+  successRate: number; // 0-100
   avgLoadTimeMs: number;
-  uptimePct: number;       // 0-100
-  avgSeoScore: number | null;  // 0-100, null if no SEO data
+  uptimePct: number; // 0-100
+  avgSeoScore: number | null; // 0-100, null if no SEO data
 }
 
 export interface GroupOverview {

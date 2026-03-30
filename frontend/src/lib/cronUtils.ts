@@ -28,23 +28,23 @@ export function parseCron(expr: string): CronState {
   const [min, hr, , , dow] = parts;
 
   if (min.startsWith('*/') && hr === '*') {
-    const n = parseInt(min.slice(2));
-    if (!isNaN(n)) return { ...defaultState(), type: 'every-n-minutes', minuteInterval: n };
+    const n = parseInt(min.slice(2), 10);
+    if (!Number.isNaN(n)) return { ...defaultState(), type: 'every-n-minutes', minuteInterval: n };
   }
   if (min === '0' && hr.startsWith('*/')) {
-    const n = parseInt(hr.slice(2));
-    if (!isNaN(n)) return { ...defaultState(), type: 'every-n-hours', hourInterval: n };
+    const n = parseInt(hr.slice(2), 10);
+    if (!Number.isNaN(n)) return { ...defaultState(), type: 'every-n-hours', hourInterval: n };
   }
   if (dow === '*' && /^\d+$/.test(hr) && /^\d+$/.test(min)) {
-    return { ...defaultState(), type: 'daily', hour: parseInt(hr), minute: parseInt(min) };
+    return { ...defaultState(), type: 'daily', hour: parseInt(hr, 10), minute: parseInt(min, 10) };
   }
   if (/^\d+$/.test(dow) && /^\d+$/.test(hr) && /^\d+$/.test(min)) {
     return {
       ...defaultState(),
       type: 'weekly',
-      dayOfWeek: parseInt(dow),
-      hour: parseInt(hr),
-      minute: parseInt(min),
+      dayOfWeek: parseInt(dow, 10),
+      hour: parseInt(hr, 10),
+      minute: parseInt(min, 10),
     };
   }
   return defaultState(expr);

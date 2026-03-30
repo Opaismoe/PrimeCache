@@ -1,24 +1,25 @@
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryOptions } from '@tanstack/react-query';
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
+  type ColumnFiltersState,
   createColumnHelper,
   flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
   type SortingState,
-  type ColumnFiltersState,
+  useReactTable,
 } from '@tanstack/react-table';
 import { useState } from 'react';
-import { getRuns, getConfig, deleteRuns, cancelRun } from '../lib/api';
-import { queryKeys } from '../lib/queryKeys';
-import { StatusBadge } from '../components/StatusBadge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { formatDate, formatDuration } from '../lib/formatters';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -27,6 +28,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { StatusBadge } from '../components/StatusBadge';
+import { cancelRun, deleteRuns, getConfig, getRuns } from '../lib/api';
+import { formatDate, formatDuration } from '../lib/formatters';
+import { queryKeys } from '../lib/queryKeys';
 import type { Run } from '../lib/types';
 
 const PAGE_SIZE = 20;
@@ -82,12 +87,24 @@ function HistorySkeleton() {
           <TableBody>
             {Array.from({ length: 8 }).map((_, i) => (
               <TableRow key={i}>
-                <TableCell><Skeleton className="h-4 w-10" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-10" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-32" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-16" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
                 <TableCell />
               </TableRow>
             ))}
@@ -107,7 +124,8 @@ function HistoryPage() {
 
   const { data: runs, isLoading } = useQuery({
     queryKey: queryKeys.runs.list(page, group),
-    queryFn: () => getRuns({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, group: group || undefined }),
+    queryFn: () =>
+      getRuns({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, group: group || undefined }),
   });
 
   const { data: config } = useQuery(configQueryOptions);
@@ -253,9 +271,7 @@ function HistoryPage() {
             <span className="text-sm text-muted-foreground">Status</span>
             <Select
               value={(table.getColumn('status')?.getFilterValue() as string) ?? ''}
-              onValueChange={(v) =>
-                table.getColumn('status')?.setFilterValue(v || undefined)
-              }
+              onValueChange={(v) => table.getColumn('status')?.setFilterValue(v || undefined)}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All statuses" />
@@ -296,7 +312,10 @@ function HistoryPage() {
                     key={row.id}
                     className="cursor-pointer"
                     onClick={() =>
-                      navigate({ to: '/history/$runId', params: { runId: String(row.original.id) } })
+                      navigate({
+                        to: '/history/$runId',
+                        params: { runId: String(row.original.id) },
+                      })
                     }
                   >
                     {row.getVisibleCells().map((cell) => (

@@ -6,7 +6,7 @@ import { env } from '../config/env';
 import { logger } from '../utils/logger';
 
 const stealthPlugin = StealthPlugin();
-stealthPlugin.enabledEvasions.delete('user-agent-override');
+stealthPlugin.enabledEvasions?.delete('user-agent-override');
 chromiumExtra.use(stealthPlugin);
 
 let browserStealth: Browser | null = null;
@@ -28,7 +28,7 @@ async function connectWithRetry(useStealth: boolean, attempt = 0): Promise<Brows
   const wsEndpoint = `${env.BROWSERLESS_WS_URL}?token=${env.BROWSERLESS_TOKEN}`;
   try {
     const b = useStealth
-      ? await (chromiumExtra as any).connect(wsEndpoint)
+      ? await (chromiumExtra as typeof chromiumPlain).connect(wsEndpoint)
       : await chromiumPlain.connect(wsEndpoint);
     b.on('disconnected', () => {
       if (useStealth) browserStealth = null;

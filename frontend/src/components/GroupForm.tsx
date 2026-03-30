@@ -1,16 +1,22 @@
-import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import type { Group } from '../lib/types';
-import { ApiError } from '../lib/api';
-import { CronBuilder } from './CronBuilder';
-import { cn } from '@/lib/utils';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { ApiError } from '../lib/api';
+import type { Group } from '../lib/types';
+import { CronBuilder } from './CronBuilder';
 
 interface Props {
   initial?: Group;
@@ -31,7 +37,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
   const [localStorageText, setLocalStorageText] = useState(() => {
     const entries = initial?.options.localStorage;
     if (!entries) return '';
-    return Object.entries(entries).map(([k, v]) => `${k}=${v}`).join('\n');
+    return Object.entries(entries)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
   });
   const [cookiesText, setCookiesText] = useState(() => {
     const cookies = initial?.options.cookies;
@@ -52,7 +60,10 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
     e.preventDefault();
     setErrors([]);
 
-    const urls = urlsText.split('\n').map((u) => u.trim()).filter(Boolean);
+    const urls = urlsText
+      .split('\n')
+      .map((u) => u.trim())
+      .filter(Boolean);
 
     const localStorageEntries = localStorageText
       .split('\n')
@@ -63,9 +74,10 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
         if (eq > 0) acc[line.slice(0, eq).trim()] = line.slice(eq + 1);
         return acc;
       }, {});
-    const localStorageValue = Object.keys(localStorageEntries).length > 0 ? localStorageEntries : undefined;
+    const localStorageValue =
+      Object.keys(localStorageEntries).length > 0 ? localStorageEntries : undefined;
 
-    let cookiesValue: Group['options']['cookies'] = undefined;
+    let cookiesValue: Group['options']['cookies'];
     if (cookiesText.trim()) {
       try {
         cookiesValue = JSON.parse(cookiesText.trim());
@@ -100,7 +112,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
       {errors.length > 0 && (
         <div className="rounded border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">
           <ul className="list-inside list-disc space-y-0.5">
-            {errors.map((e, i) => <li key={i}>{e}</li>)}
+            {errors.map((e, i) => (
+              <li key={i}>{e}</li>
+            ))}
           </ul>
         </div>
       )}
@@ -124,7 +138,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="group-urls">URLs <span className="text-muted-foreground font-normal">(one per line)</span></Label>
+          <Label htmlFor="group-urls">
+            URLs <span className="text-muted-foreground font-normal">(one per line)</span>
+          </Label>
           <Textarea
             id="group-urls"
             required
@@ -140,16 +156,22 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
       {/* ── Advanced ── */}
       <Collapsible open={advancedOpen} onOpenChange={(open) => setAdvancedOpen(open)}>
         <CollapsibleTrigger className="flex w-full items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-          <ChevronDown className={cn('h-4 w-4 transition-transform duration-200', advancedOpen && 'rotate-180')} />
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 transition-transform duration-200',
+              advancedOpen && 'rotate-180',
+            )}
+          />
           Advanced settings
         </CollapsibleTrigger>
 
         <CollapsibleContent>
           <div className="mt-3 flex flex-col gap-4 rounded border border-border p-4">
-
             {/* Behaviour */}
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Behaviour</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Behaviour
+              </p>
 
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
@@ -158,7 +180,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     checked={group.options.scrollToBottom}
                     onCheckedChange={(v) => setOpt('scrollToBottom', v === true)}
                   />
-                  <Label htmlFor="scrollToBottom" className="cursor-pointer">Scroll to bottom after load</Label>
+                  <Label htmlFor="scrollToBottom" className="cursor-pointer">
+                    Scroll to bottom after load
+                  </Label>
                 </div>
               </div>
 
@@ -169,7 +193,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     checked={group.options.crawl}
                     onCheckedChange={(v) => setOpt('crawl', v === true)}
                   />
-                  <Label htmlFor="crawl" className="cursor-pointer">Crawl internal links</Label>
+                  <Label htmlFor="crawl" className="cursor-pointer">
+                    Crawl internal links
+                  </Label>
                 </div>
               </div>
 
@@ -183,14 +209,17 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     max={10}
                     required
                     value={group.options.crawl_depth ?? 1}
-                    onChange={(e) => setOpt('crawl_depth', parseInt(e.target.value) || 1)}
+                    onChange={(e) => setOpt('crawl_depth', parseInt(e.target.value, 10) || 1)}
                     className="w-24"
                   />
                 </div>
               )}
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="waitForSelector">Wait for selector <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Label htmlFor="waitForSelector">
+                  Wait for selector{' '}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 <Input
                   id="waitForSelector"
                   type="text"
@@ -205,7 +234,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                 <Label htmlFor="waitUntil">Wait until</Label>
                 <Select
                   value={group.options.waitUntil ?? 'networkidle'}
-                  onValueChange={(v) => setOpt('waitUntil', v as 'networkidle' | 'load' | 'domcontentloaded')}
+                  onValueChange={(v) =>
+                    setOpt('waitUntil', v as 'networkidle' | 'load' | 'domcontentloaded')
+                  }
                 >
                   <SelectTrigger id="waitUntil" className="w-48">
                     <SelectValue />
@@ -229,11 +260,12 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                   min={0}
                   max={10}
                   value={group.options.retryCount ?? 3}
-                  onChange={(e) => setOpt('retryCount', parseInt(e.target.value) || 0)}
+                  onChange={(e) => setOpt('retryCount', parseInt(e.target.value, 10) || 0)}
                   className="w-24"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Number of times to retry a failed URL visit before marking it as failed. Default: 3.
+                  Number of times to retry a failed URL visit before marking it as failed. Default:
+                  3.
                 </p>
               </div>
             </div>
@@ -242,7 +274,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
 
             {/* Performance */}
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Performance</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Performance
+              </p>
 
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
@@ -251,10 +285,13 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     checked={group.options.fetchAssets !== false}
                     onCheckedChange={(v) => setOpt('fetchAssets', v === true)}
                   />
-                  <Label htmlFor="fetchAssets" className="cursor-pointer">Fetch static assets</Label>
+                  <Label htmlFor="fetchAssets" className="cursor-pointer">
+                    Fetch static assets
+                  </Label>
                 </div>
                 <p className="pl-6 text-xs text-muted-foreground">
-                  When unchecked, fonts and images are aborted before download — reduces bandwidth and visit duration. CSS and JS are always fetched.
+                  When unchecked, fonts and images are aborted before download — reduces bandwidth
+                  and visit duration. CSS and JS are always fetched.
                 </p>
               </div>
 
@@ -265,10 +302,13 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     checked={group.options.stealth !== false}
                     onCheckedChange={(v) => setOpt('stealth', v === true)}
                   />
-                  <Label htmlFor="stealth" className="cursor-pointer">Stealth mode</Label>
+                  <Label htmlFor="stealth" className="cursor-pointer">
+                    Stealth mode
+                  </Label>
                 </div>
                 <p className="pl-6 text-xs text-muted-foreground">
-                  Applies browser evasions to reduce bot-detection signals (e.g. hides <code>navigator.webdriver</code>).
+                  Applies browser evasions to reduce bot-detection signals (e.g. hides{' '}
+                  <code>navigator.webdriver</code>).
                 </p>
               </div>
 
@@ -279,7 +319,9 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     checked={group.options.screenshot === true}
                     onCheckedChange={(v) => setOpt('screenshot', v === true)}
                   />
-                  <Label htmlFor="screenshot" className="cursor-pointer">Capture screenshots</Label>
+                  <Label htmlFor="screenshot" className="cursor-pointer">
+                    Capture screenshots
+                  </Label>
                 </div>
                 <p className="pl-6 text-xs text-muted-foreground">
                   Saves a JPEG thumbnail after each visit (increases storage usage).
@@ -293,10 +335,13 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     checked={group.options.checkBrokenLinks === true}
                     onCheckedChange={(v) => setOpt('checkBrokenLinks', v === true)}
                   />
-                  <Label htmlFor="checkBrokenLinks" className="cursor-pointer">Check broken links</Label>
+                  <Label htmlFor="checkBrokenLinks" className="cursor-pointer">
+                    Check broken links
+                  </Label>
                 </div>
                 <p className="pl-6 text-xs text-muted-foreground">
-                  HEAD-checks all discovered links after crawling; requires <strong>crawl</strong> enabled.
+                  HEAD-checks all discovered links after crawling; requires <strong>crawl</strong>{' '}
+                  enabled.
                 </p>
               </div>
 
@@ -308,10 +353,14 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                   min={5000}
                   step={1000}
                   value={group.options.navigationTimeout ?? 30000}
-                  onChange={(e) => setOpt('navigationTimeout', parseInt(e.target.value) || 30000)}
+                  onChange={(e) =>
+                    setOpt('navigationTimeout', parseInt(e.target.value, 10) || 30000)
+                  }
                   className="w-32"
                 />
-                <p className="text-xs text-muted-foreground">Default: 30 000 ms. Increase for slow sites.</p>
+                <p className="text-xs text-muted-foreground">
+                  Default: 30 000 ms. Increase for slow sites.
+                </p>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -323,7 +372,12 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     min={0}
                     step={500}
                     value={group.options.delayMinMs ?? ''}
-                    onChange={(e) => setOpt('delayMinMs', e.target.value ? parseInt(e.target.value) : undefined)}
+                    onChange={(e) =>
+                      setOpt(
+                        'delayMinMs',
+                        e.target.value ? parseInt(e.target.value, 10) : undefined,
+                      )
+                    }
                     placeholder="min (default 2000)"
                     className="w-40"
                   />
@@ -334,12 +388,19 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                     min={0}
                     step={500}
                     value={group.options.delayMaxMs ?? ''}
-                    onChange={(e) => setOpt('delayMaxMs', e.target.value ? parseInt(e.target.value) : undefined)}
+                    onChange={(e) =>
+                      setOpt(
+                        'delayMaxMs',
+                        e.target.value ? parseInt(e.target.value, 10) : undefined,
+                      )
+                    }
                     placeholder="max (default 5000)"
                     className="w-40"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Leave blank to use the global env defaults.</p>
+                <p className="text-xs text-muted-foreground">
+                  Leave blank to use the global env defaults.
+                </p>
               </div>
             </div>
 
@@ -347,10 +408,14 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
 
             {/* Identity & state */}
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Identity & state</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Identity & state
+              </p>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="userAgent">User agent <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                <Label htmlFor="userAgent">
+                  User agent <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
                 <Input
                   id="userAgent"
                   type="text"
@@ -363,7 +428,10 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="localStorage">
-                  localStorage entries <span className="font-normal text-muted-foreground">(optional, one per line: <code className="text-xs">KEY=value</code>)</span>
+                  localStorage entries{' '}
+                  <span className="font-normal text-muted-foreground">
+                    (optional, one per line: <code className="text-xs">KEY=value</code>)
+                  </span>
                 </Label>
                 <Textarea
                   id="localStorage"
@@ -380,7 +448,8 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
 
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="cookies">
-                  Cookies <span className="font-normal text-muted-foreground">(optional, JSON array)</span>
+                  Cookies{' '}
+                  <span className="font-normal text-muted-foreground">(optional, JSON array)</span>
                 </Label>
                 <Textarea
                   id="cookies"
@@ -391,11 +460,12 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                   placeholder={`[{"name":"session","value":"abc123","domain":"example.com"}]`}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Injected before page load. Each object supports <code>name</code>, <code>value</code>, <code>domain</code>, <code>path</code>, <code>httpOnly</code>, <code>secure</code>, <code>sameSite</code>.
+                  Injected before page load. Each object supports <code>name</code>,{' '}
+                  <code>value</code>, <code>domain</code>, <code>path</code>, <code>httpOnly</code>,{' '}
+                  <code>secure</code>, <code>sameSite</code>.
                 </p>
               </div>
             </div>
-
           </div>
         </CollapsibleContent>
       </Collapsible>

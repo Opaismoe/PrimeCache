@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { dismissCookieConsent } from './cookieConsent';
 
+type ConsentPage = Parameters<typeof dismissCookieConsent>[0];
+
 function makePage(overrides: Record<string, unknown> = {}) {
   return {
     $: vi.fn().mockResolvedValue(null),
@@ -13,7 +15,7 @@ function makePage(overrides: Record<string, unknown> = {}) {
     evaluate: vi.fn().mockResolvedValue(null),
     frames: vi.fn().mockReturnValue([]),
     ...overrides,
-  } as any;
+  } as unknown as ConsentPage;
 }
 
 function makeClickableLocator() {
@@ -71,34 +73,22 @@ describe('dismissCookieConsent', () => {
   });
 
   it('detects generic accept button by text', async () => {
-    const locator = makeClickableLocator();
-    const page = makePage({
-      locator: vi.fn((selector: string) =>
-        selector.includes('text=') || selector.includes('button')
-          ? locator
-          : {
-              first: vi.fn().mockReturnThis(),
-              isVisible: vi.fn().mockResolvedValue(false),
-              click: vi.fn(),
-            },
-      ),
-    });
-
-    // First two selectors (cookiebot, onetrust) return invisible
-    // Generic text match returns visible
+    // First three locator chains (cookiebot, onetrust, trustarc) return invisible;
+    // later calls hit generic selector and return visible.
     let callCount = 0;
     const genericLocator = makeClickableLocator();
-    page.locator = vi.fn(() => {
-      callCount++;
-      if (callCount <= 3) {
-        // cookiebot, onetrust, trustarc
-        return {
-          first: vi.fn().mockReturnThis(),
-          isVisible: vi.fn().mockResolvedValue(false),
-          click: vi.fn(),
-        };
-      }
-      return genericLocator;
+    const page = makePage({
+      locator: vi.fn(() => {
+        callCount++;
+        if (callCount <= 3) {
+          return {
+            first: vi.fn().mockReturnThis(),
+            isVisible: vi.fn().mockResolvedValue(false),
+            click: vi.fn(),
+          };
+        }
+        return genericLocator;
+      }),
     });
 
     const result = await dismissCookieConsent(page);
@@ -121,7 +111,7 @@ describe('dismissCookieConsent', () => {
     });
     await dismissCookieConsent(page);
     expect(page.waitForTimeout).toHaveBeenCalledOnce();
-    const ms = page.waitForTimeout.mock.calls[0][0];
+    const ms = (page.waitForTimeout as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(ms).toBeGreaterThanOrEqual(500);
     expect(ms).toBeLessThanOrEqual(1000);
   });

@@ -1,14 +1,8 @@
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryOptions } from '@tanstack/react-query';
-import { getRunById, cancelRun } from '../lib/api';
-import { queryKeys } from '../lib/queryKeys';
-import { StatusBadge } from '../components/StatusBadge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '../components/Spinner';
-import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -17,10 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Spinner } from '../components/Spinner';
+import { StatusBadge } from '../components/StatusBadge';
+import { cancelRun, getRunById } from '../lib/api';
+import { formatDate, formatDuration, formatMs } from '../lib/formatters';
+import { queryKeys } from '../lib/queryKeys';
 
 export const Route = createFileRoute('/history_/$runId')({
   loader: ({ context: { queryClient }, params }) => {
-    const id = parseInt(params.runId);
+    const id = parseInt(params.runId, 10);
     return queryClient.ensureQueryData(
       queryOptions({
         queryKey: queryKeys.runs.detail(id),
@@ -71,10 +70,18 @@ function RunDetailSkeleton() {
           <TableBody>
             {Array.from({ length: 6 }).map((_, i) => (
               <TableRow key={i}>
-                <TableCell><Skeleton className="h-4 w-64" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-12" /></TableCell>
-                <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-64" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-8" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-12" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-12" />
+                </TableCell>
                 <TableCell />
               </TableRow>
             ))}
@@ -87,7 +94,7 @@ function RunDetailSkeleton() {
 
 function RunDetailPage() {
   const { runId } = Route.useParams();
-  const id = parseInt(runId);
+  const id = parseInt(runId, 10);
   const queryClient = useQueryClient();
 
   const { data: run } = useQuery({
@@ -112,7 +119,11 @@ function RunDetailPage() {
           History
         </Link>
         <span>/</span>
-        <Link to="/groups/$groupName" params={{ groupName: run.group_name }} className="hover:text-foreground">
+        <Link
+          to="/groups/$groupName"
+          params={{ groupName: run.group_name }}
+          className="hover:text-foreground"
+        >
           {run.group_name}
         </Link>
         <span>/</span>
@@ -148,8 +159,14 @@ function RunDetailPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Metric label="Started" value={formatDate(run.started_at)} />
         <Metric label="Duration" value={formatDuration(run.started_at, run.ended_at)} />
-        <Metric label="Success" value={run.success_count !== null ? String(run.success_count) : '…'} />
-        <Metric label="Failed" value={run.failure_count !== null ? String(run.failure_count) : '…'} />
+        <Metric
+          label="Success"
+          value={run.success_count !== null ? String(run.success_count) : '…'}
+        />
+        <Metric
+          label="Failed"
+          value={run.failure_count !== null ? String(run.failure_count) : '…'}
+        />
       </div>
 
       {run.visits.length === 0 ? (
@@ -174,10 +191,7 @@ function RunDetailPage() {
             </TableHeader>
             <TableBody>
               {run.visits.map((visit) => (
-                <TableRow
-                  key={visit.id}
-                  className={visit.error ? 'bg-destructive/10' : ''}
-                >
+                <TableRow key={visit.id} className={visit.error ? 'bg-destructive/10' : ''}>
                   <TableCell className="max-w-xs truncate font-mono text-xs">
                     <a
                       href={visit.url}
@@ -189,7 +203,9 @@ function RunDetailPage() {
                     </a>
                   </TableCell>
                   <TableCell>{visit.status_code ?? '—'}</TableCell>
-                  <TableCell className="text-muted-foreground">{visit.redirect_count > 0 ? visit.redirect_count : '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {visit.redirect_count > 0 ? visit.redirect_count : '—'}
+                  </TableCell>
                   <TableCell>{formatMs(visit.ttfb_ms)}</TableCell>
                   <TableCell>{formatMs(visit.load_time_ms)}</TableCell>
                   <TableCell className="text-xs text-destructive">{visit.error ?? ''}</TableCell>

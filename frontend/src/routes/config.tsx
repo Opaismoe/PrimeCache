@@ -1,21 +1,19 @@
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queryOptions } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getConfig, putConfig } from '../lib/api';
-import { queryKeys } from '../lib/queryKeys';
-import { GroupForm } from '../components/GroupForm';
-import { Skeleton } from '@/components/ui/skeleton';
-import { describeCron } from '../lib/cronUtils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { GroupForm } from '../components/GroupForm';
+import { getConfig, putConfig } from '../lib/api';
+import { describeCron } from '../lib/cronUtils';
+import { queryKeys } from '../lib/queryKeys';
 import type { Config, Group } from '../lib/types';
 
 const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
 
 export const Route = createFileRoute('/config')({
-  loader: ({ context: { queryClient } }) =>
-    queryClient.ensureQueryData(configQueryOptions),
+  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(configQueryOptions),
   pendingComponent: ConfigSkeleton,
   pendingMs: 200,
   pendingMinMs: 300,
@@ -59,8 +57,13 @@ function ConfigPage() {
   const { data: config } = useQuery(configQueryOptions);
 
   const saveConfig = useMutation({
-    mutationFn: ({ config, renames }: { config: Config; renames?: { from: string; to: string }[] }) =>
-      putConfig(config, renames),
+    mutationFn: ({
+      config,
+      renames,
+    }: {
+      config: Config;
+      renames?: { from: string; to: string }[];
+    }) => putConfig(config, renames),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.config.all() }),
   });
 
@@ -91,9 +94,7 @@ function ConfigPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Config</h1>
-        {!formMode && (
-          <Button onClick={() => setFormMode({ mode: 'add' })}>Add group</Button>
-        )}
+        {!formMode && <Button onClick={() => setFormMode({ mode: 'add' })}>Add group</Button>}
       </div>
 
       {formMode && (

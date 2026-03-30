@@ -3,7 +3,10 @@ import { cronToString, describeCron, parseCron } from './cronUtils';
 
 describe('parseCron', () => {
   it('parses every-n-minutes expression', () => {
-    expect(parseCron('*/15 * * * *')).toMatchObject({ type: 'every-n-minutes', minuteInterval: 15 });
+    expect(parseCron('*/15 * * * *')).toMatchObject({
+      type: 'every-n-minutes',
+      minuteInterval: 15,
+    });
     expect(parseCron('*/1 * * * *')).toMatchObject({ type: 'every-n-minutes', minuteInterval: 1 });
   });
 
@@ -18,8 +21,18 @@ describe('parseCron', () => {
   });
 
   it('parses weekly expression', () => {
-    expect(parseCron('0 8 * * 1')).toMatchObject({ type: 'weekly', hour: 8, minute: 0, dayOfWeek: 1 });
-    expect(parseCron('30 18 * * 5')).toMatchObject({ type: 'weekly', hour: 18, minute: 30, dayOfWeek: 5 });
+    expect(parseCron('0 8 * * 1')).toMatchObject({
+      type: 'weekly',
+      hour: 8,
+      minute: 0,
+      dayOfWeek: 1,
+    });
+    expect(parseCron('30 18 * * 5')).toMatchObject({
+      type: 'weekly',
+      hour: 18,
+      minute: 30,
+      dayOfWeek: 5,
+    });
   });
 
   it('falls back to custom for unrecognised expressions', () => {
