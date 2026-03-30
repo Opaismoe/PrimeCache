@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '../components/StatusBadge';
-import { getConfig, getLatestRuns, getStats, triggerAsync } from '../lib/api';
+import { getConfig, getLatestRuns, getPublicStatus, getStats, triggerAsync } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
 import { formatChartDate } from '../lib/formatChartDate';
 import { formatDate } from '../lib/formatters';
@@ -80,6 +80,12 @@ function buildStackedBarData(visitsByDay: Stats['visitsByDay']) {
   };
 }
 
+function uptimeColor(pct: number): string {
+  if (pct >= 99) return '#22c55e';
+  if (pct >= 95) return '#f59e0b';
+  return '#ef4444';
+}
+
 function DashboardSkeleton() {
   return (
     <div>
@@ -132,6 +138,11 @@ function DashboardPage() {
   const { data: config } = useQuery(configQueryOptions);
   const { data: latestRuns } = useQuery(latestRunsQueryOptions);
   const { data: stats } = useQuery(statsQueryOptions);
+  const { data: statusData } = useQuery({
+    queryKey: queryKeys.publicStatus.all(),
+    queryFn: getPublicStatus,
+    refetchInterval: 60_000,
+  });
 
   const trigger = useMutation({
     mutationFn: triggerAsync,
@@ -220,6 +231,43 @@ function DashboardPage() {
             );
           })}
         </div>
+      )}
+
+      {statusData && statusData.length > 0 && (
+        <Card className="mt-10">
+          <CardHeader className="pb-2">
+            <h2 className="text-sm font-medium">Uptime Status</h2>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {statusData.map((g) => {
+              const color = uptimeColor(g.uptimePct);
+              return (
+                <div key={g.groupName} className="flex items-center gap-3">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="w-32 shrink-0 truncate text-sm font-medium">{g.groupName}</span>
+                  <div
+                    className="flex-1 overflow-hidden rounded-full bg-muted"
+                    style={{ height: 6 }}
+                  >
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${g.uptimePct}%`, backgroundColor: color }}
+                    />
+                  </div>
+                  <span
+                    className="w-12 shrink-0 text-right text-sm font-semibold"
+                    style={{ color }}
+                  >
+                    {g.uptimePct.toFixed(1)}%
+                  </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
       )}
 
       {stats && (
