@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // We need to re-import the module fresh for each test since it runs at import time
 // vi.resetModules() ensures a clean slate
@@ -12,93 +12,93 @@ const VALID_ENV = {
   PORT: '3000',
   LOG_LEVEL: 'info',
   TIMEZONE: 'Europe/Amsterdam',
-}
+};
 
 describe('env', () => {
   beforeEach(() => {
-    vi.resetModules()
-  })
+    vi.resetModules();
+  });
 
   it('parses valid environment variables correctly', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
-    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
-    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
-    vi.stubEnv('DB_PATH', VALID_ENV.DB_PATH)
-    vi.stubEnv('CONFIG_PATH', VALID_ENV.CONFIG_PATH)
-    vi.stubEnv('PORT', VALID_ENV.PORT)
-    vi.stubEnv('LOG_LEVEL', VALID_ENV.LOG_LEVEL)
-    vi.stubEnv('TIMEZONE', VALID_ENV.TIMEZONE)
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('DB_PATH', VALID_ENV.DB_PATH);
+    vi.stubEnv('CONFIG_PATH', VALID_ENV.CONFIG_PATH);
+    vi.stubEnv('PORT', VALID_ENV.PORT);
+    vi.stubEnv('LOG_LEVEL', VALID_ENV.LOG_LEVEL);
+    vi.stubEnv('TIMEZONE', VALID_ENV.TIMEZONE);
 
-    const { env } = await import('./env')
+    const { env } = await import('./env');
 
-    expect(env.BROWSERLESS_WS_URL).toBe(VALID_ENV.BROWSERLESS_WS_URL)
-    expect(env.BROWSERLESS_TOKEN).toBe(VALID_ENV.BROWSERLESS_TOKEN)
-    expect(env.API_KEY).toBe(VALID_ENV.API_KEY)
-    expect(env.PORT).toBe(3000)         // coerced to number
-    expect(env.LOG_LEVEL).toBe('info')
-  })
+    expect(env.BROWSERLESS_WS_URL).toBe(VALID_ENV.BROWSERLESS_WS_URL);
+    expect(env.BROWSERLESS_TOKEN).toBe(VALID_ENV.BROWSERLESS_TOKEN);
+    expect(env.API_KEY).toBe(VALID_ENV.API_KEY);
+    expect(env.PORT).toBe(3000); // coerced to number
+    expect(env.LOG_LEVEL).toBe('info');
+  });
 
   it('coerces PORT string to number', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
-    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
-    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
-    vi.stubEnv('PORT', '8080')
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('PORT', '8080');
 
-    const { env } = await import('./env')
-    expect(env.PORT).toBe(8080)
-    expect(typeof env.PORT).toBe('number')
-  })
+    const { env } = await import('./env');
+    expect(env.PORT).toBe(8080);
+    expect(typeof env.PORT).toBe('number');
+  });
 
   it('applies default for PORT when not set', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
-    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
-    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
-    vi.stubEnv('PORT', '')
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('PORT', '');
 
-    const { env } = await import('./env')
-    expect(env.PORT).toBe(3000)
-  })
+    const { env } = await import('./env');
+    expect(env.PORT).toBe(3000);
+  });
 
   it('applies default TIMEZONE when not set', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
-    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
-    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
-    vi.stubEnv('TIMEZONE', '')
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('TIMEZONE', '');
 
-    const { env } = await import('./env')
-    expect(env.TIMEZONE).toBe('Europe/Amsterdam')
-  })
+    const { env } = await import('./env');
+    expect(env.TIMEZONE).toBe('Europe/Amsterdam');
+  });
 
   it('throws when BROWSERLESS_WS_URL is missing', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', '')
-    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
-    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('BROWSERLESS_WS_URL', '');
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
 
-    await expect(import('./env')).rejects.toThrow()
-  })
+    await expect(import('./env')).rejects.toThrow();
+  });
 
   it('throws when BROWSERLESS_TOKEN is missing', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
-    vi.stubEnv('BROWSERLESS_TOKEN', '')
-    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', '');
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
 
-    await expect(import('./env')).rejects.toThrow()
-  })
+    await expect(import('./env')).rejects.toThrow();
+  });
 
   it('throws when API_KEY is shorter than 16 characters', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
-    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
-    vi.stubEnv('API_KEY', 'tooshort')
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', 'tooshort');
 
-    await expect(import('./env')).rejects.toThrow()
-  })
+    await expect(import('./env')).rejects.toThrow();
+  });
 
   it('rejects invalid LOG_LEVEL values', async () => {
-    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL)
-    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN)
-    vi.stubEnv('API_KEY', VALID_ENV.API_KEY)
-    vi.stubEnv('LOG_LEVEL', 'verbose')  // not a valid level
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('LOG_LEVEL', 'verbose'); // not a valid level
 
-    await expect(import('./env')).rejects.toThrow()
-  })
-})
+    await expect(import('./env')).rejects.toThrow();
+  });
+});

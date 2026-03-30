@@ -1,39 +1,40 @@
-import { sql } from 'drizzle-orm'
-import type { Db } from '../client'
+import { sql } from 'drizzle-orm';
+import type { Db } from '../client';
 
 /** Normalise db.execute() result — postgres driver returns T[], PGlite returns { rows: T[] } */
 function toRows(result: unknown): any[] {
-  if (Array.isArray(result)) return result as any[]
-  if (result && typeof result === 'object' && 'rows' in result) return (result as any).rows as any[]
-  return []
+  if (Array.isArray(result)) return result as any[];
+  if (result && typeof result === 'object' && 'rows' in result)
+    return (result as any).rows as any[];
+  return [];
 }
 
 export interface UrlUptime {
-  url: string
-  uptimePct: number
-  totalChecks: number
-  downCount: number
-  lastStatus: 'up' | 'down'
-  lastCheckedAt: string
+  url: string;
+  uptimePct: number;
+  totalChecks: number;
+  downCount: number;
+  lastStatus: 'up' | 'down';
+  lastCheckedAt: string;
 }
 
 export interface UptimeTimelinePoint {
-  url: string
-  visitedAt: string
-  isDown: boolean
+  url: string;
+  visitedAt: string;
+  isDown: boolean;
 }
 
 export interface UptimeTrendPoint {
-  runId: number
-  startedAt: string
-  url: string
-  wasDown: boolean
+  runId: number;
+  startedAt: string;
+  url: string;
+  wasDown: boolean;
 }
 
 export interface GroupUptime {
-  urls: UrlUptime[]
-  timeline: UptimeTimelinePoint[]
-  uptimeTrend: UptimeTrendPoint[]
+  urls: UrlUptime[];
+  timeline: UptimeTimelinePoint[];
+  uptimeTrend: UptimeTrendPoint[];
 }
 
 export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUptime> {
@@ -57,7 +58,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     WHERE r.group_name = ${groupName}
     GROUP BY v.url
     ORDER BY uptime_pct ASC
-  `)
+  `);
 
   const urls: UrlUptime[] = toRows(uptimeRows).map((row) => ({
     url: row.url as string,
@@ -66,7 +67,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     downCount: Number(row.down_count),
     lastStatus: row.last_is_down ? 'down' : 'up',
     lastCheckedAt: new Date(row.last_checked_at as string).toISOString(),
-  }))
+  }));
 
   // Timeline: last 200 visit results per group for status chart (most recent visits)
   const timelineRows = await db.execute(sql`
@@ -79,13 +80,13 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     WHERE r.group_name = ${groupName}
     ORDER BY v.visited_at DESC
     LIMIT 200
-  `)
+  `);
 
   const timeline: UptimeTimelinePoint[] = toRows(timelineRows).map((row) => ({
     url: row.url as string,
     visitedAt: new Date(row.visited_at as string).toISOString(),
     isDown: Boolean(row.is_down),
-  }))
+  }));
 
   // Per-run per-URL trend: oldest first for charting
   const trendRows = await db.execute(sql`
@@ -99,14 +100,14 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     WHERE r.group_name = ${groupName}
     ORDER BY r.started_at ASC
     LIMIT 600
-  `)
+  `);
 
   const uptimeTrend: UptimeTrendPoint[] = toRows(trendRows).map((row) => ({
     runId: Number(row.run_id),
     startedAt: new Date(row.started_at as string).toISOString(),
     url: row.url as string,
     wasDown: Boolean(row.was_down),
-  }))
+  }));
 
-  return { urls, timeline, uptimeTrend }
+  return { urls, timeline, uptimeTrend };
 }
