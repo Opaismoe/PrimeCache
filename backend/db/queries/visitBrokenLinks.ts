@@ -40,6 +40,7 @@ export async function getGroupBrokenLinks(db: Db, groupName: string): Promise<Br
     JOIN visits v ON v.id = bl.visit_id
     JOIN runs r   ON r.id = v.run_id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     GROUP BY bl.url, bl.status_code, bl.error
     ORDER BY occurrences DESC, bl.url
   `);

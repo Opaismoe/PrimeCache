@@ -43,12 +43,13 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
         SELECT v2.error IS NOT NULL
         FROM visits v2
         INNER JOIN runs r2 ON v2.run_id = r2.id
-        WHERE r2.group_name = ${groupName} AND v2.url = v.url
+        WHERE r2.group_name = ${groupName} AND r2.status != 'cancelled' AND v2.url = v.url
         ORDER BY v2.visited_at DESC LIMIT 1
       ) AS last_is_down
     FROM visits v
     INNER JOIN runs r ON v.run_id = r.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     GROUP BY v.url
     ORDER BY uptime_pct ASC
   `);
@@ -71,6 +72,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     FROM visits v
     INNER JOIN runs r ON v.run_id = r.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     ORDER BY v.visited_at DESC
     LIMIT 200
   `);
@@ -91,6 +93,7 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
     FROM visits v
     INNER JOIN runs r ON v.run_id = r.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     ORDER BY r.started_at ASC
     LIMIT 600
   `);

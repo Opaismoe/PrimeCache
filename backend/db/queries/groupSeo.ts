@@ -124,6 +124,7 @@ export async function getGroupSeo(db: Db, groupName: string): Promise<GroupSeo> 
     INNER JOIN runs r ON v.run_id = r.id
     INNER JOIN visit_seo s ON s.visit_id = v.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     ORDER BY v.url, v.visited_at DESC
   `);
 

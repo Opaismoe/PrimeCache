@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import type { Db } from '../client';
 import { runs, visits } from '../schema';
 import { sqlExecuteRows } from '../sqlExecuteRows';
@@ -50,7 +50,7 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     })
     .from(visits)
     .innerJoin(runs, eq(visits.run_id, runs.id))
-    .where(eq(runs.group_name, groupName));
+    .where(and(eq(runs.group_name, groupName), ne(runs.status, 'cancelled')));
 
   // Run-level stats
   const [runStats] = await db
@@ -60,7 +60,7 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
       totalUrls: sql<number>`SUM(COALESCE(${runs.total_urls}, 0))::int`,
     })
     .from(runs)
-    .where(eq(runs.group_name, groupName));
+    .where(and(eq(runs.group_name, groupName), ne(runs.status, 'cancelled')));
 
   const successRate =
     runStats && runStats.totalUrls > 0 ? (runStats.totalSuccess / runStats.totalUrls) * 100 : 0;
@@ -79,7 +79,7 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     })
     .from(runs)
     .leftJoin(visits, eq(visits.run_id, runs.id))
-    .where(eq(runs.group_name, groupName))
+    .where(and(eq(runs.group_name, groupName), ne(runs.status, 'cancelled')))
     .groupBy(runs.id)
     .orderBy(desc(runs.started_at))
     .limit(30);
@@ -103,6 +103,7 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
     INNER JOIN visits v ON v.run_id = r.id
     INNER JOIN visit_seo s ON s.visit_id = v.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     GROUP BY r.id
   `);
   const seoByRunId = new Map<number, number>();

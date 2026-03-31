@@ -41,6 +41,7 @@ export async function getGroupPerformance(
     FROM visits v
     INNER JOIN runs r ON v.run_id = r.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     GROUP BY v.url
     ORDER BY p95_load DESC
   `);
@@ -65,8 +66,9 @@ export async function getGroupPerformance(
     FROM visits v
     INNER JOIN runs r ON v.run_id = r.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
       AND r.id IN (
-        SELECT id FROM runs WHERE group_name = ${groupName}
+        SELECT id FROM runs WHERE group_name = ${groupName} AND status != 'cancelled'
         ORDER BY started_at DESC LIMIT 20
       )
     GROUP BY r.id, r.started_at, v.url

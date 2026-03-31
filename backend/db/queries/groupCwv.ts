@@ -89,6 +89,7 @@ export async function getGroupCwvPerUrlTrend(
     INNER JOIN visits v ON v.run_id = r.id
     INNER JOIN visit_cwv c ON c.visit_id = v.id
     WHERE r.group_name = ${groupName}
+      AND r.status != 'cancelled'
     GROUP BY r.id, r.started_at, v.url
     ORDER BY r.started_at ASC
     LIMIT 600
@@ -122,6 +123,7 @@ export async function getGroupCwv(db: Db, groupName: string): Promise<GroupCwv> 
       INNER JOIN runs r ON r.id = v.run_id
       INNER JOIN visit_cwv c ON c.visit_id = v.id
       WHERE r.group_name = ${groupName}
+        AND r.status != 'cancelled'
       GROUP BY v.url
       ORDER BY lcp_p75 DESC NULLS LAST
     `),
@@ -138,6 +140,7 @@ export async function getGroupCwv(db: Db, groupName: string): Promise<GroupCwv> 
       INNER JOIN visits v ON v.run_id = r.id
       INNER JOIN visit_cwv c ON c.visit_id = v.id
       WHERE r.group_name = ${groupName}
+        AND r.status != 'cancelled'
       GROUP BY r.id, r.started_at
       ORDER BY r.started_at ASC
       LIMIT 30
