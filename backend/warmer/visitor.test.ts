@@ -8,6 +8,18 @@ vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16');
 // Mock the browser layer so no real connections are made
 vi.mock('../browser/connection', () => ({ getBrowser: vi.fn(), resetBrowser: vi.fn() }));
 vi.mock('../browser/context', () => ({ createContext: vi.fn() }));
+vi.mock('@axe-core/playwright', () => ({
+  AxeBuilder: vi.fn().mockImplementation(function () {
+    return {
+      analyze: vi.fn().mockResolvedValue({
+        violations: [
+          { id: 'color-contrast', impact: 'serious', help: 'Elements must have sufficient color contrast', description: 'Ensures the contrast ratio...', helpUrl: 'https://dequeuniversity.com/rules/axe/4.9/color-contrast', nodes: [{}, {}] },
+          { id: 'button-name', impact: 'critical', help: 'Buttons must have discernible text', description: 'Ensures buttons have discernible text', helpUrl: 'https://dequeuniversity.com/rules/axe/4.9/button-name', nodes: [{}] },
+        ],
+      }),
+    };
+  }),
+}));
 vi.mock('../browser/stealth', () => ({
   simulateMouseMovement: vi.fn().mockResolvedValue(undefined),
   simulateScroll: vi.fn().mockResolvedValue(undefined),
@@ -163,5 +175,47 @@ describe('visitUrl', () => {
       userAgent: customUA,
     });
     expect(vi.mocked(createContext)).toHaveBeenCalledWith(expect.anything(), customUA, undefined);
+  });
+
+  it('checkAccessibility: true → result.accessibility has correct violation counts', async () => {
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', {
+      scrollToBottom: false,
+      crawl: false,
+      checkAccessibility: true,
+    });
+    expect(result.accessibility).not.toBeNull();
+    expect(result.accessibility!.violationCount).toBe(2);
+    expect(result.accessibility!.criticalCount).toBe(1);
+    expect(result.accessibility!.seriousCount).toBe(1);
+    expect(result.accessibility!.violations).toHaveLength(2);
+    expect(result.accessibility!.violations[0].id).toBe('color-contrast');
+    expect(result.accessibility!.violations[0].nodeCount).toBe(2);
+    expect(result.accessibility!.violations[1].id).toBe('button-name');
+    expect(result.accessibility!.violations[1].impact).toBe('critical');
+  });
+
+  it('checkAccessibility: false (default) → result.accessibility is null', async () => {
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', {
+      scrollToBottom: false,
+      crawl: false,
+    });
+    expect(result.accessibility).toBeNull();
+  });
+
+  it('axe throws → result.accessibility is null but visit succeeds', async () => {
+    const { AxeBuilder } = await import('@axe-core/playwright');
+    vi.mocked(AxeBuilder).mockImplementationOnce(function () {
+      return { analyze: vi.fn().mockRejectedValue(new Error('axe internal error')) };
+    } as any);
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', {
+      scrollToBottom: false,
+      crawl: false,
+      checkAccessibility: true,
+    });
+    expect(result.accessibility).toBeNull();
+    expect(result.error).toBeNull();
   });
 });

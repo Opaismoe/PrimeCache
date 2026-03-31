@@ -168,4 +168,23 @@ groups:
     const config = parseConfig(yaml);
     expect(config.groups[0].options.fetchAssets).toBe(false);
   });
+
+  it('accepts checkAccessibility: true', () => {
+    const yaml = `
+groups:
+  - name: a11y-test
+    schedule: "0 * * * *"
+    urls:
+      - https://example.com/
+    options:
+      checkAccessibility: true
+`;
+    const config = parseConfig(yaml);
+    expect(config.groups[0].options.checkAccessibility).toBe(true);
+  });
+
+  it('defaults checkAccessibility to false when omitted', () => {
+    const config = parseConfig(VALID_YAML);
+    expect(config.groups[0].options.checkAccessibility).toBe(false);
+  });
 });
