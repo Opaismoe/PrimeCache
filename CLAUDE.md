@@ -108,6 +108,9 @@ All routes except `GET /health` require `X-API-Key` header.
 | POST | `/trigger` | **Synchronous** — runs group, returns `{ runId }` when done |
 | POST | `/webhook/warm` | **Async** — fires runs and responds immediately; `group: "all"` runs every group |
 | GET | `/config` | Current loaded config |
+| GET | `/api/groups/:name/overview` | Group overview — includes CWV data with `urlTrend: UrlCwvTrendPoint[]` (LCP/CLS/TTFB per URL per run) |
+| GET | `/api/groups/:name/performance` | Group performance metrics |
+| GET | `/api/groups/:name/uptime` | Group uptime metrics |
 
 `POST /trigger` and `POST /webhook/warm` both take `{ "group": "<name>" }` as JSON body.
 

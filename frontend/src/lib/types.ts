@@ -232,7 +232,19 @@ export interface CwvTrendPoint {
   avgInpMs: number | null;
 }
 
+export interface UrlCwvTrendPoint {
+  runId: number;
+  startedAt: string;
+  url: string;
+  avgLcpMs: number | null;
+  avgFcpMs: number | null;
+  avgClsScore: number | null;
+  avgInpMs: number | null;
+  avgTtfbMs: number | null;
+}
+
 export interface GroupCwv {
   urls: UrlCwv[];
   trend: CwvTrendPoint[];
+  urlTrend: UrlCwvTrendPoint[];
 }
