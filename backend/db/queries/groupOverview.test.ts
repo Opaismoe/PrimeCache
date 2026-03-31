@@ -159,3 +159,33 @@ describe('getGroupOverview series', () => {
     expect(result.series[0].avgSeoScore).toBeNull();
   });
 });
+
+describe('getGroupOverview — cancelled run exclusion', () => {
+  it('excludes cancelled run visits from stats/series but keeps them in recentRuns', async () => {
+    const db = await createTestDb();
+    const { getGroupOverview } = await import('./groupOverview');
+
+    const [completed] = await db.insert(runs).values({
+      group_name: 'overview-cancel', started_at: new Date('2025-01-01T10:00:00Z'),
+      status: 'completed', total_urls: 1, success_count: 1, failure_count: 0,
+    }).returning();
+    await db.insert(visits).values({
+      run_id: completed.id, url: 'https://c.com/', load_time_ms: 400,
+      visited_at: new Date('2025-01-01T10:01:00Z'), error: null,
+    });
+
+    const [cancelled] = await db.insert(runs).values({
+      group_name: 'overview-cancel', started_at: new Date('2025-01-02T10:00:00Z'),
+      status: 'cancelled', total_urls: 1, success_count: 0, failure_count: 1,
+    }).returning();
+    await db.insert(visits).values({
+      run_id: cancelled.id, url: 'https://c.com/', load_time_ms: 9999,
+      visited_at: new Date('2025-01-02T10:01:00Z'), error: 'aborted',
+    });
+
+    const result = await getGroupOverview(db, 'overview-cancel');
+    expect(result.stats.avgLoadTimeMs).toBe(400);
+    expect(result.series).toHaveLength(1);
+    expect(result.recentRuns).toHaveLength(2); // cancelled still visible in history
+  });
+});

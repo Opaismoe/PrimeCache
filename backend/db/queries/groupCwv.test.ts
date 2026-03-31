@@ -283,3 +283,33 @@ describe('getGroupCwvPerUrlTrend', () => {
     expect(result).toEqual([]);
   });
 });
+
+describe('getGroupCwv — cancelled run exclusion', () => {
+  it('excludes CWV data from cancelled runs', async () => {
+    const db = await createTestDb();
+    const { getGroupCwv } = await import('./groupCwv');
+
+    const [completed] = await db.insert(runs).values({
+      group_name: 'cwv-cancel', started_at: new Date('2025-01-01T10:00:00Z'), status: 'completed',
+    }).returning();
+    const [v1] = await db.insert(visits).values({
+      run_id: completed.id, url: 'https://a.com/', load_time_ms: 400,
+      visited_at: new Date('2025-01-01T10:01:00Z'), error: null,
+    }).returning();
+    await db.insert(visit_cwv).values({ visit_id: v1.id, lcp_ms: 1000, fcp_ms: 800, cls_score: 0.05, inp_ms: 100 });
+
+    const [cancelled] = await db.insert(runs).values({
+      group_name: 'cwv-cancel', started_at: new Date('2025-01-02T10:00:00Z'), status: 'cancelled',
+    }).returning();
+    const [v2] = await db.insert(visits).values({
+      run_id: cancelled.id, url: 'https://a.com/', load_time_ms: 9999,
+      visited_at: new Date('2025-01-02T10:01:00Z'), error: null,
+    }).returning();
+    await db.insert(visit_cwv).values({ visit_id: v2.id, lcp_ms: 9999, fcp_ms: 9999, cls_score: 9.99, inp_ms: 9999 });
+
+    const result = await getGroupCwv(db, 'cwv-cancel');
+    expect(result.urls[0].lcpP75).toBe(1000);
+    expect(result.trend).toHaveLength(1);
+    expect(result.urlTrend).toHaveLength(1);
+  });
+});
