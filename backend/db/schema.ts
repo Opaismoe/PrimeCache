@@ -35,6 +35,7 @@ export const visits = pgTable('visits', {
   error: text('error'),
   visited_at: timestamp('visited_at').notNull(),
   redirect_count: integer('redirect_count').notNull().default(0),
+  retry_count: integer('retry_count').notNull().default(0),
 });
 
 export const visit_headers = pgTable('visit_headers', {

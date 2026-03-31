@@ -22,6 +22,13 @@
       "when": 1774538039739,
       "tag": "0002_cooing_redwing",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774959850414,
+      "tag": "0003_fat_krista_starr",
+      "breakpoints": true
     }
   ]
 }

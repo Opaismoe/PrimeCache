@@ -62,6 +62,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
 
       log.info({ url, depth }, 'visiting');
       let result = await visitUrl(url, group.options);
+      let usedRetries = 0;
 
       for (
         let attempt = 1;
@@ -74,6 +75,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
         );
         await randomDelay(1000, 2000);
         result = await visitUrl(url, group.options);
+        usedRetries = attempt;
       }
 
       const visitId = await insertVisit(db, runId, {
@@ -83,6 +85,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
         ttfbMs: result.ttfbMs,
         loadTimeMs: result.loadTimeMs,
         redirectCount: result.redirectCount,
+        retryCount: usedRetries,
         consentFound: result.consentFound,
         consentStrategy: result.consentStrategy,
         error: result.error,

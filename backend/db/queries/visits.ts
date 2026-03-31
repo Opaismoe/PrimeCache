@@ -11,6 +11,7 @@ export interface VisitInput {
   ttfbMs: number | null;
   loadTimeMs: number;
   redirectCount: number;
+  retryCount: number;
   consentFound: boolean;
   consentStrategy: string | null;
   error: string | null;
@@ -27,6 +28,7 @@ export async function insertVisit(db: Db, runId: number, visit: VisitInput): Pro
       ttfb_ms: visit.ttfbMs,
       load_time_ms: visit.loadTimeMs,
       redirect_count: visit.redirectCount,
+      retry_count: visit.retryCount,
       consent_found: visit.consentFound,
       consent_strategy: visit.consentStrategy,
       error: visit.error,
