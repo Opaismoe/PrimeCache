@@ -380,6 +380,19 @@ describe('runGroup', () => {
     });
 
     it('persists retry_count = 0 when visitUrl succeeds on first attempt', async () => {
+      const { visitUrl } = await import('./visitor');
+      vi.mocked(visitUrl).mockResolvedValue({
+        url: 'https://example.com/',
+        finalUrl: 'https://example.com/',
+        statusCode: 200,
+        ttfbMs: 50,
+        loadTimeMs: 300,
+        consentFound: false,
+        consentStrategy: null,
+        error: null,
+        visitedAt: new Date(),
+        discoveredLinks: [],
+      });
       const { runGroup } = await import('./runner');
       const runId = await runGroup(db, {
         name: 'retry-count-zero',

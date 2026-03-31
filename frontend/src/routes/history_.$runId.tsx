@@ -186,6 +186,7 @@ function RunDetailPage() {
                 <TableHead>Redirects</TableHead>
                 <TableHead>TTFB</TableHead>
                 <TableHead>Load</TableHead>
+                <TableHead>Retries</TableHead>
                 <TableHead>Error</TableHead>
               </TableRow>
             </TableHeader>
@@ -208,6 +209,7 @@ function RunDetailPage() {
                   </TableCell>
                   <TableCell>{formatMs(visit.ttfb_ms)}</TableCell>
                   <TableCell>{formatMs(visit.load_time_ms)}</TableCell>
+                  <TableCell className="text-muted-foreground">{visit.retry_count > 0 ? visit.retry_count : '—'}</TableCell>
                   <TableCell className="text-xs text-destructive">{visit.error ?? ''}</TableCell>
                 </TableRow>
               ))}

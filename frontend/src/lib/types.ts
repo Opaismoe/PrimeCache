@@ -20,6 +20,7 @@ export interface Visit {
   ttfb_ms: number | null;
   load_time_ms: number;
   redirect_count: number;
+  retry_count: number;
   consent_found: number;
   consent_strategy: string | null;
   error: string | null;

@@ -3,6 +3,13 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Area, AreaChart, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip as UiTooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { HTTP_STATUS_CODES } from '@/lib/httpStatusCodes';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -457,6 +464,7 @@ function TabLoadingSkeleton({ rows, cols }: { rows: number; cols: number }) {
 
 // ── Overview Tab ─────────────────────────────────────────────────────────────
 function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
+  const navigate = useNavigate();
   if (!overview) return null;
 
   const { recentRuns, series } = overview;
@@ -646,20 +654,9 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                 <TableRow
                   key={run.id}
                   className="cursor-pointer"
-                  onClick={() => {
-                    /* navigate handled by link below */
-                  }}
+                  onClick={() => navigate({ to: '/history/$runId', params: { runId: String(run.id) } })}
                 >
-                  <TableCell>
-                    <Link
-                      to="/history/$runId"
-                      params={{ runId: String(run.id) }}
-                      className="text-muted-foreground hover:text-foreground hover:underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      #{run.id}
-                    </Link>
-                  </TableCell>
+                  <TableCell className="text-muted-foreground">#{run.id}</TableCell>
                   <TableCell>{formatDate(run.started_at)}</TableCell>
                   <TableCell>{formatDuration(run.started_at, run.ended_at)}</TableCell>
                   <TableCell>
@@ -1491,6 +1488,50 @@ function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv 
   );
 }
 
+// ── HTTP Status Badge ──────────────────────────────────────────────────────────
+
+function HttpStatusBadge({ status }: { status: number | null }) {
+  if (status === null) return <span className="text-muted-foreground text-xs">—</span>;
+
+  const info = HTTP_STATUS_CODES[status];
+  const badge = (
+    <span
+      className={cn(
+        'inline-flex items-center rounded px-1.5 py-0.5 text-xs font-mono font-medium cursor-default',
+        status < 300
+          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+          : status < 400
+            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+      )}
+    >
+      {status}
+    </span>
+  );
+
+  if (!info) return badge;
+
+  return (
+    <UiTooltip>
+      <TooltipTrigger render={badge} />
+      <TooltipContent className="max-w-xs" side="top">
+        <p className="font-semibold">
+          {status} {info.name}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">{info.description}</p>
+        <a
+          href={info.mdnUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-blue-400 hover:underline mt-1 block"
+        >
+          Learn more on MDN →
+        </a>
+      </TooltipContent>
+    </UiTooltip>
+  );
+}
+
 // ── Links Tab ─────────────────────────────────────────────────────────────────
 
 function LinksTab({ data }: { data: BrokenLinkSummary[] }) {
@@ -1534,13 +1575,7 @@ function LinksTab({ data }: { data: BrokenLinkSummary[] }) {
                   </a>
                 </TableCell>
                 <TableCell>
-                  {l.statusCode != null ? (
-                    <Badge variant="destructive" className="text-xs">
-                      {l.statusCode}
-                    </Badge>
-                  ) : (
-                    '—'
-                  )}
+                  <HttpStatusBadge status={l.statusCode ?? null} />
                 </TableCell>
                 <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
                   {l.error ?? '—'}
