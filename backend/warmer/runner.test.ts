@@ -378,6 +378,83 @@ describe('runGroup', () => {
       const v = await db.select().from(visits).where(eq(visits.run_id, runId));
       expect(v).toHaveLength(1);
     });
+
+    it('persists retry_count = 0 when visitUrl succeeds on first attempt', async () => {
+      const { runGroup } = await import('./runner');
+      const runId = await runGroup(db, {
+        name: 'retry-count-zero',
+        schedule: '* * * * *',
+        urls: ['https://example.com/'],
+        options: { ...BASE_OPTIONS, retryCount: 3 },
+      });
+      const [v] = await db.select().from(visits).where(eq(visits.run_id, runId));
+      expect(v.retry_count).toBe(0);
+    });
+
+    it('persists retry_count = 1 when visitUrl fails once then succeeds', async () => {
+      const { visitUrl } = await import('./visitor');
+      vi.mocked(visitUrl)
+        .mockResolvedValueOnce({
+          url: 'https://a.com/',
+          finalUrl: null,
+          statusCode: null,
+          ttfbMs: null,
+          loadTimeMs: 0,
+          consentFound: false,
+          consentStrategy: null,
+          error: 'Timeout',
+          visitedAt: new Date(),
+          discoveredLinks: [],
+        })
+        .mockResolvedValueOnce({
+          url: 'https://a.com/',
+          finalUrl: 'https://a.com/',
+          statusCode: 200,
+          ttfbMs: 80,
+          loadTimeMs: 400,
+          consentFound: false,
+          consentStrategy: null,
+          error: null,
+          visitedAt: new Date(),
+          discoveredLinks: [],
+        });
+
+      const { runGroup } = await import('./runner');
+      const runId = await runGroup(db, {
+        name: 'retry-count-one',
+        schedule: '* * * * *',
+        urls: ['https://a.com/'],
+        options: { ...BASE_OPTIONS, retryCount: 3 },
+      });
+      const [v] = await db.select().from(visits).where(eq(visits.run_id, runId));
+      expect(v.retry_count).toBe(1);
+    });
+
+    it('persists retry_count = maxRetries when all attempts fail', async () => {
+      const { visitUrl } = await import('./visitor');
+      vi.mocked(visitUrl).mockResolvedValue({
+        url: 'https://a.com/',
+        finalUrl: null,
+        statusCode: null,
+        ttfbMs: null,
+        loadTimeMs: 0,
+        consentFound: false,
+        consentStrategy: null,
+        error: 'Timeout',
+        visitedAt: new Date(),
+        discoveredLinks: [],
+      });
+
+      const { runGroup } = await import('./runner');
+      const runId = await runGroup(db, {
+        name: 'retry-count-max',
+        schedule: '* * * * *',
+        urls: ['https://a.com/'],
+        options: { ...BASE_OPTIONS, retryCount: 2 },
+      });
+      const [v] = await db.select().from(visits).where(eq(visits.run_id, runId));
+      expect(v.retry_count).toBe(2);
+    });
   });
 
   describe('run timeout', () => {
