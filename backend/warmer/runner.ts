@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import type { WarmGroup } from '../config/urls';
 import type { Db } from '../db/client';
 import { finalizeRun, insertRun } from '../db/queries/runs';
+import { insertVisitAccessibility } from '../db/queries/visitAccessibility';
 import { insertVisitBrokenLinks } from '../db/queries/visitBrokenLinks';
 import { insertVisitCwv } from '../db/queries/visitCwv';
 import { insertVisitHeaders } from '../db/queries/visitHeaders';
@@ -99,6 +100,14 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
         await insertVisitScreenshot(db, visitId, result.screenshotBase64).catch(() => {});
       if (result.brokenLinks?.length > 0)
         await insertVisitBrokenLinks(db, visitId, result.brokenLinks).catch(() => {});
+      if (result.accessibility)
+        await insertVisitAccessibility(db, visitId, {
+          violationCount: result.accessibility.violationCount,
+          criticalCount: result.accessibility.criticalCount,
+          seriousCount: result.accessibility.seriousCount,
+          violations: result.accessibility.violations,
+          collectedAt: new Date(),
+        }).catch(() => {});
 
       if (result.error === null) successCount++;
       else failureCount++;

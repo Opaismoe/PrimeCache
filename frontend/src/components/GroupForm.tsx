@@ -361,6 +361,22 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                 </p>
               </div>
 
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="checkAccessibility"
+                    checked={group.options.checkAccessibility === true}
+                    onCheckedChange={(v) => setOpt('checkAccessibility', v === true)}
+                  />
+                  <Label htmlFor="checkAccessibility" className="cursor-pointer">
+                    Check accessibility
+                  </Label>
+                </div>
+                <p className="pl-6 text-xs text-muted-foreground">
+                  Runs an axe-core WCAG audit after each page load and reports violations per URL.
+                </p>
+              </div>
+
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="navigationTimeout">Navigation timeout (ms)</Label>
                 <Input

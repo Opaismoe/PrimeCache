@@ -1,3 +1,4 @@
+import { AxeBuilder } from '@axe-core/playwright';
 import { getBrowser } from '../browser/connection';
 import { createContext } from '../browser/context';
 import { dismissCookieConsent } from '../browser/cookieConsent';
@@ -54,6 +55,22 @@ export interface BrokenLink {
   error: string | null;
 }
 
+export interface AccessibilityViolation {
+  id: string;
+  impact: 'critical' | 'serious' | 'moderate' | 'minor';
+  help: string;
+  description: string;
+  helpUrl: string;
+  nodeCount: number;
+}
+
+export interface AccessibilitySnapshot {
+  violationCount: number;
+  criticalCount: number;
+  seriousCount: number;
+  violations: AccessibilityViolation[];
+}
+
 export interface VisitResult {
   url: string;
   finalUrl: string | null;
@@ -71,6 +88,7 @@ export interface VisitResult {
   headers: HeadersSnapshot | null;
   screenshotBase64: string | null;
   brokenLinks: BrokenLink[];
+  accessibility: AccessibilitySnapshot | null;
 }
 
 export async function visitUrl(url: string, options: WarmGroup['options']): Promise<VisitResult> {
@@ -317,6 +335,29 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       brokenLinks = await checkBrokenLinks(discoveredLinks);
     }
 
+    // Accessibility audit via axe-core (opt-in)
+    let accessibility: AccessibilitySnapshot | null = null;
+    if (options.checkAccessibility) {
+      try {
+        const axeResults = await new AxeBuilder({ page }).analyze();
+        accessibility = {
+          violationCount: axeResults.violations.length,
+          criticalCount: axeResults.violations.filter((v) => v.impact === 'critical').length,
+          seriousCount: axeResults.violations.filter((v) => v.impact === 'serious').length,
+          violations: axeResults.violations.map((v) => ({
+            id: v.id,
+            impact: v.impact as AccessibilityViolation['impact'],
+            help: v.help,
+            description: v.description,
+            helpUrl: v.helpUrl,
+            nodeCount: v.nodes.length,
+          })),
+        };
+      } catch {
+        // axe error — never abort the visit
+      }
+    }
+
     return {
       url,
       finalUrl,
@@ -334,6 +375,7 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       headers,
       screenshotBase64,
       brokenLinks,
+      accessibility,
     };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -355,6 +397,7 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       headers: null,
       screenshotBase64: null,
       brokenLinks: [],
+      accessibility: null,
     };
   } finally {
     await context?.close();

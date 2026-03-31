@@ -5,6 +5,7 @@ import { getGroupOverview } from '../../db/queries/groupOverview';
 import { getGroupPerformance } from '../../db/queries/groupPerformance';
 import { getGroupSeo } from '../../db/queries/groupSeo';
 import { getGroupUptime } from '../../db/queries/groupUptime';
+import { getGroupAccessibility } from '../../db/queries/visitAccessibility';
 import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks';
 
 export function groupRoutes(db: Db): FastifyPluginAsync {
@@ -41,6 +42,11 @@ export function groupRoutes(db: Db): FastifyPluginAsync {
     app.get<{ Params: { name: string } }>('/groups/:name/broken-links', async (request) => {
       const name = decodeURIComponent(request.params.name);
       return getGroupBrokenLinks(db, name);
+    });
+
+    app.get<{ Params: { name: string } }>('/groups/:name/accessibility', async (request) => {
+      const name = decodeURIComponent(request.params.name);
+      return getGroupAccessibility(db, name);
     });
 
     // CSV export — ?tab=performance|uptime|seo|links

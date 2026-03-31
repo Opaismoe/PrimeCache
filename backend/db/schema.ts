@@ -1,6 +1,7 @@
 import {
   boolean,
   integer,
+  jsonb,
   pgTable,
   real,
   serial,
@@ -8,6 +9,7 @@ import {
   timestamp,
   varchar,
 } from 'drizzle-orm/pg-core';
+import type { AccessibilityViolation } from '../warmer/visitor';
 
 export const runs = pgTable('runs', {
   id: serial('id').primaryKey(),
@@ -83,6 +85,18 @@ export const visit_broken_links = pgTable('visit_broken_links', {
   url: varchar('url', { length: 2048 }).notNull(),
   status_code: integer('status_code'),
   error: text('error'),
+});
+
+export const visit_accessibility = pgTable('visit_accessibility', {
+  id: serial('id').primaryKey(),
+  visit_id: integer('visit_id')
+    .notNull()
+    .references(() => visits.id, { onDelete: 'cascade' }),
+  violation_count: integer('violation_count').notNull(),
+  critical_count: integer('critical_count').notNull(),
+  serious_count: integer('serious_count').notNull(),
+  violations: jsonb('violations').notNull().$type<AccessibilityViolation[]>(),
+  collected_at: timestamp('collected_at').notNull(),
 });
 
 export const visit_seo = pgTable('visit_seo', {
