@@ -53,7 +53,6 @@ import type {
   GroupPerformance,
   GroupUptime,
   Run,
-  UrlAccessibilitySummary,
   UrlSeoSummary,
 } from '../lib/types';
 
