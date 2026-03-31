@@ -1,7 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -824,7 +824,7 @@ function PerformanceTab({ data }: { data: GroupPerformance }) {
 
 // ── Uptime Tab ────────────────────────────────────────────────────────────────
 
-function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
+function UptimeTab({ data }: { data: GroupUptime; colors?: string[] }) {
   if (data.urls.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -835,20 +835,13 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
 
   const downNow = data.urls.filter((u) => u.lastStatus === 'down').length;
 
-  // Build per-run uptime line chart — 1 = up, 0 = down per URL per run
-  const urlList = [...new Set(data.uptimeTrend.map((p) => p.url))];
-  const byRun = new Map<string, Record<string, string | number>>();
+  const byUrl = new Map<string, { startedAt: string; value: number }[]>();
   for (const pt of data.uptimeTrend) {
-    let row = byRun.get(pt.startedAt);
-    if (!row) {
-      row = { startedAt: pt.startedAt };
-      byRun.set(pt.startedAt, row);
-    }
-    row[pt.url] = pt.wasDown ? 0 : 100;
+    const arr = byUrl.get(pt.url) ?? [];
+    arr.push({ startedAt: pt.startedAt, value: pt.wasDown ? 0 : 1 });
+    byUrl.set(pt.url, arr);
   }
-  const trendChartData = [...byRun.values()].sort((a, b) =>
-    String(a.startedAt).localeCompare(String(b.startedAt)),
-  );
+  const urlEntries = [...byUrl.entries()];
 
   return (
     <div>
@@ -917,51 +910,76 @@ function UptimeTab({ data, colors }: { data: GroupUptime; colors: string[] }) {
         </Table>
       </div>
 
-      {trendChartData.length > 1 && (
+      {urlEntries.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
-            <h3 className="text-sm font-medium">Uptime trend per run</h3>
-            <p className="text-xs text-muted-foreground">100% = all checks up, 0% = down</p>
+            <h3 className="text-sm font-medium">Uptime trend per URL</h3>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={trendChartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                <XAxis
-                  dataKey="startedAt"
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={formatChartDate}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  domain={[0, 100]}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px',
-                  }}
-                  labelFormatter={formatChartDate}
-                  formatter={(v, name) => [`${v}%`, String(name).split('/').pop() ?? String(name)]}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: 10 }}
-                  formatter={(v) => v.split('/').pop() ?? v}
-                />
-                {urlList.slice(0, 6).map((url, i) => (
-                  <Line
-                    key={url}
-                    type="monotone"
-                    dataKey={url}
-                    stroke={colors[i % colors.length]}
-                    dot={false}
-                    strokeWidth={2}
-                    activeDot={{ r: 3 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="flex flex-col divide-y divide-border">
+              {urlEntries.map(([url, points]) => {
+                const label = (() => {
+                  try {
+                    return new URL(url).pathname || '/';
+                  } catch {
+                    return url;
+                  }
+                })();
+                const hasOutage = points.some((p) => p.value === 0);
+                return (
+                  <div key={url} className="flex items-center gap-3 py-2">
+                    <span
+                      className="w-56 shrink-0 truncate text-xs font-mono text-muted-foreground"
+                      title={url}
+                    >
+                      {label}
+                    </span>
+                    {hasOutage ? (
+                      <span className="text-xs text-destructive shrink-0">⚠ outage</span>
+                    ) : (
+                      <span className="text-xs text-green-500 shrink-0">✓ all up</span>
+                    )}
+                    <ResponsiveContainer width="100%" height={36}>
+                      <AreaChart data={points} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+                        <defs>
+                          <linearGradient
+                            id={`upGrad-${url.replace(/[^a-z0-9]/gi, '')}`}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop offset="5%" stopColor="#4ade80" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#4ade80" stopOpacity={0.05} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis dataKey="startedAt" hide />
+                        <YAxis domain={[0, 1]} hide />
+                        <Tooltip
+                          contentStyle={{
+                            background: 'hsl(var(--popover))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '6px',
+                            fontSize: 11,
+                          }}
+                          labelFormatter={formatChartDate}
+                          formatter={(v) => [v === 1 ? 'Up' : 'Down', '']}
+                        />
+                        <Area
+                          type="stepAfter"
+                          dataKey="value"
+                          stroke={hasOutage ? '#f87171' : '#4ade80'}
+                          fill={`url(#upGrad-${url.replace(/[^a-z0-9]/gi, '')})`}
+                          strokeWidth={1.5}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
