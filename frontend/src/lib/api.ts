@@ -2,6 +2,7 @@ import { authEvents } from './events';
 import type {
   BrokenLinkSummary,
   Config,
+  GroupAccessibility,
   GroupCwv,
   GroupOverview,
   GroupPerformance,
@@ -111,6 +112,9 @@ export const getGroupSeo = (name: string) =>
 
 export const getGroupBrokenLinks = (name: string) =>
   request<BrokenLinkSummary[]>('GET', `/api/groups/${encodeURIComponent(name)}/broken-links`);
+
+export const getGroupAccessibility = (name: string) =>
+  request<GroupAccessibility>('GET', `/api/groups/${encodeURIComponent(name)}/accessibility`);
 
 export const getGroupCwv = (name: string) =>
   request<GroupCwv>('GET', `/api/groups/${encodeURIComponent(name)}/cwv`);

@@ -65,6 +65,7 @@ export interface GroupOptions {
   fetchAssets?: boolean;
   screenshot?: boolean;
   checkBrokenLinks?: boolean;
+  checkAccessibility?: boolean;
   retryCount?: number;
 }
 
@@ -248,4 +249,24 @@ export interface GroupCwv {
   urls: UrlCwv[];
   trend: CwvTrendPoint[];
   urlTrend: UrlCwvTrendPoint[];
+}
+
+// ── Accessibility types ────────────────────────────────────────────────────────
+
+export interface UrlAccessibilitySummary {
+  url: string;
+  latestViolationCount: number;
+  latestCriticalCount: number;
+  latestSeriousCount: number;
+  topViolations: Array<{
+    id: string;
+    impact: 'critical' | 'serious' | 'moderate' | 'minor';
+    help: string;
+    helpUrl: string;
+    occurrences: number;
+  }>;
+}
+
+export interface GroupAccessibility {
+  urls: UrlAccessibilitySummary[];
 }
