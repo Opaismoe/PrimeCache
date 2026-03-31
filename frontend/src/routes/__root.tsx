@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import logo from '../assets/logo.png';
 import { ApiKeyModal } from '../components/ApiKeyModal';
 import { getApiKey, getConfig } from '../lib/api';
@@ -62,6 +63,7 @@ function RootLayout() {
   };
 
   return (
+    <TooltipProvider>
     <div className="min-h-screen bg-background text-foreground">
       {showModal && <ApiKeyModal onSave={handleSave} />}
       <nav className="border-b border-border bg-card">
@@ -85,6 +87,7 @@ function RootLayout() {
         <Outlet />
       </main>
     </div>
+    </TooltipProvider>
   );
 }
 
