@@ -195,4 +195,91 @@ describe('getGroupCwv', () => {
     expect(result.urls).toEqual([]);
     expect(result.trend).toEqual([]);
   });
+
+  it('returns urlTrend field (even if empty array)', async () => {
+    const db = await createTestDb();
+    const { getGroupCwv } = await import('./groupCwv');
+
+    const result = await getGroupCwv(db, 'no-such-group-urltrend');
+    expect(Array.isArray(result.urlTrend)).toBe(true);
+    expect(result.urlTrend).toEqual([]);
+  });
+});
+
+describe('getGroupCwvPerUrlTrend', () => {
+  it('returns rows grouped by (run_id, url) with correct metrics, ordered oldest-first', async () => {
+    const db = await createTestDb();
+    const { getGroupCwvPerUrlTrend } = await import('./groupCwv');
+
+    const [run1] = await db
+      .insert(runs)
+      .values({
+        group_name: 'cwv-url-trend',
+        started_at: new Date('2025-05-01T10:00:00Z'),
+        status: 'completed',
+      })
+      .returning();
+
+    const [run2] = await db
+      .insert(runs)
+      .values({
+        group_name: 'cwv-url-trend',
+        started_at: new Date('2025-05-02T10:00:00Z'),
+        status: 'completed',
+      })
+      .returning();
+
+    for (const [run, lcp, fcp, cls, inp, ttfb, url] of [
+      [run1, 1200, 800, 0.05, 150, 200, 'https://example.com/'],
+      [run1, 2000, 1000, 0.1, 200, 300, 'https://example.com/page2'],
+      [run2, 1400, 900, 0.04, 130, 180, 'https://example.com/'],
+      [run2, 2200, 1100, 0.12, 210, 320, 'https://example.com/page2'],
+    ] as const) {
+      const [v] = await db
+        .insert(visits)
+        .values({
+          run_id: run.id,
+          url,
+          load_time_ms: lcp,
+          ttfb_ms: ttfb,
+          visited_at: new Date('2025-05-01T10:01:00Z'),
+          error: null,
+        })
+        .returning();
+      await db.insert(visit_cwv).values({ visit_id: v.id, lcp_ms: lcp, fcp_ms: fcp, cls_score: cls, inp_ms: inp });
+    }
+
+    const result = await getGroupCwvPerUrlTrend(db, 'cwv-url-trend');
+
+    // 2 runs * 2 URLs = 4 rows
+    expect(result).toHaveLength(4);
+
+    // Ordered oldest-first
+    const run1Rows = result.filter((r) => r.runId === run1.id);
+    const run2Rows = result.filter((r) => r.runId === run2.id);
+    expect(run1Rows).toHaveLength(2);
+    expect(run2Rows).toHaveLength(2);
+
+    // run1 comes before run2
+    expect(result[0].runId).toBe(run1.id);
+
+    // Check a specific row
+    const r1url1 = run1Rows.find((r) => r.url === 'https://example.com/');
+    expect(r1url1).toBeDefined();
+    expect(r1url1!.avgLcpMs).toBe(1200);
+    expect(r1url1!.avgFcpMs).toBe(800);
+    expect(r1url1!.avgClsScore).toBeCloseTo(0.05, 3);
+    expect(r1url1!.avgInpMs).toBe(150);
+    // TTFB comes from visits.ttfb_ms
+    expect(r1url1!.avgTtfbMs).toBe(200);
+    expect(typeof r1url1!.startedAt).toBe('string');
+  });
+
+  it('returns [] when there is no CWV data for the group', async () => {
+    const db = await createTestDb();
+    const { getGroupCwvPerUrlTrend } = await import('./groupCwv');
+
+    const result = await getGroupCwvPerUrlTrend(db, 'no-cwv-data-group');
+    expect(result).toEqual([]);
+  });
 });
