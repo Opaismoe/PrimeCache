@@ -49,6 +49,7 @@ Required (no defaults):
 - `BROWSERLESS_WS_URL` — e.g. `ws://localhost:3000/chromium/playwright`
 - `BROWSERLESS_TOKEN` — any non-empty string for local Browserless
 - `API_KEY` — minimum 16 characters
+- `SECRET_ENCRYPTION_KEY` — 64-character hex string (32 bytes); generate with `openssl rand -hex 32`
 
 Optional (defaults shown):
 - `DB_PATH=/app/data/warmer.db`
@@ -85,6 +86,16 @@ Create one `BrowserContext` per URL visit for full isolation (cookies, storage).
 - `src/config/env.ts` — Zod-parses `process.env` at startup. Hard exit if any required var is missing.
 - `src/config/urls.ts` — Parses and Zod-validates `config.yaml`. Uses chokidar to watch for file changes and hot-reloads the scheduler without restarting the process.
 
+### Secrets store
+Credentials in `config.yaml` (basicAuth, cookies, userAgent) can reference encrypted secrets stored in Postgres using `secret:name` syntax. Secrets are AES-256-GCM encrypted at rest; the master key lives in `SECRET_ENCRYPTION_KEY`.
+
+Manage secrets via the API (all require `X-API-Key`):
+- `GET /api/secrets` — list secret names
+- `POST /api/secrets` body `{ name, value }` — create or update
+- `DELETE /api/secrets/:name` — remove
+
+Resolution happens after `loadConfig()` at startup and on every config hot-reload. If a referenced secret is missing, the process logs an error and keeps the previous config.
+
 `config.yaml` group options:
 ```yaml
 options:
@@ -111,6 +122,9 @@ All routes except `GET /health` require `X-API-Key` header.
 | GET | `/api/groups/:name/overview` | Group overview — includes CWV data with `urlTrend: UrlCwvTrendPoint[]` (LCP/CLS/TTFB per URL per run) |
 | GET | `/api/groups/:name/performance` | Group performance metrics |
 | GET | `/api/groups/:name/uptime` | Group uptime metrics |
+| GET | `/api/secrets` | List secret names (no values) |
+| POST | `/api/secrets` | Upsert secret `{ name, value }` — encrypts and stores |
+| DELETE | `/api/secrets/:name` | Remove a secret |
 
 `POST /trigger` and `POST /webhook/warm` both take `{ "group": "<name>" }` as JSON body.
 
