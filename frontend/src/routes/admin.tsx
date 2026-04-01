@@ -4,6 +4,12 @@ import { useState } from 'react';
 import { AdminSkeleton } from '../components/AdminSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { GroupForm } from '../components/GroupForm';
 import { StatusBadge } from '../components/StatusBadge';
 import { cancelRun, deleteRuns, getApiKey, getConfig, getLatestRuns, putConfig } from '../lib/api';
@@ -32,6 +38,33 @@ export const Route = createFileRoute('/admin')({
   component: AdminPage,
 });
 
+function Section({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-medium">{title}</h2>
+            <p className="text-sm text-muted-foreground">{description}</p>
+          </div>
+          {action}
+        </div>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
+}
+
 type FormMode = { mode: 'add' } | { mode: 'edit'; index: number } | null;
 
 function AdminPage() {
@@ -39,22 +72,31 @@ function AdminPage() {
   const { data: config } = useQuery(configQueryOptions);
   const { data: latestRuns } = useQuery(latestRunsQueryOptions);
   const [formMode, setFormMode] = useState<FormMode>(null);
-  const [deleteTarget, setDeleteTarget] = useState<string>('');
 
   const groups = config?.groups ?? [];
   const runningRuns = (latestRuns ?? []).filter((r) => r.status === 'running');
+  const editingGroup = formMode?.mode === 'edit' ? config?.groups[formMode.index] : undefined;
 
-  // ── Config mutations ──────────────────────────────────────────
   const saveConfig = useMutation({
     mutationFn: ({ config, renames }: { config: Config; renames?: { from: string; to: string }[] }) =>
       putConfig(config, renames),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.config.all() }),
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) => cancelRun(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (group?: string) => deleteRuns(group),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() }),
+  });
+
   const handleSaveGroup = async (group: Group) => {
     if (!config) return;
     const renames: { from: string; to: string }[] = [];
-    const updated: Group[] =
+    const updated =
       formMode?.mode === 'edit'
         ? config.groups.map((g, i) => {
             if (i !== formMode.index) return g;
@@ -71,21 +113,9 @@ function AdminPage() {
     saveConfig.mutate({ config: { groups: groups.filter((g) => g.name !== name) } as Config });
   };
 
-  // ── Run mutations ─────────────────────────────────────────────
-  const cancelMutation = useMutation({
-    mutationFn: (id: number) => cancelRun(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() }),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (group?: string) => deleteRuns(group),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() }),
-  });
-
   const handleDeleteHistory = (group?: string) => {
     const label = group ? `all runs for "${group}"` : 'all run history';
     if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
-    setDeleteTarget(group ?? '');
     deleteMutation.mutate(group);
   };
 
@@ -93,38 +123,20 @@ function AdminPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">Admin</h1>
 
-      {/* ── Groups ───────────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-medium">Groups</h2>
-              <p className="text-sm text-muted-foreground">Add, edit, or remove URL groups.</p>
-            </div>
-            {!formMode && (
-              <Button size="sm" onClick={() => setFormMode({ mode: 'add' })}>
-                Add group
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {formMode && (
-            <div className="rounded-md border border-border p-4">
-              <h3 className="mb-4 text-sm font-medium">
-                {formMode.mode === 'add' ? 'New group' : `Edit: ${config?.groups[formMode.index]?.name}`}
-              </h3>
-              <GroupForm
-                initial={formMode.mode === 'edit' ? config?.groups[formMode.index] : undefined}
-                onSave={handleSaveGroup}
-                onCancel={() => setFormMode(null)}
-              />
-            </div>
-          )}
-          {groups.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No groups configured.</p>
-          ) : (
-            groups.map((g, i) => (
+      <Section
+        title="Groups"
+        description="Add, edit, or remove URL groups."
+        action={
+          <Button size="sm" onClick={() => setFormMode({ mode: 'add' })}>
+            Add group
+          </Button>
+        }
+      >
+        {groups.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No groups configured.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {groups.map((g, i) => (
               <div
                 key={g.name}
                 className="flex items-center justify-between gap-4 rounded-md border border-border px-4 py-2"
@@ -140,7 +152,6 @@ function AdminPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={formMode !== null}
                     onClick={() => setFormMode({ mode: 'edit', index: i })}
                   >
                     Edit
@@ -155,64 +166,68 @@ function AdminPage() {
                   </Button>
                 </div>
               </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
+            ))}
+          </div>
+        )}
+      </Section>
 
-      {/* ── Active runs ───────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <h2 className="font-medium">Active Runs</h2>
-          <p className="text-sm text-muted-foreground">Stop any currently executing runs.</p>
-        </CardHeader>
-        <CardContent>
-          {runningRuns.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No runs currently active.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {runningRuns.map((run) => (
-                <div
-                  key={run.id}
-                  className="flex items-center justify-between gap-4 rounded-md border border-border px-4 py-2"
-                >
-                  <div className="flex items-center gap-3">
-                    <StatusBadge status={run.status} />
-                    <span className="text-sm font-medium">{run.group_name}</span>
-                    <span className="text-xs text-muted-foreground">Run #{run.id}</span>
-                  </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={cancelMutation.isPending && cancelMutation.variables === run.id}
-                    onClick={() => cancelMutation.mutate(run.id)}
-                  >
-                    Stop
-                  </Button>
+      <Dialog open={formMode !== null} onOpenChange={(open) => { if (!open) setFormMode(null); }}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {formMode?.mode === 'add' ? 'New group' : `Edit: ${editingGroup?.name}`}
+            </DialogTitle>
+          </DialogHeader>
+          <GroupForm
+            initial={editingGroup}
+            onSave={handleSaveGroup}
+            onCancel={() => setFormMode(null)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Section title="Active Runs" description="Stop any currently executing runs.">
+        {runningRuns.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No runs currently active.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {runningRuns.map((run) => (
+              <div
+                key={run.id}
+                className="flex items-center justify-between gap-4 rounded-md border border-border px-4 py-2"
+              >
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={run.status} />
+                  <span className="text-sm font-medium">{run.group_name}</span>
+                  <span className="text-xs text-muted-foreground">Run #{run.id}</span>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={cancelMutation.isPending && cancelMutation.variables === run.id}
+                  onClick={() => cancelMutation.mutate(run.id)}
+                >
+                  Stop
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
 
-      {/* ── Delete history ────────────────────────────────── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <h2 className="font-medium">Delete Run History</h2>
-          <p className="text-sm text-muted-foreground">
-            Permanently delete run records. This cannot be undone.
-          </p>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+      <Section
+        title="Delete Run History"
+        description="Permanently delete run records. This cannot be undone."
+      >
+        <div className="flex flex-col gap-3">
           <div className="flex flex-wrap gap-2">
             <Button
               variant="destructive"
               size="sm"
               disabled={deleteMutation.isPending}
-              onClick={() => handleDeleteHistory(undefined)}
+              onClick={() => handleDeleteHistory()}
             >
-              {deleteMutation.isPending && !deleteTarget ? 'Deleting…' : 'Delete all history'}
+              {deleteMutation.isPending && !deleteMutation.variables ? 'Deleting…' : 'Delete all history'}
             </Button>
           </div>
           {groups.length > 0 && (
@@ -227,7 +242,7 @@ function AdminPage() {
                     disabled={deleteMutation.isPending}
                     onClick={() => handleDeleteHistory(g.name)}
                   >
-                    {deleteMutation.isPending && deleteTarget === g.name
+                    {deleteMutation.isPending && deleteMutation.variables === g.name
                       ? 'Deleting…'
                       : `Delete "${g.name}"`}
                   </Button>
@@ -235,8 +250,8 @@ function AdminPage() {
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </Section>
     </div>
   );
 }
