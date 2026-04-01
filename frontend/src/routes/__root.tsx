@@ -43,50 +43,58 @@ function RootLayout() {
   const queryClient = useQueryClient();
   const routerState = useRouterState();
   const isPublicRoute = routerState.location.pathname === '/status';
-  const [showModal, setShowModal] = useState(() => !isPublicRoute && !getApiKey());
+  const [loggedIn, setLoggedIn] = useState(() => !!getApiKey());
+  const [forceShowLogin, setForceShowLogin] = useState(false);
+  const shouldShowModal = (!isPublicRoute && !loggedIn) || forceShowLogin;
   const { dark, toggle } = useTheme();
 
   const { data: config } = useQuery({
     queryKey: queryKeys.config.all(),
     queryFn: getConfig,
-    enabled: !!getApiKey(),
+    enabled: loggedIn,
   });
   const groups = config?.groups ?? [];
 
   useEffect(() => {
-    return authEvents.onUnauthorized(() => setShowModal(true));
+    return authEvents.onUnauthorized(() => setLoggedIn(false));
   }, []);
 
   const handleSave = () => {
-    setShowModal(false);
+    setLoggedIn(true);
+    setForceShowLogin(false);
     queryClient.invalidateQueries();
   };
 
   return (
     <TooltipProvider>
-    <div className="min-h-screen bg-background text-foreground">
-      {showModal && <ApiKeyModal onSave={handleSave} />}
-      <nav className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-          <span className="font-semibold">
-            <img src={logo} alt="PrimeCache" width={32} height={32} />
-          </span>
-          <div className="ml-auto flex items-center gap-6">
-            {!isPublicRoute && <NavLink to="/">Dashboard</NavLink>}
-            {!isPublicRoute && groups.length > 0 && <DetailsDropdown groups={groups} />}
-            {!isPublicRoute && <NavLink to="/config">Config</NavLink>}
-            {!isPublicRoute && <NavLink to="/admin">Admin</NavLink>}
-            <NavLink to="/status">Status</NavLink>
-            <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
-              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+      <div className="min-h-screen bg-background text-foreground">
+        {shouldShowModal && <ApiKeyModal onSave={handleSave} />}
+        <nav className="border-b border-border bg-card">
+          <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
+            <span className="font-semibold">
+              <img src={logo} alt="PrimeCache" width={32} height={32} />
+            </span>
+            <div className="ml-auto flex items-center gap-6">
+              {loggedIn && !isPublicRoute && <NavLink to="/">Dashboard</NavLink>}
+              {loggedIn && !isPublicRoute && groups.length > 0 && <DetailsDropdown groups={groups} />}
+              {loggedIn && !isPublicRoute && <NavLink to="/config">Config</NavLink>}
+              {loggedIn && !isPublicRoute && <NavLink to="/admin">Admin</NavLink>}
+              <NavLink to="/status">Status</NavLink>
+              {!loggedIn && (
+                <Button variant="ghost" size="sm" onClick={() => setForceShowLogin(true)}>
+                  Sign in
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={toggle} aria-label="Toggle theme">
+                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
-        </div>
-      </nav>
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        <Outlet />
-      </main>
-    </div>
+        </nav>
+        <main className="mx-auto max-w-7xl px-4 py-6">
+          {!shouldShowModal && <Outlet />}
+        </main>
+      </div>
     </TooltipProvider>
   );
 }
