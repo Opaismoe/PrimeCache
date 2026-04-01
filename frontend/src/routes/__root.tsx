@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { createRootRouteWithContext, Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router';
 import { ChevronDown, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ function useTheme() {
 
 function RootLayout() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const routerState = useRouterState();
   const isPublicRoute = routerState.location.pathname === '/status';
   const [loggedIn, setLoggedIn] = useState(() => !!getApiKey());
@@ -63,6 +64,7 @@ function RootLayout() {
     setLoggedIn(true);
     setForceShowLogin(false);
     queryClient.invalidateQueries();
+    router.invalidate();
   };
 
   return (

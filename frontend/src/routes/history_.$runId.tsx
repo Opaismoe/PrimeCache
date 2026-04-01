@@ -13,12 +13,13 @@ import {
 } from '@/components/ui/table';
 import { Spinner } from '../components/Spinner';
 import { StatusBadge } from '../components/StatusBadge';
-import { cancelRun, getRunById } from '../lib/api';
+import { cancelRun, getApiKey, getRunById } from '../lib/api';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
 
 export const Route = createFileRoute('/history_/$runId')({
   loader: ({ context: { queryClient }, params }) => {
+    if (!getApiKey()) return;
     const id = parseInt(params.runId, 10);
     return queryClient.ensureQueryData(
       queryOptions({
