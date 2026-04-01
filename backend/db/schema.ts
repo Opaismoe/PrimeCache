@@ -112,6 +112,12 @@ export const visit_seo = pgTable('visit_seo', {
   og_description: text('og_description'),
   og_image: varchar('og_image', { length: 2048 }),
   robots_meta: varchar('robots_meta', { length: 255 }),
+  h2: text('h2'),
+  h3: text('h3'),
+  h4: text('h4'),
+  h5: text('h5'),
+  viewport_meta: varchar('viewport_meta', { length: 500 }),
+  lang: varchar('lang', { length: 20 }),
   collected_at: timestamp('collected_at').notNull(),
 });
 

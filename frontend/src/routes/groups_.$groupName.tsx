@@ -5,8 +5,6 @@ import {
   Area,
   AreaChart,
   Legend,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -26,6 +24,11 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TooltipContent, TooltipTrigger, Tooltip as UiTooltip } from '@/components/ui/tooltip';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { HTTP_STATUS_CODES } from '@/lib/httpStatusCodes';
 import { cn } from '@/lib/utils';
 import { GroupForm } from '../components/GroupForm';
@@ -60,6 +63,7 @@ import type {
   GroupPerformance,
   GroupUptime,
   Run,
+  UrlCwv,
   UrlSeoSummary,
 } from '../lib/types';
 
@@ -512,7 +516,7 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                <AreaChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                   <XAxis
                     dataKey="startedAt"
                     tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -532,15 +536,16 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                     labelFormatter={formatChartDate}
                     formatter={(v) => [`${Number(v).toFixed(1)}%`, 'Success rate']}
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="successRate"
                     stroke="#4ade80"
+                    fill="#4ade8020"
                     dot={false}
                     strokeWidth={2}
                     activeDot={{ r: 4 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -551,7 +556,7 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                <AreaChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                   <XAxis
                     dataKey="startedAt"
                     tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -570,15 +575,16 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                     labelFormatter={formatChartDate}
                     formatter={(v) => [formatMs(Number(v)), 'Avg load']}
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="avgLoadTimeMs"
                     stroke="#60a5fa"
+                    fill="#60a5fa20"
                     dot={false}
                     strokeWidth={2}
                     activeDot={{ r: 4 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -589,7 +595,7 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                <AreaChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                   <XAxis
                     dataKey="startedAt"
                     tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -609,15 +615,16 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                     labelFormatter={formatChartDate}
                     formatter={(v) => [`${Number(v).toFixed(1)}%`, 'Uptime']}
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="uptimePct"
                     stroke="#a78bfa"
+                    fill="#a78bfa20"
                     dot={false}
                     strokeWidth={2}
                     activeDot={{ r: 4 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -629,7 +636,7 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={200}>
-                  <LineChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                  <AreaChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                     <XAxis
                       dataKey="startedAt"
                       tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -648,15 +655,16 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                       labelFormatter={formatChartDate}
                       formatter={(v) => [Number(v).toFixed(1), 'SEO score']}
                     />
-                    <Line
+                    <Area
                       type="monotone"
                       dataKey="avgSeoScore"
                       stroke="#fb923c"
+                      fill="#fb923c20"
                       dot={false}
                       strokeWidth={2}
                       activeDot={{ r: 4 }}
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -806,7 +814,7 @@ function PerformanceTab({ data }: { data: GroupPerformance }) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <XAxis
                   dataKey="startedAt"
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -833,17 +841,19 @@ function PerformanceTab({ data }: { data: GroupPerformance }) {
                   formatter={(v) => v.split('/').pop() ?? v}
                 />
                 {urlList.map((url, i) => (
-                  <Line
+                  <Area
                     key={url}
                     type="monotone"
                     dataKey={url}
                     stroke={getColor(i)}
+                    fill={getColor(i)}
+                    fillOpacity={0.08}
                     dot={false}
                     strokeWidth={2}
                     activeDot={{ r: 3 }}
                   />
                 ))}
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -1143,7 +1153,7 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={cwv.trend} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+              <AreaChart data={cwv.trend} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
                 <XAxis
                   dataKey="startedAt"
                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -1166,37 +1176,40 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
                   wrapperStyle={{ fontSize: 10 }}
                   formatter={(v) => String(v).toUpperCase()}
                 />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="avgLcpMs"
                   name="lcp"
                   stroke="#60a5fa"
+                  fill="#60a5fa20"
                   dot={false}
                   strokeWidth={2}
                   activeDot={{ r: 3 }}
                   connectNulls
                 />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="avgFcpMs"
                   name="fcp"
                   stroke="#4ade80"
+                  fill="#4ade8020"
                   dot={false}
                   strokeWidth={2}
                   activeDot={{ r: 3 }}
                   connectNulls
                 />
-                <Line
+                <Area
                   type="monotone"
                   dataKey="avgInpMs"
                   name="inp"
                   stroke="#fb923c"
+                  fill="#fb923c20"
                   dot={false}
                   strokeWidth={2}
                   activeDot={{ r: 3 }}
                   connectNulls
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
@@ -1236,7 +1249,7 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart
+                  <AreaChart
                     data={urlChartData}
                     margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
                   >
@@ -1259,18 +1272,20 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
                     />
                     <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
                     {urlList.map((url, i) => (
-                      <Line
+                      <Area
                         key={url}
                         type="monotone"
                         dataKey={`lcp::${url}`}
                         stroke={getColor(i)}
+                        fill={getColor(i)}
+                        fillOpacity={0.08}
                         dot={false}
                         strokeWidth={2}
                         activeDot={{ r: 3 }}
                         connectNulls
                       />
                     ))}
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -1282,7 +1297,7 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart
+                  <AreaChart
                     data={urlChartData}
                     margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
                   >
@@ -1305,18 +1320,20 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
                     />
                     <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
                     {urlList.map((url, i) => (
-                      <Line
+                      <Area
                         key={url}
                         type="monotone"
                         dataKey={`cls::${url}`}
                         stroke={getColor(i)}
+                        fill={getColor(i)}
+                        fillOpacity={0.08}
                         dot={false}
                         strokeWidth={2}
                         activeDot={{ r: 3 }}
                         connectNulls
                       />
                     ))}
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -1328,7 +1345,7 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart
+                  <AreaChart
                     data={urlChartData}
                     margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
                   >
@@ -1351,18 +1368,20 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
                     />
                     <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
                     {urlList.map((url, i) => (
-                      <Line
+                      <Area
                         key={url}
                         type="monotone"
                         dataKey={`ttfb::${url}`}
                         stroke={getColor(i)}
+                        fill={getColor(i)}
+                        fillOpacity={0.08}
                         dot={false}
                         strokeWidth={2}
                         activeDot={{ r: 3 }}
                         connectNulls
                       />
                     ))}
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -1430,101 +1449,155 @@ function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv 
 
       {/* Per-URL cards */}
       <div className="flex flex-col gap-3">
-        {data.urls.map((u) => (
-          <Card key={u.url}>
-            <CardContent className="pt-4">
-              {/* Header row */}
-              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {u.changed && (
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 border-yellow-500 text-yellow-600 dark:text-yellow-400 text-xs"
-                    >
-                      Changed
-                    </Badge>
-                  )}
-                  <a
-                    href={u.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="truncate font-mono text-xs hover:text-foreground hover:underline text-muted-foreground"
-                  >
-                    {u.url}
-                  </a>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`text-lg font-bold ${scoreColor(u.score)}`}>{u.score}</span>
-                  <span className="text-xs text-muted-foreground">/ 100</span>
-                </div>
-              </div>
-
-              {/* Issues */}
-              {u.issues.length > 0 && (
-                <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2">
-                  <ul className="space-y-0.5">
-                    {u.issues.map((issue) => (
-                      <li key={issue} className="flex items-start gap-1.5 text-xs text-destructive">
-                        <span className="mt-0.5 shrink-0">✕</span>
-                        {issue}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* SEO fields */}
-              {u.latestSeo && (
-                <div className="rounded-md border border-border px-3 py-1">
-                  <SeoFieldRow label="Title" value={u.latestSeo.title} />
-                  <SeoFieldRow label="Meta description" value={u.latestSeo.metaDescription} />
-                  <SeoFieldRow label="H1" value={u.latestSeo.h1} />
-                  <SeoFieldRow label="Canonical URL" value={u.latestSeo.canonicalUrl} />
-                  <SeoFieldRow label="og:title" value={u.latestSeo.ogTitle} />
-                  <SeoFieldRow label="og:description" value={u.latestSeo.ogDescription} />
-                  <SeoFieldRow label="og:image" value={u.latestSeo.ogImage} />
-                  <SeoFieldRow label="Robots" value={u.latestSeo.robotsMeta} />
-                </div>
-              )}
-
-              {/* History diff (last 2 runs) */}
-              {u.changed && u.history.length >= 2 && (
-                <div className="mt-3">
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                    Changes since previous run
+        {data.urls.map((u) => {
+          const urlCwv: UrlCwv | undefined = cwv?.urls.find((c) => c.url === u.url);
+          return (
+            <Card key={u.url}>
+              {/* Per-URL CWV tiles */}
+              {urlCwv && (
+                <div className="border-b border-border px-4 pt-4 pb-3">
+                  <p className="mb-2 text-xs text-muted-foreground font-medium">
+                    Core Web Vitals (P75)
                   </p>
-                  <div className="space-y-1">
-                    {(['title', 'metaDescription', 'h1', 'canonicalUrl'] as const).map((field) => {
-                      const prev = u.history[1].seo[field];
-                      const curr = u.history[0].seo[field];
-                      if (prev === curr) return null;
-                      const labels: Record<string, string> = {
-                        title: 'Title',
-                        metaDescription: 'Meta description',
-                        h1: 'H1',
-                        canonicalUrl: 'Canonical',
-                      };
-                      return (
-                        <div
-                          key={field}
-                          className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs"
-                        >
-                          <span className="font-medium text-yellow-600 dark:text-yellow-400">
-                            {labels[field]}
-                          </span>
-                          <div className="mt-1 text-muted-foreground line-through">
-                            {prev ?? '(empty)'}
-                          </div>
-                          <div className="mt-0.5 text-foreground">{curr ?? '(empty)'}</div>
-                        </div>
-                      );
-                    })}
+                  <div className="grid grid-cols-4 gap-2">
+                    <CwvTile
+                      label="LCP"
+                      value={urlCwv.lcpP75}
+                      unit="ms"
+                      status={urlCwv.lcpStatus}
+                    />
+                    <CwvTile
+                      label="FCP"
+                      value={urlCwv.fcpP75}
+                      unit="ms"
+                      status={urlCwv.fcpStatus}
+                    />
+                    <CwvTile
+                      label="CLS"
+                      value={urlCwv.clsP75}
+                      unit=""
+                      status={urlCwv.clsStatus}
+                    />
+                    <CwvTile
+                      label="INP"
+                      value={urlCwv.inpP75}
+                      unit="ms"
+                      status={urlCwv.inpStatus}
+                    />
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        ))}
+
+              <CardContent className="pt-4">
+                {/* Header row */}
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {u.changed && (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 border-yellow-500 text-yellow-600 dark:text-yellow-400 text-xs"
+                      >
+                        Changed
+                      </Badge>
+                    )}
+                    <a
+                      href={u.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate font-mono text-xs hover:text-foreground hover:underline text-muted-foreground"
+                    >
+                      {u.url}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`text-lg font-bold ${scoreColor(u.score)}`}>{u.score}</span>
+                    <span className="text-xs text-muted-foreground">/ 100</span>
+                  </div>
+                </div>
+
+                {/* Issues */}
+                {u.issues.length > 0 && (
+                  <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2">
+                    <ul className="space-y-0.5">
+                      {u.issues.map((issue) => (
+                        <li
+                          key={issue}
+                          className="flex items-start gap-1.5 text-xs text-destructive"
+                        >
+                          <span className="mt-0.5 shrink-0">✕</span>
+                          {issue}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* SEO details — collapsible */}
+                {u.latestSeo && (
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                      <span className="font-medium">SEO details</span>
+                      <span className="text-xs">▼</span>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="rounded-b-md border border-t-0 border-border px-3 py-1">
+                        <SeoFieldRow label="Title" value={u.latestSeo.title} />
+                        <SeoFieldRow label="Meta description" value={u.latestSeo.metaDescription} />
+                        <SeoFieldRow label="H1" value={u.latestSeo.h1} />
+                        <SeoFieldRow label="H2" value={u.latestSeo.h2} />
+                        <SeoFieldRow label="H3" value={u.latestSeo.h3} />
+                        <SeoFieldRow label="H4" value={u.latestSeo.h4} />
+                        <SeoFieldRow label="H5" value={u.latestSeo.h5} />
+                        <SeoFieldRow label="Canonical URL" value={u.latestSeo.canonicalUrl} />
+                        <SeoFieldRow label="og:title" value={u.latestSeo.ogTitle} />
+                        <SeoFieldRow label="og:description" value={u.latestSeo.ogDescription} />
+                        <SeoFieldRow label="og:image" value={u.latestSeo.ogImage} />
+                        <SeoFieldRow label="Viewport" value={u.latestSeo.viewportMeta} />
+                        <SeoFieldRow label="Lang" value={u.latestSeo.lang} />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* History diff (last 2 runs) */}
+                {u.changed && u.history.length >= 2 && (
+                  <div className="mt-3">
+                    <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                      Changes since previous run
+                    </p>
+                    <div className="space-y-1">
+                      {(['title', 'metaDescription', 'h1', 'canonicalUrl'] as const).map((field) => {
+                        const prev = u.history[1].seo[field];
+                        const curr = u.history[0].seo[field];
+                        if (prev === curr) return null;
+                        const labels: Record<string, string> = {
+                          title: 'Title',
+                          metaDescription: 'Meta description',
+                          h1: 'H1',
+                          canonicalUrl: 'Canonical',
+                        };
+                        return (
+                          <div
+                            key={field}
+                            className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs"
+                          >
+                            <span className="font-medium text-yellow-600 dark:text-yellow-400">
+                              {labels[field]}
+                            </span>
+                            <div className="mt-1 text-muted-foreground line-through">
+                              {prev ?? '(empty)'}
+                            </div>
+                            <div className="mt-0.5 text-foreground">{curr ?? '(empty)'}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );
