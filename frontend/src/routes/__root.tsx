@@ -81,7 +81,6 @@ function RootLayout() {
               {loggedIn && !isPublicRoute && groups.length > 0 && (
                 <DetailsDropdown groups={groups} />
               )}
-              {loggedIn && !isPublicRoute && <NavLink to="/config">Config</NavLink>}
               {loggedIn && !isPublicRoute && <NavLink to="/admin">Admin</NavLink>}
               <NavLink to="/status">Status</NavLink>
               {!loggedIn && (

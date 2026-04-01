@@ -15,44 +15,49 @@ All work follows the states in `.ai/todo.md`: **init → test → code → revie
 - **Write tests before implementation.** Tests must fail before you write any code.
 - **Never move to `code` state** until tests exist and fail for the right reason.
 - **Never move to `review` state** until all tests pass.
-- Test files live alongside source: `src/config/env.test.ts` next to `src/config/env.ts`.
-- Use in-memory SQLite (`:memory:`) for DB tests — never mock the query layer itself.
+- Test files live alongside source: `backend/config/env.test.ts` next to `backend/config/env.ts`.
+- Use PGlite (in-memory PostgreSQL) for DB tests — never mock the query layer itself.
 - Mock only external I/O: Browserless WS, filesystem. Never mock the module under test.
 - After completing a task, update its status in `.ai/todo.md`.
 
 ## Commands
 
+Run from the repo root:
+
 ```bash
-pnpm dev           # run with ts-node-dev (watch mode)
-pnpm build         # tsc → dist/
+pnpm dev           # backend in watch mode (ts-node-dev)
+pnpm build         # tsc backend + vite frontend → dist/
 pnpm start         # node dist/index.js (production)
-pnpm typecheck     # tsc --noEmit
-pnpm lint          # eslint src/
-pnpm test          # vitest run (single pass)
-pnpm test:watch    # vitest (watch mode)
+pnpm typecheck     # tsc --noEmit (all packages)
+pnpm lint          # biome check (all packages)
+pnpm test          # vitest run (all packages)
+pnpm test:watch    # vitest watch (all packages)
 ```
 
 Run a single test file:
 ```bash
-pnpm test src/warmer/runner.test.ts
+pnpm --filter primecache-backend test warmer/runner.test.ts
 ```
 
 Docker:
 ```bash
-docker-compose up          # local dev (includes local Browserless)
+docker-compose up          # local dev (requires external Browserless — see env vars)
 docker-compose up --build  # rebuild image
 ```
 
 ## Environment variables
 
 Required (no defaults):
-- `BROWSERLESS_WS_URL` — e.g. `ws://localhost:3000/chromium/playwright`
-- `BROWSERLESS_TOKEN` — any non-empty string for local Browserless
+- `BROWSERLESS_WS_URL` — e.g. `ws://browserless:3000/chromium/playwright`
+- `BROWSERLESS_TOKEN` — auth token for your Browserless instance
 - `API_KEY` — minimum 16 characters
 - `SECRET_ENCRYPTION_KEY` — 64-character hex string (32 bytes); generate with `openssl rand -hex 32`
+- `DATABASE_URL` — PostgreSQL connection string, e.g. `postgres://primecache:<password>@postgres:5432/primecache`
+- `POSTGRES_PASSWORD` — password for the PostgreSQL Docker service
+- `ADMIN_USERNAME` — username for the dashboard login screen
+- `ADMIN_PASSWORD` — minimum 8 characters
 
 Optional (defaults shown):
-- `DB_PATH=/app/data/warmer.db`
 - `CONFIG_PATH=/app/config/config.yaml`
 - `PORT=3000`
 - `LOG_LEVEL=info` (trace|debug|info|warn|error)
@@ -61,11 +66,11 @@ Optional (defaults shown):
 
 ## Architecture
 
-`src/index.ts` boots in three sequential steps: run Knex migrations → start Fastify API → register node-cron schedulers. All three depend on the config and DB layers being ready first.
+`backend/index.ts` boots in four sequential steps: run Drizzle migrations → load and resolve config → start Fastify API → register node-cron schedulers.
 
 ### Data flow for a warm run
-1. **Trigger**: either node-cron (scheduled) or `POST /webhook/warm` (on-demand)
-2. `scheduler/index.ts` or `api/routes/webhook.ts` calls `warmer/runner.ts`
+1. **Trigger**: either node-cron (scheduled) or `POST /api/trigger` / `POST /webhook/warm` (on-demand)
+2. `scheduler/index.ts` or `api/routes/` calls `warmer/runner.ts`
 3. `runner.ts` creates a `Run` DB record, loops over URLs with random delays (2–5s between each), calls `warmer/visitor.ts` per URL, then finalises the run record
 4. `visitor.ts` creates a fresh `BrowserContext` (via `browser/context.ts`), navigates, dismisses consent, simulates user behaviour, captures metrics, closes the context, returns `VisitResult`
 5. `runner.ts` bulk-inserts all `VisitResult` rows as `Visit` DB records
@@ -83,11 +88,11 @@ Endpoint format: `ws://<browserless-host>/chromium/playwright`
 Create one `BrowserContext` per URL visit for full isolation (cookies, storage). Always close in `finally`. The context factory in `browser/context.ts` applies stealth, random viewport (1280–1920 × 768–1080), rotating user agents, and locale headers.
 
 ### Config loading
-- `src/config/env.ts` — Zod-parses `process.env` at startup. Hard exit if any required var is missing.
-- `src/config/urls.ts` — Parses and Zod-validates `config.yaml`. Uses chokidar to watch for file changes and hot-reloads the scheduler without restarting the process.
+- `backend/config/env.ts` — Zod-parses `process.env` at startup. Hard exit if any required var is missing.
+- `backend/config/urls.ts` — Parses and Zod-validates `config.yaml`. Uses chokidar to watch for file changes and hot-reloads the scheduler without restarting the process.
 
 ### Secrets store
-Credentials in `config.yaml` (basicAuth, cookies, userAgent) can reference encrypted secrets stored in Postgres using `secret:name` syntax. Secrets are AES-256-GCM encrypted at rest; the master key lives in `SECRET_ENCRYPTION_KEY`.
+Credentials in `config.yaml` (basicAuth, cookies, userAgent) can reference encrypted secrets stored in PostgreSQL using `secret:name` syntax. Secrets are AES-256-GCM encrypted at rest; the master key lives in `SECRET_ENCRYPTION_KEY`.
 
 Manage secrets via the API (all require `X-API-Key`):
 - `GET /api/secrets` — list secret names
@@ -108,28 +113,37 @@ options:
 
 ### API routes
 
-All routes except `GET /health` require `X-API-Key` header.
+All routes except `GET /health`, `GET /api/public/status`, and `POST /api/auth/login` require `X-API-Key` header.
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Liveness check — no auth |
-| GET | `/runs` | Paginated run history (`?limit=20&offset=0`) |
-| GET | `/runs/latest` | Latest run per group |
-| GET | `/runs/:id` | Run detail with visits |
-| POST | `/trigger` | **Synchronous** — runs group, returns `{ runId }` when done |
-| POST | `/webhook/warm` | **Async** — fires runs and responds immediately; `group: "all"` runs every group |
-| GET | `/config` | Current loaded config |
-| GET | `/api/groups/:name/overview` | Group overview — includes CWV data with `urlTrend: UrlCwvTrendPoint[]` (LCP/CLS/TTFB per URL per run) |
-| GET | `/api/groups/:name/performance` | Group performance metrics |
-| GET | `/api/groups/:name/uptime` | Group uptime metrics |
+| GET | `/api/public/status` | Per-group uptime for last 30 days — no auth |
+| POST | `/api/auth/login` | Exchange `{ username, password }` for `{ token }` — no auth |
+| GET | `/api/runs` | Paginated run history (`?limit=20&offset=0&group=<name>`) |
+| GET | `/api/runs/latest` | Latest run per group |
+| GET | `/api/runs/:id` | Run detail with visits |
+| POST | `/api/trigger` | **Synchronous** — runs group, blocks until done, returns `{ runId }` |
+| POST | `/api/trigger/async` | **Async** — fires run, returns `{ runId }` immediately |
+| POST | `/webhook/warm` | **Async webhook** — `{ "group": "<name>" }`, use `"all"` for every group |
+| POST | `/api/runs/:id/cancel` | Cancel a running execution |
+| DELETE | `/api/runs` | Clear run history (`?group=<name>` to scope) |
+| GET | `/api/config` | Current loaded config |
+| PUT | `/api/config` | Update config and rename groups |
+| GET | `/api/groups/:name/overview` | Summary stats and per-run trend series |
+| GET | `/api/groups/:name/performance` | P50/P95 load time & TTFB per URL + trend |
+| GET | `/api/groups/:name/uptime` | Uptime % per URL over last 30 days |
+| GET | `/api/groups/:name/seo` | SEO scores and metadata per URL |
+| GET | `/api/groups/:name/cwv` | Core Web Vitals at P75 per URL + trend |
+| GET | `/api/groups/:name/broken-links` | Broken links discovered during visits |
+| GET | `/api/groups/:name/export` | CSV export (`?tab=performance\|uptime\|seo\|links`) |
+| GET | `/api/stats` | Global stats: run status breakdown, visits per day per group |
 | GET | `/api/secrets` | List secret names (no values) |
 | POST | `/api/secrets` | Upsert secret `{ name, value }` — encrypts and stores |
 | DELETE | `/api/secrets/:name` | Remove a secret |
 
-`POST /trigger` and `POST /webhook/warm` both take `{ "group": "<name>" }` as JSON body.
-
 ### API authentication
-All routes except `GET /health` require `X-API-Key` header. Auth is implemented as a Fastify `preHandler` hook scoped to a protected plugin — not per-route. Comparison uses `timingSafeEqual`.
+All protected routes require `X-API-Key` header. Auth is implemented as a Fastify `preHandler` hook scoped to a protected plugin — not per-route. Comparison uses `timingSafeEqual`.
 
 ### Cookie consent (`browser/cookieConsent.ts`)
 Strategies are tried in order with a 3s timeout each:
@@ -138,12 +152,12 @@ Strategies are tried in order with a 3s timeout each:
 After clicking, always wait 500–1000ms before continuing — CMPs fire XHR after accept that re-renders the page.
 
 ### Database
-Knex with `better-sqlite3`. Migrations run automatically at startup. All queries go through `src/db/queries/` helpers — never raw Knex calls in business logic. SQLite file is volume-mounted at `DB_PATH`.
+Drizzle ORM with `postgres-js` (PostgreSQL 17). Migrations in `backend/db/migrations/` run automatically at startup via `drizzle-orm/postgres-js/migrator`. All queries go through `backend/db/queries/` helpers — never raw SQL in business logic.
 
 ### Logging
 Always use pino child loggers (`logger.child({ runId, url })`). Never `console.log`. Log level via `LOG_LEVEL` env var. Output is JSON on stdout (Coolify captures it).
 
 ## Key invariants
 - A single URL failure must not abort the group run — `visitor.ts` catches per-URL errors and returns them in `VisitResult.error`; `runner.ts` sets status `partial_failure` if some fail, `failed` if all fail
-- `config.yaml` is live-reloadable — do not cache its contents outside `config/urls.ts`
-- The `data/` and `logs/` directories are Docker volumes — never write SQLite or log files relative to `__dirname`
+- `config.yaml` is live-reloadable — do not cache its contents outside `backend/config/urls.ts`
+- Browserless is **not** included in `docker-compose.yml` — you must provide your own instance and set `BROWSERLESS_WS_URL`
