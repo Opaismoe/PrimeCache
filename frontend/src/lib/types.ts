@@ -163,11 +163,17 @@ export interface SeoData {
   title: string | null;
   metaDescription: string | null;
   h1: string | null;
+  h2: string | null;
+  h3: string | null;
+  h4: string | null;
+  h5: string | null;
   canonicalUrl: string | null;
   ogTitle: string | null;
   ogDescription: string | null;
   ogImage: string | null;
   robotsMeta: string | null;
+  viewportMeta: string | null;
+  lang: string | null;
 }
 
 export interface UrlSeoHistory {

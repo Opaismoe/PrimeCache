@@ -115,11 +115,17 @@ export async function getGroupSeo(db: Db, groupName: string): Promise<GroupSeo> 
       s.title,
       s.meta_description,
       s.h1,
+      s.h2,
+      s.h3,
+      s.h4,
+      s.h5,
       s.canonical_url,
       s.og_title,
       s.og_description,
       s.og_image,
-      s.robots_meta
+      s.robots_meta,
+      s.viewport_meta,
+      s.lang
     FROM visits v
     INNER JOIN runs r ON v.run_id = r.id
     INNER JOIN visit_seo s ON s.visit_id = v.id
@@ -146,11 +152,17 @@ export async function getGroupSeo(db: Db, groupName: string): Promise<GroupSeo> 
           title: row.title as string | null,
           metaDescription: row.meta_description as string | null,
           h1: row.h1 as string | null,
+          h2: row.h2 as string | null,
+          h3: row.h3 as string | null,
+          h4: row.h4 as string | null,
+          h5: row.h5 as string | null,
           canonicalUrl: row.canonical_url as string | null,
           ogTitle: row.og_title as string | null,
           ogDescription: row.og_description as string | null,
           ogImage: row.og_image as string | null,
           robotsMeta: row.robots_meta as string | null,
+          viewportMeta: row.viewport_meta as string | null,
+          lang: row.lang as string | null,
         },
       });
     }
