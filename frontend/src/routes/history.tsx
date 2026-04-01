@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { RunResults } from '../components/RunResults';
 import { StatusBadge } from '../components/StatusBadge';
 import { getApiKey, getConfig, getRuns } from '../lib/api';
 import { formatDate, formatDuration } from '../lib/formatters';
@@ -160,19 +161,12 @@ function HistoryPage() {
     columnHelper.display({
       id: 'results',
       header: 'Results',
-      cell: (info) => {
-        const run = info.row.original;
-        return run.success_count !== null ? (
-          <span>
-            <span className="text-green-500">{run.success_count} ok</span>
-            {run.failure_count ? (
-              <span className="ml-2 text-destructive">{run.failure_count} failed</span>
-            ) : null}
-          </span>
-        ) : (
-          '—'
-        );
-      },
+      cell: (info) => (
+        <RunResults
+          successCount={info.row.original.success_count}
+          failureCount={info.row.original.failure_count}
+        />
+      ),
       enableSorting: false,
     }),
   ];

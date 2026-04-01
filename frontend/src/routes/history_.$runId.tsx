@@ -11,7 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { ExternalLink } from '../components/ExternalLink';
 import { Spinner } from '../components/Spinner';
+import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { cancelRun, getApiKey, getRunById } from '../lib/api';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
@@ -158,16 +160,10 @@ function RunDetailPage() {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric label="Started" value={formatDate(run.started_at)} />
-        <Metric label="Duration" value={formatDuration(run.started_at, run.ended_at)} />
-        <Metric
-          label="Success"
-          value={run.success_count !== null ? String(run.success_count) : '…'}
-        />
-        <Metric
-          label="Failed"
-          value={run.failure_count !== null ? String(run.failure_count) : '…'}
-        />
+        <StatCard label="Started" value={formatDate(run.started_at)} />
+        <StatCard label="Duration" value={formatDuration(run.started_at, run.ended_at)} />
+        <StatCard label="Success" value={run.success_count !== null ? String(run.success_count) : '…'} />
+        <StatCard label="Failed" value={run.failure_count !== null ? String(run.failure_count) : '…'} />
       </div>
 
       {run.visits.length === 0 ? (
@@ -195,14 +191,7 @@ function RunDetailPage() {
               {run.visits.map((visit) => (
                 <TableRow key={visit.id} className={visit.error ? 'bg-destructive/10' : ''}>
                   <TableCell className="max-w-xs truncate font-mono text-xs">
-                    <a
-                      href={visit.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-foreground hover:underline"
-                    >
-                      {visit.url}
-                    </a>
+                    <ExternalLink href={visit.url}>{visit.url}</ExternalLink>
                   </TableCell>
                   <TableCell>{visit.status_code ?? '—'}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -224,13 +213,3 @@ function RunDetailPage() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="pt-4">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="mt-0.5 font-medium">{value}</p>
-      </CardContent>
-    </Card>
-  );
-}

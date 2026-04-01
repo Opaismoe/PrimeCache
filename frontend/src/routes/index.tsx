@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RunResults } from '../components/RunResults';
 import { StatusBadge } from '../components/StatusBadge';
 import {
   getApiKey,
@@ -27,6 +28,7 @@ import {
 import { describeCron } from '../lib/cronUtils';
 import { formatChartDate } from '../lib/formatChartDate';
 import { formatDate } from '../lib/formatters';
+import { CHART_TOOLTIP_STYLE } from '../lib/chartStyles';
 import { queryKeys } from '../lib/queryKeys';
 import type { Run, Stats } from '../lib/types';
 
@@ -176,7 +178,7 @@ function DashboardPage() {
       {!config?.groups.length ? (
         <p className="text-muted-foreground">
           No groups configured yet.{' '}
-          <Link to="/config" className="text-primary hover:underline">
+          <Link to="/admin" className="text-primary hover:underline">
             Add a group
           </Link>
           .
@@ -209,16 +211,10 @@ function DashboardPage() {
                   {latest ? (
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span>Last run: {formatDate(latest.started_at)}</span>
-                      {latest.success_count !== null && (
-                        <span>
-                          <span className="text-green-500">{latest.success_count} ok</span>
-                          {latest.failure_count ? (
-                            <span className="ml-1 text-destructive">
-                              {latest.failure_count} failed
-                            </span>
-                          ) : null}
-                        </span>
-                      )}
+                      <RunResults
+                        successCount={latest.success_count}
+                        failureCount={latest.failure_count}
+                      />
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">No runs yet</p>
@@ -323,11 +319,7 @@ function DashboardPage() {
                       allowDecimals={false}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '6px',
-                      }}
+                      contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                       itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
                     />
@@ -362,11 +354,7 @@ function DashboardPage() {
                       allowDecimals={false}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '6px',
-                      }}
+                      contentStyle={CHART_TOOLTIP_STYLE}
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                       itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
                     />
