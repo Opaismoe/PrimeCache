@@ -22,6 +22,9 @@ const EnvSchema = z.object({
   TIMEZONE: z.preprocess(empty, z.string().default('Europe/Amsterdam')),
   BETWEEN_URLS_MIN_MS: z.preprocess(empty, z.coerce.number().default(2000)),
   BETWEEN_URLS_MAX_MS: z.preprocess(empty, z.coerce.number().default(5000)),
+  SECRET_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/i, 'SECRET_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
