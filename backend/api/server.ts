@@ -25,6 +25,7 @@ import { runGroup, startRunGroup } from '../warmer/runner';
 import { putConfigRoute } from './routes/config';
 import { groupRoutes } from './routes/groups';
 import { getGroupUptime as getPublicStatus } from './routes/publicStatus';
+import { secretsRoutes } from './routes/secrets';
 
 interface ServerDeps {
   db: Db;
@@ -172,6 +173,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
       // GET /groups/:name/overview|performance|uptime
       protected_.register(groupRoutes(db));
+
+      // Secrets CRUD
+      protected_.register(secretsRoutes(db));
     },
     { prefix: '/api' },
   );
