@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/table';
 import { formatChartDate } from '@/lib/formatChartDate';
 import { formatDate } from '@/lib/formatters';
-import { ExternalLink } from '../ExternalLink';
 import type { GroupUptime } from '@/lib/types';
+import { ExternalLink } from '../ExternalLink';
 
 export function UptimeTab({ data }: { data: GroupUptime }) {
   if (data.urls.length === 0) {

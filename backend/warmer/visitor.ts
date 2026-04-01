@@ -258,22 +258,26 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
         metaDescription:
           document.querySelector('meta[name="description"]')?.getAttribute('content') ?? null,
         h1: document.querySelector('h1')?.textContent?.trim() ?? null,
-        h2: Array.from(document.querySelectorAll('h2'))
-          .map((el) => el.textContent?.trim())
-          .filter(Boolean)
-          .join(' | ') || null,
-        h3: Array.from(document.querySelectorAll('h3'))
-          .map((el) => el.textContent?.trim())
-          .filter(Boolean)
-          .join(' | ') || null,
-        h4: Array.from(document.querySelectorAll('h4'))
-          .map((el) => el.textContent?.trim())
-          .filter(Boolean)
-          .join(' | ') || null,
-        h5: Array.from(document.querySelectorAll('h5'))
-          .map((el) => el.textContent?.trim())
-          .filter(Boolean)
-          .join(' | ') || null,
+        h2:
+          Array.from(document.querySelectorAll('h2'))
+            .map((el) => el.textContent?.trim())
+            .filter(Boolean)
+            .join(' | ') || null,
+        h3:
+          Array.from(document.querySelectorAll('h3'))
+            .map((el) => el.textContent?.trim())
+            .filter(Boolean)
+            .join(' | ') || null,
+        h4:
+          Array.from(document.querySelectorAll('h4'))
+            .map((el) => el.textContent?.trim())
+            .filter(Boolean)
+            .join(' | ') || null,
+        h5:
+          Array.from(document.querySelectorAll('h5'))
+            .map((el) => el.textContent?.trim())
+            .filter(Boolean)
+            .join(' | ') || null,
         canonicalUrl: document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? null,
         ogTitle:
           document.querySelector('meta[property="og:title"]')?.getAttribute('content') ?? null,

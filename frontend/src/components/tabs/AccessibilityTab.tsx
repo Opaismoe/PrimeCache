@@ -6,8 +6,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ExternalLink } from '../ExternalLink';
 import type { GroupAccessibility } from '@/lib/types';
+import { ExternalLink } from '../ExternalLink';
 
 const IMPACT_COLORS: Record<string, string> = {
   critical: 'bg-destructive text-destructive-foreground',
@@ -59,7 +59,9 @@ export function AccessibilityTab({ data }: { data: GroupAccessibility }) {
                 </TableCell>
                 <TableCell>
                   {url.latestCriticalCount > 0 ? (
-                    <span className="font-semibold text-destructive">{url.latestCriticalCount}</span>
+                    <span className="font-semibold text-destructive">
+                      {url.latestCriticalCount}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}

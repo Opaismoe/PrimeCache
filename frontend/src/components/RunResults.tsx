@@ -9,9 +9,7 @@ export function RunResults({
   return (
     <span>
       <span className="text-green-500">{successCount} ok</span>
-      {failureCount ? (
-        <span className="ml-2 text-destructive">{failureCount} failed</span>
-      ) : null}
+      {failureCount ? <span className="ml-2 text-destructive">{failureCount} failed</span> : null}
     </span>
   );
 }

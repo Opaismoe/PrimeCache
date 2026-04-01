@@ -1,10 +1,3 @@
-import { cn } from '@/lib/utils';
-import { HTTP_STATUS_CODES } from '@/lib/httpStatusCodes';
-import {
-  Tooltip as UiTooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -13,9 +6,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { TooltipContent, TooltipTrigger, Tooltip as UiTooltip } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/formatters';
-import { ExternalLink } from '../ExternalLink';
+import { HTTP_STATUS_CODES } from '@/lib/httpStatusCodes';
 import type { BrokenLinkSummary } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { ExternalLink } from '../ExternalLink';
 
 function HttpStatusBadge({ status }: { status: number | null }) {
   if (status === null) return <span className="text-muted-foreground text-xs">—</span>;

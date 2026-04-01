@@ -25,10 +25,10 @@ import {
   getStats,
   triggerAsync,
 } from '../lib/api';
+import { CHART_TOOLTIP_STYLE } from '../lib/chartStyles';
 import { describeCron } from '../lib/cronUtils';
 import { formatChartDate } from '../lib/formatChartDate';
 import { formatDate } from '../lib/formatters';
-import { CHART_TOOLTIP_STYLE } from '../lib/chartStyles';
 import { queryKeys } from '../lib/queryKeys';
 import type { Run, Stats } from '../lib/types';
 
