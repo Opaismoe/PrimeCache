@@ -7,6 +7,8 @@ vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token');
 vi.stubEnv('API_KEY', 'supersecretapikey1234');
 vi.stubEnv('CONFIG_PATH', '/tmp/test-config.yaml');
+vi.stubEnv('ADMIN_USERNAME', 'admin');
+vi.stubEnv('ADMIN_PASSWORD', 'password123');
 
 vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
@@ -450,6 +452,61 @@ describe('POST /trigger/async', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(typeof res.json().runId).toBe('number');
+  });
+});
+
+// ── POST /api/auth/login ──────────────────────────────────────────────────────
+
+describe('POST /api/auth/login', () => {
+  it('returns 200 and token for valid credentials', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'password123' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().token).toBe('supersecretapikey1234');
+  });
+
+  it('returns 401 for wrong password', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'wrongpassword' }),
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 401 for wrong username', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'hacker', password: 'password123' }),
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 400 when body fields are missing', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'admin' }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('does not require X-API-Key header', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'password123' }),
+    });
+    expect(res.statusCode).not.toBe(401);
   });
 });
 

@@ -57,6 +57,31 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   // ── Public status (no auth) ───────────────────────────────────────────────
   app.get('/api/public/status', async () => getPublicStatus(db));
 
+  // ── POST /api/auth/login (public) ─────────────────────────────────────────
+  app.post<{ Body: { username?: string; password?: string } }>(
+    '/api/auth/login',
+    async (request, reply) => {
+      const { username, password } = request.body ?? {};
+      if (!username || !password)
+        return reply.code(400).send({ error: 'username and password required' });
+      try {
+        const usernameMatch = timingSafeEqual(
+          Buffer.from(username),
+          Buffer.from(env.ADMIN_USERNAME),
+        );
+        const passwordMatch = timingSafeEqual(
+          Buffer.from(password),
+          Buffer.from(env.ADMIN_PASSWORD),
+        );
+        if (!usernameMatch || !passwordMatch)
+          return reply.code(401).send({ error: 'Unauthorized' });
+      } catch {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+      return { token: env.API_KEY };
+    },
+  );
+
   // ── Auth preHandler for all protected routes ──────────────────────────────
   async function requireApiKey(request: FastifyRequest, reply: FastifyReply) {
     const key = request.headers['x-api-key'] as string | undefined;
