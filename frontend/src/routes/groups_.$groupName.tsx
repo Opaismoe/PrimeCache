@@ -11,18 +11,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { GroupDetailSkeleton } from '../components/GroupDetailSkeleton';
+import { GroupForm } from '../components/GroupForm';
+import { RunResults } from '../components/RunResults';
+import { StatCard } from '../components/StatCard';
+import { StatusBadge } from '../components/StatusBadge';
+import { TabLoadingSkeleton } from '../components/TabLoadingSkeleton';
 import { AccessibilityTab } from '../components/tabs/AccessibilityTab';
 import { LinksTab } from '../components/tabs/LinksTab';
 import { OverviewTab } from '../components/tabs/OverviewTab';
 import { PerformanceTab } from '../components/tabs/PerformanceTab';
 import { SeoTab } from '../components/tabs/SeoTab';
 import { UptimeTab } from '../components/tabs/UptimeTab';
-import { GroupForm } from '../components/GroupForm';
-import { RunResults } from '../components/RunResults';
-import { StatCard } from '../components/StatCard';
-import { StatusBadge } from '../components/StatusBadge';
-import { TabLoadingSkeleton } from '../components/TabLoadingSkeleton';
-import { GroupDetailSkeleton } from '../components/GroupDetailSkeleton';
 import {
   getApiKey,
   getConfig,
@@ -125,7 +125,11 @@ function GroupDetailPage() {
   const { data: historyRuns, isLoading: historyLoading } = useQuery({
     queryKey: [...queryKeys.runs.all(), 'group-tab', groupName, historyPage],
     queryFn: () =>
-      getRuns({ group: groupName, limit: HISTORY_PAGE_SIZE, offset: historyPage * HISTORY_PAGE_SIZE }),
+      getRuns({
+        group: groupName,
+        limit: HISTORY_PAGE_SIZE,
+        offset: historyPage * HISTORY_PAGE_SIZE,
+      }),
     enabled: activeTab === 'history',
   });
 
@@ -179,8 +183,14 @@ function GroupDetailPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total runs" value={stats ? String(stats.totalRuns) : '—'} />
         <StatCard label="Success rate" value={stats ? `${stats.successRate.toFixed(1)}%` : '—'} />
-        <StatCard label="Avg load time" value={stats?.avgLoadTimeMs != null ? `${stats.avgLoadTimeMs}ms` : '—'} />
-        <StatCard label="Avg TTFB" value={stats?.avgTtfbMs != null ? `${stats.avgTtfbMs}ms` : '—'} />
+        <StatCard
+          label="Avg load time"
+          value={stats?.avgLoadTimeMs != null ? `${stats.avgLoadTimeMs}ms` : '—'}
+        />
+        <StatCard
+          label="Avg TTFB"
+          value={stats?.avgTtfbMs != null ? `${stats.avgTtfbMs}ms` : '—'}
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

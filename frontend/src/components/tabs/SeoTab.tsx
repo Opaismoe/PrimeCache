@@ -1,24 +1,12 @@
-import {
-  Area,
-  AreaChart,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { CHART_TOOLTIP_STYLE, getColor } from '@/lib/chartStyles';
 import { formatChartDate } from '@/lib/formatChartDate';
 import { formatMs } from '@/lib/formatters';
-import { ExternalLink } from '../ExternalLink';
 import type { CwvStatus, GroupCwv, UrlCwv, UrlSeoSummary } from '@/lib/types';
+import { ExternalLink } from '../ExternalLink';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -378,7 +366,13 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
 
 // ── SeoTab ────────────────────────────────────────────────────────────────────
 
-export function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: GroupCwv | undefined }) {
+export function SeoTab({
+  data,
+  cwv,
+}: {
+  data: { urls: UrlSeoSummary[] };
+  cwv: GroupCwv | undefined;
+}) {
   const issueCount = data.urls.reduce((n, u) => n + u.issues.length, 0);
   const changedCount = data.urls.filter((u) => u.changed).length;
 
@@ -423,10 +417,25 @@ export function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: Gr
                     Core Web Vitals (P75)
                   </p>
                   <div className="grid grid-cols-4 gap-2">
-                    <CwvTile label="LCP" value={urlCwv.lcpP75} unit="ms" status={urlCwv.lcpStatus} />
-                    <CwvTile label="FCP" value={urlCwv.fcpP75} unit="ms" status={urlCwv.fcpStatus} />
+                    <CwvTile
+                      label="LCP"
+                      value={urlCwv.lcpP75}
+                      unit="ms"
+                      status={urlCwv.lcpStatus}
+                    />
+                    <CwvTile
+                      label="FCP"
+                      value={urlCwv.fcpP75}
+                      unit="ms"
+                      status={urlCwv.fcpStatus}
+                    />
                     <CwvTile label="CLS" value={urlCwv.clsP75} unit="" status={urlCwv.clsStatus} />
-                    <CwvTile label="INP" value={urlCwv.inpP75} unit="ms" status={urlCwv.inpStatus} />
+                    <CwvTile
+                      label="INP"
+                      value={urlCwv.inpP75}
+                      unit="ms"
+                      status={urlCwv.inpStatus}
+                    />
                   </div>
                 </div>
               )}
@@ -442,7 +451,10 @@ export function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: Gr
                         Changed
                       </Badge>
                     )}
-                    <ExternalLink href={u.url} className="truncate font-mono text-xs text-muted-foreground">
+                    <ExternalLink
+                      href={u.url}
+                      className="truncate font-mono text-xs text-muted-foreground"
+                    >
                       {u.url}
                     </ExternalLink>
                   </div>
@@ -456,7 +468,10 @@ export function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: Gr
                   <div className="mb-3 rounded-md bg-destructive/10 px-3 py-2">
                     <ul className="space-y-0.5">
                       {u.issues.map((issue) => (
-                        <li key={issue} className="flex items-start gap-1.5 text-xs text-destructive">
+                        <li
+                          key={issue}
+                          className="flex items-start gap-1.5 text-xs text-destructive"
+                        >
                           <span className="mt-0.5 shrink-0">✕</span>
                           {issue}
                         </li>
@@ -497,31 +512,33 @@ export function SeoTab({ data, cwv }: { data: { urls: UrlSeoSummary[] }; cwv: Gr
                       Changes since previous run
                     </p>
                     <div className="space-y-1">
-                      {(['title', 'metaDescription', 'h1', 'canonicalUrl'] as const).map((field) => {
-                        const prev = u.history[1].seo[field];
-                        const curr = u.history[0].seo[field];
-                        if (prev === curr) return null;
-                        const labels: Record<string, string> = {
-                          title: 'Title',
-                          metaDescription: 'Meta description',
-                          h1: 'H1',
-                          canonicalUrl: 'Canonical',
-                        };
-                        return (
-                          <div
-                            key={field}
-                            className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs"
-                          >
-                            <span className="font-medium text-yellow-600 dark:text-yellow-400">
-                              {labels[field]}
-                            </span>
-                            <div className="mt-1 text-muted-foreground line-through">
-                              {prev ?? '(empty)'}
+                      {(['title', 'metaDescription', 'h1', 'canonicalUrl'] as const).map(
+                        (field) => {
+                          const prev = u.history[1].seo[field];
+                          const curr = u.history[0].seo[field];
+                          if (prev === curr) return null;
+                          const labels: Record<string, string> = {
+                            title: 'Title',
+                            metaDescription: 'Meta description',
+                            h1: 'H1',
+                            canonicalUrl: 'Canonical',
+                          };
+                          return (
+                            <div
+                              key={field}
+                              className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs"
+                            >
+                              <span className="font-medium text-yellow-600 dark:text-yellow-400">
+                                {labels[field]}
+                              </span>
+                              <div className="mt-1 text-muted-foreground line-through">
+                                {prev ?? '(empty)'}
+                              </div>
+                              <div className="mt-0.5 text-foreground">{curr ?? '(empty)'}</div>
                             </div>
-                            <div className="mt-0.5 text-foreground">{curr ?? '(empty)'}</div>
-                          </div>
-                        );
-                      })}
+                          );
+                        },
+                      )}
                     </div>
                   </div>
                 )}

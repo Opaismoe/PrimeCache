@@ -226,6 +226,7 @@ describe('visitUrl', () => {
     // biome-ignore lint/complexity/useArrowFunction: arrow functions cannot be used as constructors
     vi.mocked(AxeBuilder).mockImplementationOnce(function () {
       return { analyze: vi.fn().mockRejectedValue(new Error('axe internal error')) };
+      // biome-ignore lint/suspicious/noExplicitAny: constructor mock requires any
     } as any);
     const { visitUrl } = await import('./visitor');
     const result = await visitUrl('https://example.com/', {

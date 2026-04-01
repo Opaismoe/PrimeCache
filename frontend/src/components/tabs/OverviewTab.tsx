@@ -12,9 +12,9 @@ import {
 import { CHART_TOOLTIP_STYLE } from '@/lib/chartStyles';
 import { formatChartDate } from '@/lib/formatChartDate';
 import { formatDate, formatDuration, formatMs } from '@/lib/formatters';
+import type { GroupOverview, Run } from '@/lib/types';
 import { RunResults } from '../RunResults';
 import { StatusBadge } from '../StatusBadge';
-import type { GroupOverview, Run } from '@/lib/types';
 
 export function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
   const navigate = useNavigate();

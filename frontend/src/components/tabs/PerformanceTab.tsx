@@ -1,12 +1,4 @@
-import {
-  Area,
-  AreaChart,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -20,8 +12,8 @@ import {
 import { CHART_TOOLTIP_STYLE, getColor } from '@/lib/chartStyles';
 import { formatChartDate } from '@/lib/formatChartDate';
 import { formatMs } from '@/lib/formatters';
-import { ExternalLink } from '../ExternalLink';
 import type { GroupPerformance } from '@/lib/types';
+import { ExternalLink } from '../ExternalLink';
 
 export function PerformanceTab({ data }: { data: GroupPerformance }) {
   if (data.urls.length === 0) {

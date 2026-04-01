@@ -162,8 +162,14 @@ function RunDetailPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Started" value={formatDate(run.started_at)} />
         <StatCard label="Duration" value={formatDuration(run.started_at, run.ended_at)} />
-        <StatCard label="Success" value={run.success_count !== null ? String(run.success_count) : '…'} />
-        <StatCard label="Failed" value={run.failure_count !== null ? String(run.failure_count) : '…'} />
+        <StatCard
+          label="Success"
+          value={run.success_count !== null ? String(run.success_count) : '…'}
+        />
+        <StatCard
+          label="Failed"
+          value={run.failure_count !== null ? String(run.failure_count) : '…'}
+        />
       </div>
 
       {run.visits.length === 0 ? (
@@ -212,4 +218,3 @@ function RunDetailPage() {
     </div>
   );
 }
-

@@ -1,6 +1,12 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router';
+import {
+  createRootRouteWithContext,
+  Link,
+  Outlet,
+  useRouter,
+  useRouterState,
+} from '@tanstack/react-router';
 import { ChevronDown, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';

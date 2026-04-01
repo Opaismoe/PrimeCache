@@ -1,15 +1,10 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
-import { AdminSkeleton } from '../components/AdminSkeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AdminSkeleton } from '../components/AdminSkeleton';
 import { GroupForm } from '../components/GroupForm';
 import { StatusBadge } from '../components/StatusBadge';
 import { cancelRun, deleteRuns, getApiKey, getConfig, getLatestRuns, putConfig } from '../lib/api';
@@ -78,8 +73,13 @@ function AdminPage() {
   const editingGroup = formMode?.mode === 'edit' ? config?.groups[formMode.index] : undefined;
 
   const saveConfig = useMutation({
-    mutationFn: ({ config, renames }: { config: Config; renames?: { from: string; to: string }[] }) =>
-      putConfig(config, renames),
+    mutationFn: ({
+      config,
+      renames,
+    }: {
+      config: Config;
+      renames?: { from: string; to: string }[];
+    }) => putConfig(config, renames),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.config.all() }),
   });
 
@@ -109,7 +109,8 @@ function AdminPage() {
   };
 
   const handleDeleteGroup = (name: string) => {
-    if (!confirm(`Delete group "${name}" and all its configuration? This cannot be undone.`)) return;
+    if (!confirm(`Delete group "${name}" and all its configuration? This cannot be undone.`))
+      return;
     saveConfig.mutate({ config: { groups: groups.filter((g) => g.name !== name) } as Config });
   };
 
@@ -171,7 +172,12 @@ function AdminPage() {
         )}
       </Section>
 
-      <Dialog open={formMode !== null} onOpenChange={(open) => { if (!open) setFormMode(null); }}>
+      <Dialog
+        open={formMode !== null}
+        onOpenChange={(open) => {
+          if (!open) setFormMode(null);
+        }}
+      >
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -227,12 +233,16 @@ function AdminPage() {
               disabled={deleteMutation.isPending}
               onClick={() => handleDeleteHistory()}
             >
-              {deleteMutation.isPending && !deleteMutation.variables ? 'Deleting…' : 'Delete all history'}
+              {deleteMutation.isPending && !deleteMutation.variables
+                ? 'Deleting…'
+                : 'Delete all history'}
             </Button>
           </div>
           {groups.length > 0 && (
             <>
-              <p className="text-xs text-muted-foreground">Or delete history for a specific group:</p>
+              <p className="text-xs text-muted-foreground">
+                Or delete history for a specific group:
+              </p>
               <div className="flex flex-wrap gap-2">
                 {groups.map((g) => (
                   <Button
