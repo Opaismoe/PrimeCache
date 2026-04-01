@@ -1,5 +1,5 @@
-import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -55,6 +55,69 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(!!initial);
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/);
+      if (lines.length === 0) return;
+
+      // Parse a single CSV line, handling double-quoted fields
+      const parseLine = (line: string): string[] => {
+        const fields: string[] = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (ch === ',' && !inQuotes) {
+            fields.push(cur);
+            cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        fields.push(cur);
+        return fields.map((f) => f.trim());
+      };
+
+      const rows = lines.map(parseLine).filter((r) => r.some((c) => c));
+      if (rows.length === 0) return;
+
+      // Determine which column holds URLs
+      const firstRow = rows[0];
+      const urlColIndex = firstRow.findIndex((h) => /^urls?$/i.test(h));
+      const colIndex = urlColIndex !== -1 ? urlColIndex : 0;
+
+      // Skip header row if the detected column header isn't a URL itself
+      const startRow = urlColIndex !== -1 || !/^https?:\/\//i.test(firstRow[colIndex]) ? 1 : 0;
+
+      const imported = rows
+        .slice(startRow)
+        .map((r) => r[colIndex] ?? '')
+        .filter((v) => /^https?:\/\//i.test(v));
+
+      if (imported.length === 0) return;
+
+      setUrlsText((prev) => {
+        const existing = prev.trim();
+        return existing ? `${existing}\n${imported.join('\n')}` : imported.join('\n');
+      });
+    };
+    reader.readAsText(file);
+    // Reset so the same file can be re-imported if needed
+    e.target.value = '';
+  };
 
   const set = <K extends keyof Group>(key: K, value: Group[K]) =>
     setGroup((g) => ({ ...g, [key]: value }));
@@ -154,9 +217,28 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="group-urls">
-            URLs <span className="text-muted-foreground font-normal">(one per line)</span>
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="group-urls">
+              URLs <span className="text-muted-foreground font-normal">(one per line)</span>
+            </Label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-2 text-xs text-muted-foreground"
+              onClick={() => csvInputRef.current?.click()}
+            >
+              <Upload className="h-3 w-3" />
+              Import CSV
+            </Button>
+            <input
+              ref={csvInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={handleCsvImport}
+            />
+          </div>
           <Textarea
             id="group-urls"
             required
@@ -166,6 +248,10 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
             className="font-mono"
             placeholder={'https://example.com\nhttps://example.com/page'}
           />
+          <p className="text-xs text-muted-foreground">
+            Or import from a CSV — URLs are read from a column named <code>url</code>, or the first
+            column if no such header exists.
+          </p>
         </div>
       </div>
 
