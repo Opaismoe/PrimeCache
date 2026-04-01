@@ -67,6 +67,20 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return res.json();
 }
 
+export async function login(username: string, password: string): Promise<{ token: string }> {
+  const res = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (res.status === 401) throw new UnauthorizedError();
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new ApiError(res.status, data.error ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export const getRuns = (params: { limit?: number; offset?: number; group?: string } = {}) => {
   const qs = new URLSearchParams({
     limit: String(params.limit ?? 20),

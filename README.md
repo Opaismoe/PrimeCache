@@ -44,6 +44,8 @@ Copy `.env.example` to `.env` and fill in the required values:
 | `BROWSERLESS_WS_URL` | yes | — | WebSocket URL of your Browserless instance, e.g. `ws://browserless:3000/chromium/playwright` |
 | `BROWSERLESS_TOKEN` | yes | — | Browserless auth token |
 | `API_KEY` | yes | — | Secret for the REST API (minimum 16 characters) |
+| `ADMIN_USERNAME` | yes | — | Username for the dashboard login screen |
+| `ADMIN_PASSWORD` | yes | — | Password for the dashboard login screen (minimum 8 characters) |
 | `DATABASE_URL` | yes | — | PostgreSQL connection string, e.g. `postgres://primecache:<password>@postgres:5432/primecache` |
 | `POSTGRES_PASSWORD` | yes | — | Password for the PostgreSQL service (used in Docker Compose) |
 | `CONFIG_PATH` | no | `/app/config/config.yaml` | Path to `config.yaml` inside the container |
@@ -162,12 +164,13 @@ All fields in the `options` block are optional unless noted.
 
 ## REST API
 
-All endpoints except `GET /health` and `GET /api/public/status` require the `X-API-Key: <your-api-key>` header.
+All endpoints except `GET /health`, `GET /api/public/status`, and `POST /api/auth/login` require the `X-API-Key: <your-api-key>` header.
 
 | Method | Path | Description |
 |---|---|---|
 | GET | `/health` | Liveness check — no auth |
 | GET | `/api/public/status` | Per-group uptime status for the last 30 days — no auth |
+| POST | `/api/auth/login` | Exchange `{ username, password }` for `{ token }` — no auth required |
 | GET | `/api/runs` | Paginated run history (`?limit=20&offset=0&group=<name>`) |
 | GET | `/api/runs/latest` | Latest run per group |
 | GET | `/api/runs/:id` | Run detail with all visit records |

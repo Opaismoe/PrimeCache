@@ -8,41 +8,62 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { saveApiKey } from '../lib/api';
+import { login, saveApiKey } from '../lib/api';
 
 interface Props {
   onSave: () => void;
 }
 
 export function ApiKeyModal({ onSave }: Props) {
-  const [value, setValue] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!value.trim()) return;
-    saveApiKey(value.trim());
-    onSave();
+    if (!username.trim() || !password.trim()) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const { token } = await login(username.trim(), password.trim());
+      saveApiKey(token);
+      onSave();
+    } catch {
+      setError('Invalid username or password');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Dialog open onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-sm" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>API Key required</DialogTitle>
+          <DialogTitle>Sign in</DialogTitle>
           <DialogDescription>
-            Enter your API key to access the PrimeCache dashboard.
+            Enter your credentials to access the PrimeCache dashboard.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3 pt-2">
           <Input
-            type="password"
+            type="text"
             autoFocus
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="Enter API key"
+            autoComplete="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
           />
-          <Button type="submit" disabled={!value.trim()}>
-            Save
+          <Input
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+          />
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" disabled={!username.trim() || !password.trim() || loading}>
+            {loading ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
       </DialogContent>

@@ -25,6 +25,8 @@ const EnvSchema = z.object({
   SECRET_ENCRYPTION_KEY: z
     .string()
     .regex(/^[0-9a-f]{64}$/i, 'SECRET_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)'),
+  ADMIN_USERNAME: z.string().min(1, 'ADMIN_USERNAME is required'),
+  ADMIN_PASSWORD: z.string().min(8, 'ADMIN_PASSWORD must be at least 8 characters'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

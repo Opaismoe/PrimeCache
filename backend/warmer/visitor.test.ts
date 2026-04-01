@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token');
 vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16');
+vi.stubEnv('ADMIN_USERNAME', 'admin');
+vi.stubEnv('ADMIN_PASSWORD', 'password123');
 
 // Mock the browser layer so no real connections are made
 vi.mock('../browser/connection', () => ({ getBrowser: vi.fn(), resetBrowser: vi.fn() }));

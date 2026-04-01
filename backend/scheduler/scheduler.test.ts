@@ -5,6 +5,8 @@ vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token');
 vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16');
 vi.stubEnv('TIMEZONE', 'Europe/Amsterdam');
+vi.stubEnv('ADMIN_USERNAME', 'admin');
+vi.stubEnv('ADMIN_PASSWORD', 'password123');
 
 const mockTask = { destroy: vi.fn(), stop: vi.fn(), start: vi.fn() };
 vi.mock('node-cron', () => ({

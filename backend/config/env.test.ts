@@ -5,6 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const VALID_KEY_64 = 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
 
+// Always-present baseline stubs so tests that don't override these don't fail on new required fields
+vi.stubEnv('ADMIN_USERNAME', 'admin');
+vi.stubEnv('ADMIN_PASSWORD', 'password123');
+vi.stubEnv('SECRET_ENCRYPTION_KEY', VALID_KEY_64);
+vi.stubEnv('DATABASE_URL', 'postgres://test:test@localhost/test');
+
 const VALID_ENV = {
   BROWSERLESS_WS_URL: 'ws://browserless:3000/chromium/playwright',
   BROWSERLESS_TOKEN: 'test-token',
@@ -15,6 +21,8 @@ const VALID_ENV = {
   LOG_LEVEL: 'info',
   TIMEZONE: 'Europe/Amsterdam',
   SECRET_ENCRYPTION_KEY: VALID_KEY_64,
+  ADMIN_USERNAME: 'admin',
+  ADMIN_PASSWORD: 'password123',
 };
 
 describe('env', () => {
@@ -142,6 +150,41 @@ describe('env', () => {
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
     vi.stubEnv('LOG_LEVEL', 'info');
     vi.stubEnv('SECRET_ENCRYPTION_KEY', 'z'.repeat(64)); // not hex
+
+    await expect(import('./env')).rejects.toThrow();
+  });
+
+  it('parses valid ADMIN_USERNAME and ADMIN_PASSWORD', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('SECRET_ENCRYPTION_KEY', VALID_KEY_64);
+    vi.stubEnv('ADMIN_USERNAME', 'admin');
+    vi.stubEnv('ADMIN_PASSWORD', 'password123');
+
+    const { env } = await import('./env');
+    expect(env.ADMIN_USERNAME).toBe('admin');
+    expect(env.ADMIN_PASSWORD).toBe('password123');
+  });
+
+  it('throws when ADMIN_USERNAME is missing', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('SECRET_ENCRYPTION_KEY', VALID_KEY_64);
+    vi.stubEnv('ADMIN_USERNAME', '');
+    vi.stubEnv('ADMIN_PASSWORD', 'password123');
+
+    await expect(import('./env')).rejects.toThrow();
+  });
+
+  it('throws when ADMIN_PASSWORD is shorter than 8 characters', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('SECRET_ENCRYPTION_KEY', VALID_KEY_64);
+    vi.stubEnv('ADMIN_USERNAME', 'admin');
+    vi.stubEnv('ADMIN_PASSWORD', 'short');
 
     await expect(import('./env')).rejects.toThrow();
   });
