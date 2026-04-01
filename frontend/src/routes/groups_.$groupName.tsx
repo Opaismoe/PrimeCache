@@ -31,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { GroupForm } from '../components/GroupForm';
 import { StatusBadge } from '../components/StatusBadge';
 import {
+  getApiKey,
   getConfig,
   getGroupAccessibility,
   getGroupBrokenLinks,
@@ -67,6 +68,7 @@ const getColor = (i: number) => LINE_COLORS[i % LINE_COLORS.length];
 
 export const Route = createFileRoute('/groups_/$groupName')({
   loader: ({ context: { queryClient }, params }) => {
+    if (!getApiKey()) return;
     const name = params.groupName;
     return Promise.all([
       queryClient.ensureQueryData(

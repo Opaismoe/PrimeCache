@@ -29,7 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { StatusBadge } from '../components/StatusBadge';
-import { getConfig, getRuns } from '../lib/api';
+import { getApiKey, getConfig, getRuns } from '../lib/api';
 import { formatDate, formatDuration } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
 import type { Run } from '../lib/types';
@@ -45,8 +45,9 @@ export const Route = createFileRoute('/history')({
     page: typeof search.page === 'number' ? search.page : Number(search.page) || 1,
     group: typeof search.group === 'string' ? search.group : '',
   }),
-  loader: ({ context: { queryClient } }) =>
-    Promise.all([
+  loader: ({ context: { queryClient } }) => {
+    if (!getApiKey()) return;
+    return Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(
         queryOptions({
@@ -54,7 +55,8 @@ export const Route = createFileRoute('/history')({
           queryFn: () => getRuns({ limit: PAGE_SIZE, offset: 0 }),
         }),
       ),
-    ]),
+    ]);
+  },
   pendingComponent: HistorySkeleton,
   pendingMs: 200,
   pendingMinMs: 300,
