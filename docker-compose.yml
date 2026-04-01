@@ -10,6 +10,9 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-debug}
       - PORT=3000
       - TIMEZONE=${TIMEZONE:-Europe/Amsterdam}
+      - SECRET_ENCRYPTION_KEY=${SECRET_ENCRYPTION_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
       - ./config.yaml:/app/config/config.yaml
     ports:
