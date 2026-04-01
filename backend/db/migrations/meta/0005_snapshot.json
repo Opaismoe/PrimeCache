@@ -109,9 +109,7 @@
         "secrets_name_unique": {
           "name": "secrets_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -171,12 +169,8 @@
           "name": "visit_accessibility_visit_id_visits_id_fk",
           "tableFrom": "visit_accessibility",
           "tableTo": "visits",
-          "columnsFrom": [
-            "visit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["visit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -228,12 +222,8 @@
           "name": "visit_broken_links_visit_id_visits_id_fk",
           "tableFrom": "visit_broken_links",
           "tableTo": "visits",
-          "columnsFrom": [
-            "visit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["visit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -291,12 +281,8 @@
           "name": "visit_cwv_visit_id_visits_id_fk",
           "tableFrom": "visit_cwv",
           "tableTo": "visits",
-          "columnsFrom": [
-            "visit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["visit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -390,12 +376,8 @@
           "name": "visit_headers_visit_id_visits_id_fk",
           "tableFrom": "visit_headers",
           "tableTo": "visits",
-          "columnsFrom": [
-            "visit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["visit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -441,12 +423,8 @@
           "name": "visit_screenshots_visit_id_visits_id_fk",
           "tableFrom": "visit_screenshots",
           "tableTo": "visits",
-          "columnsFrom": [
-            "visit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["visit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -534,12 +512,8 @@
           "name": "visit_seo_visit_id_visits_id_fk",
           "tableFrom": "visit_seo",
           "tableTo": "visits",
-          "columnsFrom": [
-            "visit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["visit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -642,12 +616,8 @@
           "name": "visits_run_id_runs_id_fk",
           "tableFrom": "visits",
           "tableTo": "runs",
-          "columnsFrom": [
-            "run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["run_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

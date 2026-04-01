@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '../components/StatusBadge';
-import { cancelRun, deleteRuns, getConfig, getLatestRuns, putConfig } from '../lib/api';
+import { cancelRun, deleteRuns, getApiKey, getConfig, getLatestRuns, putConfig } from '../lib/api';
 import { queryKeys } from '../lib/queryKeys';
 import type { Config } from '../lib/types';
 
@@ -17,11 +17,13 @@ const latestRunsQueryOptions = queryOptions({
 });
 
 export const Route = createFileRoute('/admin')({
-  loader: ({ context: { queryClient } }) =>
-    Promise.all([
+  loader: ({ context: { queryClient } }) => {
+    if (!getApiKey()) return;
+    return Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(latestRunsQueryOptions),
-    ]),
+    ]);
+  },
   pendingComponent: AdminSkeleton,
   pendingMs: 200,
   pendingMinMs: 300,

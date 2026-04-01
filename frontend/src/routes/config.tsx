@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GroupForm } from '../components/GroupForm';
-import { getConfig, putConfig } from '../lib/api';
+import { getApiKey, getConfig, putConfig } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
 import { queryKeys } from '../lib/queryKeys';
 import type { Config, Group } from '../lib/types';
@@ -13,7 +13,10 @@ import type { Config, Group } from '../lib/types';
 const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
 
 export const Route = createFileRoute('/config')({
-  loader: ({ context: { queryClient } }) => queryClient.ensureQueryData(configQueryOptions),
+  loader: ({ context: { queryClient } }) => {
+    if (!getApiKey()) return;
+    return queryClient.ensureQueryData(configQueryOptions);
+  },
   pendingComponent: ConfigSkeleton,
   pendingMs: 200,
   pendingMinMs: 300,

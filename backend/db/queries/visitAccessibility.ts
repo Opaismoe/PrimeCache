@@ -1,7 +1,7 @@
 import { desc, eq, sql } from 'drizzle-orm';
+import type { AccessibilityViolation } from '../../warmer/visitor';
 import type { Db } from '../client';
 import { runs, visit_accessibility, visits } from '../schema';
-import type { AccessibilityViolation } from '../../warmer/visitor';
 
 export interface AccessibilityInput {
   violationCount: number;
@@ -99,7 +99,7 @@ export async function getGroupAccessibility(
   const byUrl = new Map<
     string,
     {
-      latest: typeof rows[number];
+      latest: (typeof rows)[number];
       allViolations: AccessibilityViolation[];
     }
   >();

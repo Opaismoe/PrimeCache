@@ -4,9 +4,9 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { deleteSecret, getSecret, listSecrets, upsertSecret } from './queries/secrets';
 import * as schema from './schema';
 import { runs } from './schema';
-import { deleteSecret, getSecret, listSecrets, upsertSecret } from './queries/secrets';
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
@@ -134,8 +134,8 @@ describe('secrets queries', () => {
     await upsertSecret(db, 'known', 'some-encrypted');
     const row = await getSecret(db, 'known');
     expect(row).not.toBeNull();
-    expect(row!.name).toBe('known');
-    expect(row!.encrypted_value).toBe('some-encrypted');
+    expect(row?.name).toBe('known');
+    expect(row?.encrypted_value).toBe('some-encrypted');
   });
 
   it('getSecret returns null for an unknown name', async () => {

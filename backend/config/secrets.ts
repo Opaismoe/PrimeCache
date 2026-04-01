@@ -1,8 +1,8 @@
-import { decrypt } from '../secrets/crypto';
+import type { Db } from '../db/client';
 import { getSecret } from '../db/queries/secrets';
+import { decrypt } from '../secrets/crypto';
 import { env } from './env';
 import type { Config } from './urls';
-import type { Db } from '../db/client';
 
 const PREFIX = 'secret:';
 

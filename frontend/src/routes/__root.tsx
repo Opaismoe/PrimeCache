@@ -76,7 +76,9 @@ function RootLayout() {
             </span>
             <div className="ml-auto flex items-center gap-6">
               {loggedIn && !isPublicRoute && <NavLink to="/">Dashboard</NavLink>}
-              {loggedIn && !isPublicRoute && groups.length > 0 && <DetailsDropdown groups={groups} />}
+              {loggedIn && !isPublicRoute && groups.length > 0 && (
+                <DetailsDropdown groups={groups} />
+              )}
               {loggedIn && !isPublicRoute && <NavLink to="/config">Config</NavLink>}
               {loggedIn && !isPublicRoute && <NavLink to="/admin">Admin</NavLink>}
               <NavLink to="/status">Status</NavLink>
@@ -91,9 +93,7 @@ function RootLayout() {
             </div>
           </div>
         </nav>
-        <main className="mx-auto max-w-7xl px-4 py-6">
-          {!shouldShowModal && <Outlet />}
-        </main>
+        <main className="mx-auto max-w-7xl px-4 py-6">{!shouldShowModal && <Outlet />}</main>
       </div>
     </TooltipProvider>
   );

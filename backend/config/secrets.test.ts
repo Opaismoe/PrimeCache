@@ -3,11 +3,11 @@ import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { beforeEach, describe, expect, it } from 'vitest';
-import * as schema from '../db/schema';
 import { upsertSecret } from '../db/queries/secrets';
+import * as schema from '../db/schema';
 import { encrypt } from '../secrets/crypto';
-import type { Config } from './urls';
 import { resolveConfigSecrets } from './secrets';
+import type { Config } from './urls';
 
 const VALID_KEY = 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
 

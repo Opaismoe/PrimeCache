@@ -103,20 +103,36 @@ describe('getGroupUptime — cancelled run exclusion', () => {
     const db = await createTestDb();
     const { getGroupUptime } = await import('./groupUptime');
 
-    const [completed] = await db.insert(runs).values({
-      group_name: 'uptime-cancel', started_at: new Date('2025-01-01T10:00:00Z'), status: 'completed',
-    }).returning();
+    const [completed] = await db
+      .insert(runs)
+      .values({
+        group_name: 'uptime-cancel',
+        started_at: new Date('2025-01-01T10:00:00Z'),
+        status: 'completed',
+      })
+      .returning();
     await db.insert(visits).values({
-      run_id: completed.id, url: 'https://b.com/', load_time_ms: 300,
-      visited_at: new Date('2025-01-01T10:01:00Z'), error: null,
+      run_id: completed.id,
+      url: 'https://b.com/',
+      load_time_ms: 300,
+      visited_at: new Date('2025-01-01T10:01:00Z'),
+      error: null,
     });
 
-    const [cancelled] = await db.insert(runs).values({
-      group_name: 'uptime-cancel', started_at: new Date('2025-01-02T10:00:00Z'), status: 'cancelled',
-    }).returning();
+    const [cancelled] = await db
+      .insert(runs)
+      .values({
+        group_name: 'uptime-cancel',
+        started_at: new Date('2025-01-02T10:00:00Z'),
+        status: 'cancelled',
+      })
+      .returning();
     await db.insert(visits).values({
-      run_id: cancelled.id, url: 'https://b.com/', load_time_ms: 0,
-      visited_at: new Date('2025-01-02T10:01:00Z'), error: 'timeout',
+      run_id: cancelled.id,
+      url: 'https://b.com/',
+      load_time_ms: 0,
+      visited_at: new Date('2025-01-02T10:01:00Z'),
+      error: 'timeout',
     });
 
     const result = await getGroupUptime(db, 'uptime-cancel');

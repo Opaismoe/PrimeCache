@@ -1,15 +1,18 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Area, AreaChart, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Badge } from '@/components/ui/badge';
 import {
-  Tooltip as UiTooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
-import { HTTP_STATUS_CODES } from '@/lib/httpStatusCodes';
+  Area,
+  AreaChart,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +25,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TooltipContent, TooltipTrigger, Tooltip as UiTooltip } from '@/components/ui/tooltip';
+import { HTTP_STATUS_CODES } from '@/lib/httpStatusCodes';
+import { cn } from '@/lib/utils';
 import { GroupForm } from '../components/GroupForm';
 import { StatusBadge } from '../components/StatusBadge';
 import {
@@ -677,7 +683,9 @@ function OverviewTab({ overview }: { overview: GroupOverview | undefined }) {
                 <TableRow
                   key={run.id}
                   className="cursor-pointer"
-                  onClick={() => navigate({ to: '/history/$runId', params: { runId: String(run.id) } })}
+                  onClick={() =>
+                    navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
+                  }
                 >
                   <TableCell className="text-muted-foreground">#{run.id}</TableCell>
                   <TableCell>{formatDate(run.started_at)}</TableCell>
@@ -1226,7 +1234,10 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={urlChartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                  <LineChart
+                    data={urlChartData}
+                    margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
+                  >
                     <XAxis
                       dataKey="startedAt"
                       tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -1269,7 +1280,10 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={urlChartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                  <LineChart
+                    data={urlChartData}
+                    margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
+                  >
                     <XAxis
                       dataKey="startedAt"
                       tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -1312,7 +1326,10 @@ function CwvSection({ cwv }: { cwv: GroupCwv }) {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={urlChartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+                  <LineChart
+                    data={urlChartData}
+                    margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
+                  >
                     <XAxis
                       dataKey="startedAt"
                       tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -1637,7 +1654,8 @@ function AccessibilityTab({ data }: { data: GroupAccessibility }) {
         : 'border-border bg-muted/30 text-muted-foreground';
 
   const sorted = [...data.urls].sort(
-    (a, b) => b.latestCriticalCount - a.latestCriticalCount || b.latestSeriousCount - a.latestSeriousCount,
+    (a, b) =>
+      b.latestCriticalCount - a.latestCriticalCount || b.latestSeriousCount - a.latestSeriousCount,
   );
 
   return (
@@ -1674,7 +1692,9 @@ function AccessibilityTab({ data }: { data: GroupAccessibility }) {
                 </TableCell>
                 <TableCell>
                   {url.latestCriticalCount > 0 ? (
-                    <span className="font-semibold text-destructive">{url.latestCriticalCount}</span>
+                    <span className="font-semibold text-destructive">
+                      {url.latestCriticalCount}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}
@@ -1699,9 +1719,7 @@ function AccessibilityTab({ data }: { data: GroupAccessibility }) {
                         className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${IMPACT_COLORS[v.impact] ?? IMPACT_COLORS.minor} hover:opacity-80`}
                       >
                         {v.id}
-                        {v.occurrences > 1 && (
-                          <span className="opacity-70">×{v.occurrences}</span>
-                        )}
+                        {v.occurrences > 1 && <span className="opacity-70">×{v.occurrences}</span>}
                       </a>
                     ))}
                   </div>

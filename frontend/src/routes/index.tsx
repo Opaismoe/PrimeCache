@@ -16,7 +16,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '../components/StatusBadge';
-import { getConfig, getLatestRuns, getPublicStatus, getStats, triggerAsync } from '../lib/api';
+import {
+  getApiKey,
+  getConfig,
+  getLatestRuns,
+  getPublicStatus,
+  getStats,
+  triggerAsync,
+} from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
 import { formatChartDate } from '../lib/formatChartDate';
 import { formatDate } from '../lib/formatters';
@@ -36,12 +43,14 @@ const publicStatusQueryOptions = queryOptions({
 });
 
 export const Route = createFileRoute('/')({
-  loader: ({ context: { queryClient } }) =>
-    Promise.all([
+  loader: ({ context: { queryClient } }) => {
+    if (!getApiKey()) return;
+    return Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(latestRunsQueryOptions),
       queryClient.ensureQueryData(statsQueryOptions),
-    ]),
+    ]);
+  },
   pendingComponent: DashboardSkeleton,
   pendingMs: 200,
   pendingMinMs: 300,

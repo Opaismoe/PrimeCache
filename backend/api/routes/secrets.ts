@@ -1,8 +1,8 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { env } from '../../config/env';
-import { encrypt } from '../../secrets/crypto';
-import { deleteSecret, listSecrets, upsertSecret } from '../../db/queries/secrets';
 import type { Db } from '../../db/client';
+import { deleteSecret, listSecrets, upsertSecret } from '../../db/queries/secrets';
+import { encrypt } from '../../secrets/crypto';
 
 export function secretsRoutes(db: Db): FastifyPluginAsync {
   return async (app) => {
@@ -12,7 +12,10 @@ export function secretsRoutes(db: Db): FastifyPluginAsync {
     // POST /api/secrets — upsert { name, value }
     app.post<{ Body: { name: string; value: string } }>(
       '/secrets',
-      async (request: FastifyRequest<{ Body: { name: string; value: string } }>, reply: FastifyReply) => {
+      async (
+        request: FastifyRequest<{ Body: { name: string; value: string } }>,
+        reply: FastifyReply,
+      ) => {
         const { name, value } = request.body ?? {};
         if (!name || !value) return reply.code(400).send({ error: 'name and value are required' });
         const encrypted = encrypt(value, env.SECRET_ENCRYPTION_KEY);

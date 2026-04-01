@@ -11,12 +11,27 @@ vi.stubEnv('ADMIN_PASSWORD', 'password123');
 vi.mock('../browser/connection', () => ({ getBrowser: vi.fn(), resetBrowser: vi.fn() }));
 vi.mock('../browser/context', () => ({ createContext: vi.fn() }));
 vi.mock('@axe-core/playwright', () => ({
+  // biome-ignore lint/complexity/useArrowFunction: arrow functions cannot be used as constructors (new AxeBuilder(...))
   AxeBuilder: vi.fn().mockImplementation(function () {
     return {
       analyze: vi.fn().mockResolvedValue({
         violations: [
-          { id: 'color-contrast', impact: 'serious', help: 'Elements must have sufficient color contrast', description: 'Ensures the contrast ratio...', helpUrl: 'https://dequeuniversity.com/rules/axe/4.9/color-contrast', nodes: [{}, {}] },
-          { id: 'button-name', impact: 'critical', help: 'Buttons must have discernible text', description: 'Ensures buttons have discernible text', helpUrl: 'https://dequeuniversity.com/rules/axe/4.9/button-name', nodes: [{}] },
+          {
+            id: 'color-contrast',
+            impact: 'serious',
+            help: 'Elements must have sufficient color contrast',
+            description: 'Ensures the contrast ratio...',
+            helpUrl: 'https://dequeuniversity.com/rules/axe/4.9/color-contrast',
+            nodes: [{}, {}],
+          },
+          {
+            id: 'button-name',
+            impact: 'critical',
+            help: 'Buttons must have discernible text',
+            description: 'Ensures buttons have discernible text',
+            helpUrl: 'https://dequeuniversity.com/rules/axe/4.9/button-name',
+            nodes: [{}],
+          },
         ],
       }),
     };
@@ -187,14 +202,14 @@ describe('visitUrl', () => {
       checkAccessibility: true,
     });
     expect(result.accessibility).not.toBeNull();
-    expect(result.accessibility!.violationCount).toBe(2);
-    expect(result.accessibility!.criticalCount).toBe(1);
-    expect(result.accessibility!.seriousCount).toBe(1);
-    expect(result.accessibility!.violations).toHaveLength(2);
-    expect(result.accessibility!.violations[0].id).toBe('color-contrast');
-    expect(result.accessibility!.violations[0].nodeCount).toBe(2);
-    expect(result.accessibility!.violations[1].id).toBe('button-name');
-    expect(result.accessibility!.violations[1].impact).toBe('critical');
+    expect(result.accessibility?.violationCount).toBe(2);
+    expect(result.accessibility?.criticalCount).toBe(1);
+    expect(result.accessibility?.seriousCount).toBe(1);
+    expect(result.accessibility?.violations).toHaveLength(2);
+    expect(result.accessibility?.violations[0].id).toBe('color-contrast');
+    expect(result.accessibility?.violations[0].nodeCount).toBe(2);
+    expect(result.accessibility?.violations[1].id).toBe('button-name');
+    expect(result.accessibility?.violations[1].impact).toBe('critical');
   });
 
   it('checkAccessibility: false (default) → result.accessibility is null', async () => {
@@ -208,6 +223,7 @@ describe('visitUrl', () => {
 
   it('axe throws → result.accessibility is null but visit succeeds', async () => {
     const { AxeBuilder } = await import('@axe-core/playwright');
+    // biome-ignore lint/complexity/useArrowFunction: arrow functions cannot be used as constructors
     vi.mocked(AxeBuilder).mockImplementationOnce(function () {
       return { analyze: vi.fn().mockRejectedValue(new Error('axe internal error')) };
     } as any);
