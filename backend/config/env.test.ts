@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // We need to re-import the module fresh for each test since it runs at import time
 // vi.resetModules() ensures a clean slate
 
+const VALID_KEY_64 = 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+
 const VALID_ENV = {
   BROWSERLESS_WS_URL: 'ws://browserless:3000/chromium/playwright',
   BROWSERLESS_TOKEN: 'test-token',
@@ -12,6 +14,7 @@ const VALID_ENV = {
   PORT: '3000',
   LOG_LEVEL: 'info',
   TIMEZONE: 'Europe/Amsterdam',
+  SECRET_ENCRYPTION_KEY: VALID_KEY_64,
 };
 
 describe('env', () => {
@@ -98,6 +101,47 @@ describe('env', () => {
     vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
     vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
     vi.stubEnv('LOG_LEVEL', 'verbose'); // not a valid level
+
+    await expect(import('./env')).rejects.toThrow();
+  });
+
+  it('accepts a valid 64-char hex SECRET_ENCRYPTION_KEY', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('LOG_LEVEL', 'info');
+    vi.stubEnv('SECRET_ENCRYPTION_KEY', VALID_KEY_64);
+
+    const { env } = await import('./env');
+    expect(env.SECRET_ENCRYPTION_KEY).toBe(VALID_KEY_64);
+  });
+
+  it('throws when SECRET_ENCRYPTION_KEY is missing', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('LOG_LEVEL', 'info');
+    vi.stubEnv('SECRET_ENCRYPTION_KEY', '');
+
+    await expect(import('./env')).rejects.toThrow();
+  });
+
+  it('throws when SECRET_ENCRYPTION_KEY is shorter than 64 chars', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('LOG_LEVEL', 'info');
+    vi.stubEnv('SECRET_ENCRYPTION_KEY', 'abcdef1234'); // too short
+
+    await expect(import('./env')).rejects.toThrow();
+  });
+
+  it('throws when SECRET_ENCRYPTION_KEY is not valid hex', async () => {
+    vi.stubEnv('BROWSERLESS_WS_URL', VALID_ENV.BROWSERLESS_WS_URL);
+    vi.stubEnv('BROWSERLESS_TOKEN', VALID_ENV.BROWSERLESS_TOKEN);
+    vi.stubEnv('API_KEY', VALID_ENV.API_KEY);
+    vi.stubEnv('LOG_LEVEL', 'info');
+    vi.stubEnv('SECRET_ENCRYPTION_KEY', 'z'.repeat(64)); // not hex
 
     await expect(import('./env')).rejects.toThrow();
   });
