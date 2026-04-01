@@ -6,6 +6,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as schema from './schema';
 import { runs } from './schema';
+import { deleteSecret, getSecret, listSecrets, upsertSecret } from './queries/secrets';
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
@@ -106,6 +107,66 @@ describe('runs queries', () => {
     const remaining = await getRuns(db, { limit: 10, offset: 0 });
     expect(remaining).toHaveLength(1);
     expect(remaining[0].group_name).toBe('products');
+  });
+});
+
+// --- secrets queries ---
+describe('secrets queries', () => {
+  beforeEach(async () => {
+    db = await createTestDb();
+  });
+
+  it('upsertSecret inserts a new row and returns it', async () => {
+    const row = await upsertSecret(db, 'my-secret', 'encrypted-value');
+    expect(row.name).toBe('my-secret');
+    expect(row.encrypted_value).toBe('encrypted-value');
+    expect(row.id).toBeGreaterThan(0);
+  });
+
+  it('upsertSecret with the same name updates encrypted_value and updated_at', async () => {
+    await upsertSecret(db, 'my-secret', 'first-value');
+    const updated = await upsertSecret(db, 'my-secret', 'second-value');
+    expect(updated.encrypted_value).toBe('second-value');
+    expect(updated.updated_at).toBeTruthy();
+  });
+
+  it('getSecret returns the row for a known name', async () => {
+    await upsertSecret(db, 'known', 'some-encrypted');
+    const row = await getSecret(db, 'known');
+    expect(row).not.toBeNull();
+    expect(row!.name).toBe('known');
+    expect(row!.encrypted_value).toBe('some-encrypted');
+  });
+
+  it('getSecret returns null for an unknown name', async () => {
+    const row = await getSecret(db, 'does-not-exist');
+    expect(row).toBeNull();
+  });
+
+  it('listSecrets returns all rows with name and timestamps but no encrypted_value', async () => {
+    await upsertSecret(db, 'alpha', 'enc-a');
+    await upsertSecret(db, 'beta', 'enc-b');
+    const rows = await listSecrets(db);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.name).sort()).toEqual(['alpha', 'beta']);
+    for (const row of rows) {
+      expect(row).toHaveProperty('name');
+      expect(row).toHaveProperty('created_at');
+      expect(row).toHaveProperty('updated_at');
+      expect(row).not.toHaveProperty('encrypted_value');
+    }
+  });
+
+  it('deleteSecret removes the row and returns the deleted count', async () => {
+    await upsertSecret(db, 'to-delete', 'enc');
+    const count = await deleteSecret(db, 'to-delete');
+    expect(count).toBe(1);
+    expect(await getSecret(db, 'to-delete')).toBeNull();
+  });
+
+  it('deleteSecret returns 0 for a non-existent name', async () => {
+    const count = await deleteSecret(db, 'ghost');
+    expect(count).toBe(0);
   });
 });
 

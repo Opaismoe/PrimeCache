@@ -39,13 +39,16 @@ groups:
       stealth: true                     # stealth plugin + fingerprint randomisation (default: true)
       fetchAssets: true                 # set false to block fonts/images/CSS/JS downloads (default: true)
 
+      # Secrets store: use "secret:<name>" for any credential value.
+      # Manage secrets via POST /api/secrets  { "name": "...", "value": "..." }
+
       # Auth & session
       basicAuth:                        # HTTP Basic Auth credentials (optional)
-        username: myuser
-        password: secret
+        username: myuser                # plain value or secret:<name> reference
+        password: secret:homepage-basic-auth  # value fetched from the secrets store at startup
       cookies:                          # cookies injected before page load (optional)
         - name: session
-          value: abc123
+          value: secret:homepage-session  # value fetched from the secrets store at startup
           domain: example.com
           path: /
           httpOnly: true

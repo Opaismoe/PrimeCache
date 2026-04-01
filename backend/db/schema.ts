@@ -114,3 +114,11 @@ export const visit_seo = pgTable('visit_seo', {
   robots_meta: varchar('robots_meta', { length: 255 }),
   collected_at: timestamp('collected_at').notNull(),
 });
+
+export const secrets = pgTable('secrets', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull().unique(),
+  encrypted_value: text('encrypted_value').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
+});
