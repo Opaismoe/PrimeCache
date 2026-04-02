@@ -69,158 +69,158 @@ function CwvTile({
   );
 }
 
-function CwvUrlTrendCharts({ urlTrend }: { urlTrend: GroupCwv['urlTrend'] }) {
-  const urlList = [...new Set(urlTrend.map((p) => p.url))].slice(0, 6);
-  const byRun = new Map<string, Record<string, string | number>>();
-  for (const p of urlTrend) {
-    let row = byRun.get(p.startedAt);
-    if (!row) {
-      row = { startedAt: p.startedAt };
-      byRun.set(p.startedAt, row);
-    }
-    if (p.avgLcpMs != null) row[`lcp::${p.url}`] = p.avgLcpMs;
-    if (p.avgClsScore != null) row[`cls::${p.url}`] = p.avgClsScore;
-    if (p.avgTtfbMs != null) row[`ttfb::${p.url}`] = p.avgTtfbMs;
-  }
-  const urlChartData = [...byRun.values()];
+// function CwvUrlTrendCharts({ urlTrend }: { urlTrend: GroupCwv['urlTrend'] }) {
+//   const urlList = [...new Set(urlTrend.map((p) => p.url))].slice(0, 6);
+//   const byRun = new Map<string, Record<string, string | number>>();
+//   for (const p of urlTrend) {
+//     let row = byRun.get(p.startedAt);
+//     if (!row) {
+//       row = { startedAt: p.startedAt };
+//       byRun.set(p.startedAt, row);
+//     }
+//     if (p.avgLcpMs != null) row[`lcp::${p.url}`] = p.avgLcpMs;
+//     if (p.avgClsScore != null) row[`cls::${p.url}`] = p.avgClsScore;
+//     if (p.avgTtfbMs != null) row[`ttfb::${p.url}`] = p.avgTtfbMs;
+//   }
+//   const urlChartData = [...byRun.values()];
 
-  if (urlChartData.length <= 1) return null;
+//   if (urlChartData.length <= 1) return null;
 
-  const legendFormatter = (v: string) => v.split('::')[1]?.split('/').pop() ?? v;
+//   const legendFormatter = (v: string) => v.split('::')[1]?.split('/').pop() ?? v;
 
-  const chartProps = {
-    margin: { top: 4, right: 8, bottom: 0, left: -16 },
-    xAxisProps: {
-      dataKey: 'startedAt' as const,
-      tick: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' },
-      tickFormatter: formatChartDate,
-    },
-  };
+//   const chartProps = {
+//     margin: { top: 4, right: 8, bottom: 0, left: -16 },
+//     xAxisProps: {
+//       dataKey: 'startedAt' as const,
+//       tick: { fontSize: 10, fill: 'hsl(var(--muted-foreground))' },
+//       tickFormatter: formatChartDate,
+//     },
+//   };
 
-  return (
-    <div className="mt-4 flex flex-col gap-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <h3 className="text-sm font-medium">LCP trend per URL</h3>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={urlChartData} {...chartProps}>
-              <XAxis {...chartProps.xAxisProps} />
-              <YAxis
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(v) => formatMs(v)}
-              />
-              <Tooltip
-                contentStyle={CHART_TOOLTIP_STYLE}
-                labelFormatter={formatChartDate}
-                formatter={(v, name) => [
-                  formatMs(Number(v)),
-                  String(name).replace('lcp::', '').split('/').pop() ?? '',
-                ]}
-              />
-              <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
-              {urlList.map((url, i) => (
-                <Area
-                  key={url}
-                  type="monotone"
-                  dataKey={`lcp::${url}`}
-                  stroke={getColor(i)}
-                  fill={getColor(i)}
-                  fillOpacity={0.08}
-                  dot={false}
-                  strokeWidth={2}
-                  activeDot={{ r: 3 }}
-                  connectNulls
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+//   return (
+//     <div className="mt-4 flex flex-col gap-4">
+//       <Card>
+//         <CardHeader className="pb-2">
+//           <h3 className="text-sm font-medium">LCP trend per URL</h3>
+//         </CardHeader>
+//         <CardContent>
+//           <ResponsiveContainer width="100%" height={220}>
+//             <AreaChart data={urlChartData} {...chartProps}>
+//               <XAxis {...chartProps.xAxisProps} />
+//               <YAxis
+//                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+//                 tickFormatter={(v) => formatMs(v)}
+//               />
+//               <Tooltip
+//                 contentStyle={CHART_TOOLTIP_STYLE}
+//                 labelFormatter={formatChartDate}
+//                 formatter={(v, name) => [
+//                   formatMs(Number(v)),
+//                   String(name).replace('lcp::', '').split('/').pop() ?? '',
+//                 ]}
+//               />
+//               <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
+//               {urlList.map((url, i) => (
+//                 <Area
+//                   key={url}
+//                   type="monotone"
+//                   dataKey={`lcp::${url}`}
+//                   stroke={getColor(i)}
+//                   fill={getColor(i)}
+//                   fillOpacity={0.08}
+//                   dot={false}
+//                   strokeWidth={2}
+//                   activeDot={{ r: 3 }}
+//                   connectNulls
+//                 />
+//               ))}
+//             </AreaChart>
+//           </ResponsiveContainer>
+//         </CardContent>
+//       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <h3 className="text-sm font-medium">CLS trend per URL</h3>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={urlChartData} {...chartProps}>
-              <XAxis {...chartProps.xAxisProps} />
-              <YAxis
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(v) => Number(v).toFixed(3)}
-              />
-              <Tooltip
-                contentStyle={CHART_TOOLTIP_STYLE}
-                labelFormatter={formatChartDate}
-                formatter={(v, name) => [
-                  Number(v).toFixed(3),
-                  String(name).replace('cls::', '').split('/').pop() ?? '',
-                ]}
-              />
-              <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
-              {urlList.map((url, i) => (
-                <Area
-                  key={url}
-                  type="monotone"
-                  dataKey={`cls::${url}`}
-                  stroke={getColor(i)}
-                  fill={getColor(i)}
-                  fillOpacity={0.08}
-                  dot={false}
-                  strokeWidth={2}
-                  activeDot={{ r: 3 }}
-                  connectNulls
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+//       <Card>
+//         <CardHeader className="pb-2">
+//           <h3 className="text-sm font-medium">CLS trend per URL</h3>
+//         </CardHeader>
+//         <CardContent>
+//           <ResponsiveContainer width="100%" height={220}>
+//             <AreaChart data={urlChartData} {...chartProps}>
+//               <XAxis {...chartProps.xAxisProps} />
+//               <YAxis
+//                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+//                 tickFormatter={(v) => Number(v).toFixed(3)}
+//               />
+//               <Tooltip
+//                 contentStyle={CHART_TOOLTIP_STYLE}
+//                 labelFormatter={formatChartDate}
+//                 formatter={(v, name) => [
+//                   Number(v).toFixed(3),
+//                   String(name).replace('cls::', '').split('/').pop() ?? '',
+//                 ]}
+//               />
+//               <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
+//               {urlList.map((url, i) => (
+//                 <Area
+//                   key={url}
+//                   type="monotone"
+//                   dataKey={`cls::${url}`}
+//                   stroke={getColor(i)}
+//                   fill={getColor(i)}
+//                   fillOpacity={0.08}
+//                   dot={false}
+//                   strokeWidth={2}
+//                   activeDot={{ r: 3 }}
+//                   connectNulls
+//                 />
+//               ))}
+//             </AreaChart>
+//           </ResponsiveContainer>
+//         </CardContent>
+//       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <h3 className="text-sm font-medium">TTFB trend per URL</h3>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={urlChartData} {...chartProps}>
-              <XAxis {...chartProps.xAxisProps} />
-              <YAxis
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(v) => formatMs(v)}
-              />
-              <Tooltip
-                contentStyle={CHART_TOOLTIP_STYLE}
-                labelFormatter={formatChartDate}
-                formatter={(v, name) => [
-                  formatMs(Number(v)),
-                  String(name).replace('ttfb::', '').split('/').pop() ?? '',
-                ]}
-              />
-              <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
-              {urlList.map((url, i) => (
-                <Area
-                  key={url}
-                  type="monotone"
-                  dataKey={`ttfb::${url}`}
-                  stroke={getColor(i)}
-                  fill={getColor(i)}
-                  fillOpacity={0.08}
-                  dot={false}
-                  strokeWidth={2}
-                  activeDot={{ r: 3 }}
-                  connectNulls
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+//       <Card>
+//         <CardHeader className="pb-2">
+//           <h3 className="text-sm font-medium">TTFB trend per URL</h3>
+//         </CardHeader>
+//         <CardContent>
+//           <ResponsiveContainer width="100%" height={220}>
+//             <AreaChart data={urlChartData} {...chartProps}>
+//               <XAxis {...chartProps.xAxisProps} />
+//               <YAxis
+//                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+//                 tickFormatter={(v) => formatMs(v)}
+//               />
+//               <Tooltip
+//                 contentStyle={CHART_TOOLTIP_STYLE}
+//                 labelFormatter={formatChartDate}
+//                 formatter={(v, name) => [
+//                   formatMs(Number(v)),
+//                   String(name).replace('ttfb::', '').split('/').pop() ?? '',
+//                 ]}
+//               />
+//               <Legend wrapperStyle={{ fontSize: 10 }} formatter={legendFormatter} />
+//               {urlList.map((url, i) => (
+//                 <Area
+//                   key={url}
+//                   type="monotone"
+//                   dataKey={`ttfb::${url}`}
+//                   stroke={getColor(i)}
+//                   fill={getColor(i)}
+//                   fillOpacity={0.08}
+//                   dot={false}
+//                   strokeWidth={2}
+//                   activeDot={{ r: 3 }}
+//                   connectNulls
+//                 />
+//               ))}
+//             </AreaChart>
+//           </ResponsiveContainer>
+//         </CardContent>
+//       </Card>
+//     </div>
+//   );
+// }
 
 function CwvSection({ cwv }: { cwv: GroupCwv }) {
   const aggregate = cwv.urls.reduce<{
