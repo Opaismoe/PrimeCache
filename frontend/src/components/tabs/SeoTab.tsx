@@ -1,8 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import type { GroupCwv, UrlSeoSummary } from '@/lib/types';
-// import { CwvTile } from '../CwvTile';
+import type { UrlSeoSummary } from '@/lib/types';
 import { ExternalLink } from '../ExternalLink';
 import { SeoFieldRow } from '../SeoFieldRow';
 
@@ -14,13 +13,7 @@ function scoreColor(score: number) {
   return 'text-destructive';
 }
 
-export function SeoTab({
-  data,
-  cwv,
-}: {
-  data: { urls: UrlSeoSummary[] };
-  cwv: GroupCwv | undefined;
-}) {
+export function SeoTab({ data }: { data: { urls: UrlSeoSummary[] } }) {
   const issueCount = data.urls.reduce((n, u) => n + u.issues.length, 0);
   const changedCount = data.urls.filter((u) => u.changed).length;
 
@@ -52,47 +45,10 @@ export function SeoTab({
         )}
       </div>
 
-      {/* {cwv && cwv.urls.length > 0 && <CwvSection cwv={cwv} />} */}
-
       <div className="flex flex-col gap-3">
         {data.urls.map((u) => {
-          // const urlCwv: UrlCwv | undefined = cwv?.urls.find((c) => c.url === u.url);
           return (
             <Card key={u.url}>
-              {/* {cwv && (
-                <div className="border-b border-border px-4 pt-4 pb-3">
-                  <p className="mb-2 text-xs text-muted-foreground font-medium">
-                    Core Web Vitals (P75)
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    <CwvTile
-                      label="LCP"
-                      value={urlCwv?.lcpP75 ?? null}
-                      unit="ms"
-                      status={urlCwv?.lcpStatus ?? null}
-                    />
-                    <CwvTile
-                      label="FCP"
-                      value={urlCwv?.fcpP75 ?? null}
-                      unit="ms"
-                      status={urlCwv?.fcpStatus ?? null}
-                    />
-                    <CwvTile
-                      label="CLS"
-                      value={urlCwv?.clsP75 ?? null}
-                      unit=""
-                      status={urlCwv?.clsStatus ?? null}
-                    />
-                    <CwvTile
-                      label="INP"
-                      value={urlCwv?.inpP75 ?? null}
-                      unit="ms"
-                      status={urlCwv?.inpStatus ?? null}
-                    />
-                  </div>
-                </div>
-              )} */}
-
               <CardContent className="pt-4">
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">

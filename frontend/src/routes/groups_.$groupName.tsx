@@ -1,6 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -29,7 +30,6 @@ import {
   getConfig,
   getGroupAccessibility,
   getGroupBrokenLinks,
-  getGroupCwv,
   getGroupExportUrl,
   getGroupOverview,
   getGroupPerformance,
@@ -77,7 +77,6 @@ function GroupDetailPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [historyPage, setHistoryPage] = useState(0);
-  const [settingsSaved, setSettingsSaved] = useState(false);
 
   const { data: overview } = useQuery(
     queryOptions({
@@ -105,12 +104,6 @@ function GroupDetailPage() {
   const { data: seo, isLoading: seoLoading } = useQuery({
     queryKey: queryKeys.groups.seo(groupName),
     queryFn: () => getGroupSeo(groupName),
-    enabled: activeTab === 'seo',
-  });
-
-  const { data: cwv, isLoading: cwvLoading } = useQuery({
-    queryKey: queryKeys.groups.cwv(groupName),
-    queryFn: () => getGroupCwv(groupName),
     enabled: activeTab === 'seo',
   });
 
@@ -142,8 +135,10 @@ function GroupDetailPage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.groups.overview(groupName) });
+      toast.success('Warm run started');
       navigate({ to: '/history/$runId', params: { runId: String(data.runId) } });
     },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to start run'),
   });
 
   const group = config?.groups.find((g) => g.name === groupName);
@@ -157,8 +152,7 @@ function GroupDetailPage() {
     };
     await putConfig(newConfig);
     queryClient.invalidateQueries({ queryKey: queryKeys.config.all() });
-    setSettingsSaved(true);
-    setTimeout(() => setSettingsSaved(false), 3000);
+    toast.success('Settings saved');
     if (updated.name !== groupName) {
       navigate({
         to: '/groups/$groupName',
@@ -256,10 +250,10 @@ function GroupDetailPage() {
         </TabsContent>
 
         <TabsContent value="seo">
-          {seoLoading || cwvLoading ? (
+          {seoLoading ? (
             <TabLoadingSkeleton rows={5} cols={4} />
           ) : seo ? (
-            <SeoTab data={seo} cwv={cwv} />
+            <SeoTab data={seo} />
           ) : (
             <EmptyTab message="No SEO data collected — visits may be failing. Check the Uptime tab for errors." />
           )}
@@ -365,11 +359,6 @@ function GroupDetailPage() {
         </TabsContent>
 
         <TabsContent value="settings">
-          {settingsSaved && (
-            <div className="mb-4 rounded-md border border-green-700 bg-green-950/40 px-3 py-2 text-sm text-green-400">
-              Settings saved successfully.
-            </div>
-          )}
           {group ? (
             <GroupForm
               initial={group}

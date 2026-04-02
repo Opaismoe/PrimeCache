@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getGroupLighthouse, triggerGroupLighthouse } from '../../lib/api';
@@ -103,8 +104,11 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
         });
+        toast.success('Lighthouse audit complete');
       }, AUDIT_DURATION_MS);
     },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : 'Failed to trigger Lighthouse audit'),
   });
 
   // Show all group URLs — merge config list with audit results

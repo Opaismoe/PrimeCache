@@ -1,5 +1,6 @@
-import { CheckIcon, CopyIcon, ExternalLinkIcon } from 'lucide-react';
+import { CopyIcon, ExternalLinkIcon } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -27,12 +28,9 @@ const IMPACT_ORDER: Record<string, number> = {
 type ImpactFilter = 'all' | 'critical' | 'serious' | 'moderate' | 'minor';
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
   function handleCopy() {
     navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      toast.success('Copied to clipboard');
     });
   }
 
@@ -43,11 +41,7 @@ function CopyButton({ text }: { text: string }) {
       className="ml-1 inline-flex items-center rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
       title="Copy to clipboard"
     >
-      {copied ? (
-        <CheckIcon className="h-3.5 w-3.5 text-green-500" />
-      ) : (
-        <CopyIcon className="h-3.5 w-3.5" />
-      )}
+      <CopyIcon className="h-3.5 w-3.5" />
     </button>
   );
 }
