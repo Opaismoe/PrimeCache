@@ -128,3 +128,24 @@ export const secrets = pgTable('secrets', {
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow(),
 });
+
+export const lighthouse_reports = pgTable('lighthouse_reports', {
+  id: serial('id').primaryKey(),
+  group_name: varchar('group_name', { length: 255 }).notNull(),
+  url: varchar('url', { length: 2048 }).notNull(),
+  triggered_by: varchar('triggered_by', { length: 50 }).notNull(),
+  performance_score: integer('performance_score'),
+  accessibility_score: integer('accessibility_score'),
+  seo_score: integer('seo_score'),
+  best_practices_score: integer('best_practices_score'),
+  lcp_ms: integer('lcp_ms'),
+  fcp_ms: integer('fcp_ms'),
+  cls_score: real('cls_score'),
+  tbt_ms: integer('tbt_ms'),
+  speed_index_ms: integer('speed_index_ms'),
+  inp_ms: integer('inp_ms'),
+  ttfb_ms: integer('ttfb_ms'),
+  failed: boolean('failed').notNull().default(false),
+  error: text('error'),
+  audited_at: timestamp('audited_at').notNull(),
+});

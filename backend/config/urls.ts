@@ -41,6 +41,7 @@ const GroupOptionsSchema = z
     screenshot: z.boolean().default(false),
     checkBrokenLinks: z.boolean().default(false),
     checkAccessibility: z.boolean().default(false),
+    checkLighthouse: z.boolean().default(false),
     retryCount: z.number().int().min(0).max(10).default(3),
   })
   .refine((opts) => !opts.crawl || opts.crawl_depth !== undefined, {

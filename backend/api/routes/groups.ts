@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
+import type { Config } from '../../config/urls';
 import type { Db } from '../../db/client';
 import { getGroupCwv } from '../../db/queries/groupCwv';
 import { getGroupOverview } from '../../db/queries/groupOverview';
@@ -6,10 +7,12 @@ import { getGroupPerformance } from '../../db/queries/groupPerformance';
 import { getGroupSeo } from '../../db/queries/groupSeo';
 import { getGroupsHealth } from '../../db/queries/groupsHealth';
 import { getGroupUptime } from '../../db/queries/groupUptime';
+import { getGroupLighthouse, insertLighthouseReport } from '../../db/queries/lighthouse';
 import { getGroupAccessibility } from '../../db/queries/visitAccessibility';
 import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks';
+import { runLighthouseAudit } from '../../services/lighthouseAudit';
 
-export function groupRoutes(db: Db): FastifyPluginAsync {
+export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsync {
   return async (app) => {
     app.get('/groups-health', async () => {
       return getGroupsHealth(db);
@@ -53,6 +56,30 @@ export function groupRoutes(db: Db): FastifyPluginAsync {
       const name = decodeURIComponent(request.params.name);
       return getGroupAccessibility(db, name);
     });
+
+    // GET /groups/:name/lighthouse
+    app.get<{ Params: { name: string } }>('/groups/:name/lighthouse', async (request) => {
+      const name = decodeURIComponent(request.params.name);
+      return getGroupLighthouse(db, name);
+    });
+
+    // POST /groups/:name/lighthouse/trigger
+    app.post<{ Params: { name: string } }>(
+      '/groups/:name/lighthouse/trigger',
+      async (request, reply) => {
+        const name = decodeURIComponent(request.params.name);
+        const config = getConfig ? getConfig() : null;
+        const group = config?.groups.find((g) => g.name === name);
+        if (!group) return reply.code(404).send({ ok: false, error: 'Group not found' });
+
+        for (const url of group.urls) {
+          runLighthouseAudit(url)
+            .then((result) => insertLighthouseReport(db, name, 'manual', result))
+            .catch(() => {});
+        }
+        return { ok: true };
+      },
+    );
 
     // CSV export — ?tab=performance|uptime|seo|links
     app.get<{ Params: { name: string }; Querystring: { tab?: string } }>(
