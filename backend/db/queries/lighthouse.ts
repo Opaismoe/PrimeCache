@@ -14,6 +14,7 @@ export async function insertLighthouseReport(
     group_name: groupName,
     url: result.url,
     triggered_by: triggeredBy,
+    form_factor: result.formFactor,
     performance_score: result.performanceScore,
     accessibility_score: result.accessibilityScore,
     seo_score: result.seoScore,
@@ -46,6 +47,7 @@ export interface LighthouseUrlSummary {
     inpMs: number | null;
     ttfbMs: number | null;
     triggeredBy: 'schedule' | 'manual';
+    formFactor: 'mobile' | 'desktop';
     auditedAt: string;
     failed: boolean;
     error: string | null;
@@ -55,8 +57,9 @@ export interface LighthouseUrlSummary {
 export async function getGroupLighthouse(
   db: Db,
   groupName: string,
+  formFactor: 'mobile' | 'desktop' = 'desktop',
 ): Promise<LighthouseUrlSummary[]> {
-  // Latest report per URL using DISTINCT ON
+  // Latest report per URL for the requested form factor
   const rows = await db.execute(sql`
     SELECT DISTINCT ON (url)
       url,
@@ -72,11 +75,13 @@ export async function getGroupLighthouse(
       inp_ms,
       ttfb_ms,
       triggered_by,
+      form_factor,
       audited_at,
       failed,
       error
     FROM lighthouse_reports
     WHERE group_name = ${groupName}
+      AND form_factor = ${formFactor}
     ORDER BY url, audited_at DESC
   `);
 
@@ -95,6 +100,7 @@ export async function getGroupLighthouse(
       inpMs: r.inp_ms != null ? Number(r.inp_ms) : null,
       ttfbMs: r.ttfb_ms != null ? Number(r.ttfb_ms) : null,
       triggeredBy: r.triggered_by as 'schedule' | 'manual',
+      formFactor: (r.form_factor as 'mobile' | 'desktop') ?? 'desktop',
       auditedAt: new Date(r.audited_at as string).toISOString(),
       failed: Boolean(r.failed),
       error: r.error as string | null,

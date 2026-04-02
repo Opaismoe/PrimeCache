@@ -212,7 +212,7 @@ export function AccessibilityDetailModal({ urlData, onClose }: Props) {
         <div className="flex-1 overflow-y-auto space-y-3 pr-1">
           {filtered.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No {filter === 'all' ? '' : filter + ' '}violations
+              No {filter === 'all' ? '' : `${filter} `}violations
             </p>
           ) : (
             filtered.map((v) => <ViolationCard key={v.id} violation={v} />)

@@ -57,14 +57,18 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
       return getGroupAccessibility(db, name);
     });
 
-    // GET /groups/:name/lighthouse
-    app.get<{ Params: { name: string } }>('/groups/:name/lighthouse', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupLighthouse(db, name);
-    });
+    // GET /groups/:name/lighthouse?formFactor=desktop|mobile
+    app.get<{ Params: { name: string }; Querystring: { formFactor?: string } }>(
+      '/groups/:name/lighthouse',
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        const ff = request.query.formFactor === 'mobile' ? 'mobile' : 'desktop';
+        return getGroupLighthouse(db, name, ff);
+      },
+    );
 
-    // POST /groups/:name/lighthouse/trigger
-    app.post<{ Params: { name: string } }>(
+    // POST /groups/:name/lighthouse/trigger  body: { formFactor?: 'desktop'|'mobile' }
+    app.post<{ Params: { name: string }; Body: { formFactor?: string } }>(
       '/groups/:name/lighthouse/trigger',
       async (request, reply) => {
         const name = decodeURIComponent(request.params.name);
@@ -72,11 +76,20 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
         const group = config?.groups.find((g) => g.name === name);
         if (!group) return reply.code(404).send({ ok: false, error: 'Group not found' });
 
-        for (const url of group.urls) {
-          runLighthouseAudit(url)
-            .then((result) => insertLighthouseReport(db, name, 'manual', result))
-            .catch(() => {});
-        }
+        const ff: 'mobile' | 'desktop' =
+          request.body?.formFactor === 'mobile' ? 'mobile' : 'desktop';
+
+        // Run audits in series to avoid 429 from Browserless rate limiting
+        (async () => {
+          for (const url of group.urls) {
+            try {
+              const result = await runLighthouseAudit(url, ff);
+              await insertLighthouseReport(db, name, 'manual', result);
+            } catch {
+              // fire-and-forget — a single URL failure must not stop the rest
+            }
+          }
+        })();
         return { ok: true };
       },
     );

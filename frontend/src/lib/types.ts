@@ -323,6 +323,7 @@ export interface LighthouseReport {
   inpMs: number | null;
   ttfbMs: number | null;
   triggeredBy: 'schedule' | 'manual';
+  formFactor: 'mobile' | 'desktop';
   auditedAt: string;
   failed: boolean;
   error: string | null;

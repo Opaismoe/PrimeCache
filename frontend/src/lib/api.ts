@@ -143,8 +143,16 @@ export const getGroupExportUrl = (name: string, tab: string) =>
 
 export const getGroupsHealth = () => request<GroupHealthSummary[]>('GET', '/api/groups-health');
 
-export const getGroupLighthouse = (name: string) =>
-  request<LighthouseUrlSummary[]>('GET', `/api/groups/${encodeURIComponent(name)}/lighthouse`);
+export const getGroupLighthouse = (name: string, formFactor: 'mobile' | 'desktop' = 'desktop') =>
+  request<LighthouseUrlSummary[]>(
+    'GET',
+    `/api/groups/${encodeURIComponent(name)}/lighthouse?formFactor=${formFactor}`,
+  );
 
-export const triggerGroupLighthouse = (name: string) =>
-  request<{ ok: boolean }>('POST', `/api/groups/${encodeURIComponent(name)}/lighthouse/trigger`);
+export const triggerGroupLighthouse = (
+  name: string,
+  formFactor: 'mobile' | 'desktop' = 'desktop',
+) =>
+  request<{ ok: boolean }>('POST', `/api/groups/${encodeURIComponent(name)}/lighthouse/trigger`, {
+    formFactor,
+  });
