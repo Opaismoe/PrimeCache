@@ -1,5 +1,6 @@
 import { ChevronDown, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -53,7 +54,6 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
     initial?.options.basicAuth?.password ?? '',
   );
   const [advancedOpen, setAdvancedOpen] = useState(!!initial);
-  const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,8 +127,6 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors([]);
-
     const urls = urlsText
       .split('\n')
       .map((u) => u.trim())
@@ -151,7 +149,7 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
       try {
         cookiesValue = JSON.parse(cookiesText.trim());
       } catch {
-        setErrors(['Cookies must be valid JSON (array of cookie objects)']);
+        toast.error('Cookies must be valid JSON (array of cookie objects)');
         return;
       }
     }
@@ -175,11 +173,12 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
       });
     } catch (err) {
       if (err instanceof ApiError && err.issues) {
-        setErrors((err.issues as { message: string }[]).map((i) => i.message));
+        const messages = (err.issues as { message: string }[]).map((i) => i.message).join(', ');
+        toast.error(`Failed to save: ${messages}`);
       } else if (err instanceof Error) {
-        setErrors([err.message]);
+        toast.error(err.message);
       } else {
-        setErrors(['Unexpected error']);
+        toast.error('Unexpected error saving group');
       }
     } finally {
       setSaving(false);
@@ -188,16 +187,6 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {errors.length > 0 && (
-        <div className="rounded border border-red-800 bg-red-950/50 p-3 text-sm text-red-300">
-          <ul className="list-inside list-disc space-y-0.5">
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
       {/* ── Basic ── */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">

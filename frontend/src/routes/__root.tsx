@@ -10,6 +10,7 @@ import {
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import logo from '../assets/logo.png';
 import { ApiKeyModal } from '../components/ApiKeyModal';
@@ -61,6 +62,7 @@ function RootLayout() {
 
   return (
     <TooltipProvider>
+      <Toaster />
       <div className="min-h-screen bg-background text-foreground">
         {shouldShowModal && <ApiKeyModal onSave={handleSave} />}
         <nav className="border-b border-border bg-card">
