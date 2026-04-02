@@ -59,7 +59,7 @@ export function SeoTab({
           const urlCwv: UrlCwv | undefined = cwv?.urls.find((c) => c.url === u.url);
           return (
             <Card key={u.url}>
-              {urlCwv && (
+              {cwv && (
                 <div className="border-b border-border px-4 pt-4 pb-3">
                   <p className="mb-2 text-xs text-muted-foreground font-medium">
                     Core Web Vitals (P75)
@@ -67,22 +67,27 @@ export function SeoTab({
                   <div className="grid grid-cols-4 gap-2">
                     <CwvTile
                       label="LCP"
-                      value={urlCwv.lcpP75}
+                      value={urlCwv?.lcpP75 ?? null}
                       unit="ms"
-                      status={urlCwv.lcpStatus}
+                      status={urlCwv?.lcpStatus ?? null}
                     />
                     <CwvTile
                       label="FCP"
-                      value={urlCwv.fcpP75}
+                      value={urlCwv?.fcpP75 ?? null}
                       unit="ms"
-                      status={urlCwv.fcpStatus}
+                      status={urlCwv?.fcpStatus ?? null}
                     />
-                    <CwvTile label="CLS" value={urlCwv.clsP75} unit="" status={urlCwv.clsStatus} />
+                    <CwvTile
+                      label="CLS"
+                      value={urlCwv?.clsP75 ?? null}
+                      unit=""
+                      status={urlCwv?.clsStatus ?? null}
+                    />
                     <CwvTile
                       label="INP"
-                      value={urlCwv.inpP75}
+                      value={urlCwv?.inpP75 ?? null}
                       unit="ms"
-                      status={urlCwv.inpStatus}
+                      status={urlCwv?.inpStatus ?? null}
                     />
                   </div>
                 </div>
