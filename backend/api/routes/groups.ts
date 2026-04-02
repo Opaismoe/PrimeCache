@@ -4,12 +4,17 @@ import { getGroupCwv } from '../../db/queries/groupCwv';
 import { getGroupOverview } from '../../db/queries/groupOverview';
 import { getGroupPerformance } from '../../db/queries/groupPerformance';
 import { getGroupSeo } from '../../db/queries/groupSeo';
+import { getGroupsHealth } from '../../db/queries/groupsHealth';
 import { getGroupUptime } from '../../db/queries/groupUptime';
 import { getGroupAccessibility } from '../../db/queries/visitAccessibility';
 import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks';
 
 export function groupRoutes(db: Db): FastifyPluginAsync {
   return async (app) => {
+    app.get('/groups-health', async () => {
+      return getGroupsHealth(db);
+    });
+
     app.get<{ Params: { name: string } }>('/groups/:name/overview', async (request) => {
       const name = decodeURIComponent(request.params.name);
       return getGroupOverview(db, name);

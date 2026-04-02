@@ -38,79 +38,82 @@ export function AccessibilityTab({ data }: { data: GroupAccessibility }) {
 
   return (
     <>
-    <AccessibilityDetailModal urlData={selectedUrl} onClose={() => setSelectedUrl(null)} />
-    <div className="space-y-4">
-      <div className={`rounded-lg border p-4 text-sm font-medium ${bannerClass}`}>
-        {totalCritical > 0 || totalSerious > 0
-          ? `${totalCritical} critical, ${totalSerious} serious violations across ${data.urls.length} URL${data.urls.length !== 1 ? 's' : ''}`
-          : `No critical or serious violations across ${data.urls.length} URL${data.urls.length !== 1 ? 's' : ''}`}
-      </div>
+      <AccessibilityDetailModal urlData={selectedUrl} onClose={() => setSelectedUrl(null)} />
+      <div className="space-y-4">
+        <div className={`rounded-lg border p-4 text-sm font-medium ${bannerClass}`}>
+          {totalCritical > 0 || totalSerious > 0
+            ? `${totalCritical} critical, ${totalSerious} serious violations across ${data.urls.length} URL${data.urls.length !== 1 ? 's' : ''}`
+            : `No critical or serious violations across ${data.urls.length} URL${data.urls.length !== 1 ? 's' : ''}`}
+        </div>
 
-      <div className="rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>URL</TableHead>
-              <TableHead>Critical</TableHead>
-              <TableHead>Serious</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Top violations</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.map((url) => (
-              <TableRow
-                key={url.url}
-                className="cursor-pointer hover:bg-muted/60"
-                onClick={() => setSelectedUrl(url)}
-              >
-                <TableCell className="max-w-xs truncate font-mono text-xs">
-                  <ExternalLink
-                    href={url.url}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {url.url}
-                  </ExternalLink>
-                </TableCell>
-                <TableCell>
-                  {url.latestCriticalCount > 0 ? (
-                    <span className="font-semibold text-destructive">
-                      {url.latestCriticalCount}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {url.latestSeriousCount > 0 ? (
-                    <span className="font-semibold text-orange-500">{url.latestSeriousCount}</span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-muted-foreground">{url.latestViolationCount}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {url.topViolations.map((v) => (
-                      <ExternalLink
-                        key={v.id}
-                        href={v.helpUrl}
-                        title={v.help}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${IMPACT_COLORS[v.impact] ?? IMPACT_COLORS.minor} hover:opacity-80`}
-                      >
-                        {v.id}
-                        {v.occurrences > 1 && <span className="opacity-70">×{v.occurrences}</span>}
-                      </ExternalLink>
-                    ))}
-                  </div>
-                </TableCell>
+        <div className="rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>URL</TableHead>
+                <TableHead>Critical</TableHead>
+                <TableHead>Serious</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Top violations</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {sorted.map((url) => (
+                <TableRow
+                  key={url.url}
+                  className="cursor-pointer hover:bg-muted/60"
+                  onClick={() => setSelectedUrl(url)}
+                >
+                  <TableCell className="max-w-xs truncate font-mono text-xs">
+                    <ExternalLink href={url.url} onClick={(e) => e.stopPropagation()}>
+                      {url.url}
+                    </ExternalLink>
+                  </TableCell>
+                  <TableCell>
+                    {url.latestCriticalCount > 0 ? (
+                      <span className="font-semibold text-destructive">
+                        {url.latestCriticalCount}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {url.latestSeriousCount > 0 ? (
+                      <span className="font-semibold text-orange-500">
+                        {url.latestSeriousCount}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {url.latestViolationCount}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {url.topViolations.map((v) => (
+                        <ExternalLink
+                          key={v.id}
+                          href={v.helpUrl}
+                          title={v.help}
+                          onClick={(e) => e.stopPropagation()}
+                          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${IMPACT_COLORS[v.impact] ?? IMPACT_COLORS.minor} hover:opacity-80`}
+                        >
+                          {v.id}
+                          {v.occurrences > 1 && (
+                            <span className="opacity-70">×{v.occurrences}</span>
+                          )}
+                        </ExternalLink>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-    </div>
     </>
   );
 }

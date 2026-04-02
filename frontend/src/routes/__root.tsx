@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   createRootRouteWithContext,
   Link,
@@ -7,21 +7,14 @@ import {
   useRouter,
   useRouterState,
 } from '@tanstack/react-router';
-import { ChevronDown, Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import logo from '../assets/logo.png';
 import { ApiKeyModal } from '../components/ApiKeyModal';
-import { getApiKey, getConfig } from '../lib/api';
+import { getApiKey } from '../lib/api';
 import { authEvents } from '../lib/events';
-import { queryKeys } from '../lib/queryKeys';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -55,13 +48,6 @@ function RootLayout() {
   const shouldShowModal = (!isPublicRoute && !loggedIn) || forceShowLogin;
   const { dark, toggle } = useTheme();
 
-  const { data: config } = useQuery({
-    queryKey: queryKeys.config.all(),
-    queryFn: getConfig,
-    enabled: loggedIn,
-  });
-  const groups = config?.groups ?? [];
-
   useEffect(() => {
     return authEvents.onUnauthorized(() => setLoggedIn(false));
   }, []);
@@ -84,9 +70,7 @@ function RootLayout() {
             </span>
             <div className="ml-auto flex items-center gap-6">
               {loggedIn && !isPublicRoute && <NavLink to="/">Dashboard</NavLink>}
-              {loggedIn && !isPublicRoute && groups.length > 0 && (
-                <DetailsDropdown groups={groups} />
-              )}
+              {loggedIn && !isPublicRoute && <NavLink to="/groups">Projects</NavLink>}
               {loggedIn && !isPublicRoute && <NavLink to="/admin">Admin</NavLink>}
               <NavLink to="/status">Status</NavLink>
               {!loggedIn && (
@@ -114,32 +98,5 @@ function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
     >
       {children}
     </Link>
-  );
-}
-
-function DetailsDropdown({ groups }: { groups: { name: string }[] }) {
-  const routerState = useRouterState();
-  const isActive = routerState.location.pathname.startsWith('/groups/');
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={`flex items-center gap-1 text-sm hover:text-foreground focus:outline-none ${
-          isActive ? 'font-medium text-foreground' : 'text-muted-foreground'
-        }`}
-      >
-        Projects
-        <ChevronDown className="h-3 w-3" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start">
-        {groups.map((g) => (
-          <DropdownMenuItem key={g.name}>
-            <Link to="/groups/$groupName" params={{ groupName: g.name }} className="w-full">
-              {g.name}
-            </Link>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

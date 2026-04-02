@@ -1,4 +1,4 @@
-import type { CwvStatus } from "@/lib/types";
+import type { CwvStatus } from '@/lib/types';
 
 const CWV_STATUS_COLOR: Record<CwvStatus, string> = {
   good: 'text-green-500',

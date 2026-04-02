@@ -44,6 +44,9 @@ import { queryKeys } from '../lib/queryKeys';
 import type { Config, Group } from '../lib/types';
 
 export const Route = createFileRoute('/groups_/$groupName')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === 'string' ? search.tab : 'overview',
+  }),
   loader: ({ context: { queryClient }, params }) => {
     if (!getApiKey()) return;
     const name = params.groupName;
@@ -69,9 +72,9 @@ const HISTORY_PAGE_SIZE = 20;
 
 function GroupDetailPage() {
   const { groupName } = Route.useParams();
-  const navigate = useNavigate();
+  const { tab: activeTab } = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('overview');
   const [historyPage, setHistoryPage] = useState(0);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
@@ -156,7 +159,11 @@ function GroupDetailPage() {
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 3000);
     if (updated.name !== groupName) {
-      navigate({ to: '/groups/$groupName', params: { groupName: updated.name } });
+      navigate({
+        to: '/groups/$groupName',
+        params: { groupName: updated.name },
+        search: { tab: 'overview' },
+      });
     }
   };
 
@@ -193,7 +200,13 @@ function GroupDetailPage() {
         />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => {
+          navigate({ search: (prev) => ({ ...prev, tab: val }), replace: true });
+          setHistoryPage(0);
+        }}
+      >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -355,7 +368,9 @@ function GroupDetailPage() {
             <GroupForm
               initial={group}
               onSave={handleSettingsSave}
-              onCancel={() => setActiveTab('overview')}
+              onCancel={() =>
+                navigate({ search: (prev) => ({ ...prev, tab: 'overview' }), replace: true })
+              }
             />
           ) : (
             <EmptyTab message="Loading group configuration…" />

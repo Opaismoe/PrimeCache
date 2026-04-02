@@ -4,6 +4,7 @@ import type {
   Config,
   GroupAccessibility,
   GroupCwv,
+  GroupHealthSummary,
   GroupOverview,
   GroupPerformance,
   GroupSeo,
@@ -138,3 +139,5 @@ export const getPublicStatus = () =>
 
 export const getGroupExportUrl = (name: string, tab: string) =>
   `/api/groups/${encodeURIComponent(name)}/export?tab=${tab}`;
+
+export const getGroupsHealth = () => request<GroupHealthSummary[]>('GET', '/api/groups-health');

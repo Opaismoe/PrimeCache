@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root';
 import { Route as AdminRouteImport } from './routes/admin';
 import { Route as ConfigRouteImport } from './routes/config';
+import { Route as GroupsRouteImport } from './routes/groups';
 import { Route as GroupsGroupNameRouteImport } from './routes/groups_.$groupName';
 import { Route as HistoryRouteImport } from './routes/history';
 import { Route as HistoryRunIdRouteImport } from './routes/history_.$runId';
@@ -30,6 +31,11 @@ const HistoryRoute = HistoryRouteImport.update({
 const ConfigRoute = ConfigRouteImport.update({
   id: '/config',
   path: '/config',
+  getParentRoute: () => rootRouteImport,
+} as any);
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
   getParentRoute: () => rootRouteImport,
 } as any);
 const AdminRoute = AdminRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute;
   '/admin': typeof AdminRoute;
   '/config': typeof ConfigRoute;
+  '/groups': typeof GroupsRoute;
   '/history': typeof HistoryRoute;
   '/status': typeof StatusRoute;
   '/groups/$groupName': typeof GroupsGroupNameRoute;
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute;
   '/admin': typeof AdminRoute;
   '/config': typeof ConfigRoute;
+  '/groups': typeof GroupsRoute;
   '/history': typeof HistoryRoute;
   '/status': typeof StatusRoute;
   '/groups/$groupName': typeof GroupsGroupNameRoute;
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute;
   '/admin': typeof AdminRoute;
   '/config': typeof ConfigRoute;
+  '/groups': typeof GroupsRoute;
   '/history': typeof HistoryRoute;
   '/status': typeof StatusRoute;
   '/groups_/$groupName': typeof GroupsGroupNameRoute;
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/config'
+    | '/groups'
     | '/history'
     | '/status'
     | '/groups/$groupName'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/config'
+    | '/groups'
     | '/history'
     | '/status'
     | '/groups/$groupName'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/config'
+    | '/groups'
     | '/history'
     | '/status'
     | '/groups_/$groupName'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   AdminRoute: typeof AdminRoute;
   ConfigRoute: typeof ConfigRoute;
+  GroupsRoute: typeof GroupsRoute;
   HistoryRoute: typeof HistoryRoute;
   StatusRoute: typeof StatusRoute;
   GroupsGroupNameRoute: typeof GroupsGroupNameRoute;
@@ -123,6 +136,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/groups': {
+      id: '/groups';
+      path: '/groups';
+      fullPath: '/groups';
+      preLoaderRoute: typeof GroupsRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
     '/status': {
       id: '/status';
       path: '/status';
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ConfigRoute: ConfigRoute,
+  GroupsRoute: GroupsRoute,
   HistoryRoute: HistoryRoute,
   StatusRoute: StatusRoute,
   GroupsGroupNameRoute: GroupsGroupNameRoute,

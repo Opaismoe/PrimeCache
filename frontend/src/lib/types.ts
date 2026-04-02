@@ -293,3 +293,16 @@ export interface UrlAccessibilitySummary {
 export interface GroupAccessibility {
   urls: UrlAccessibilitySummary[];
 }
+
+// ── Groups health ─────────────────────────────────────────────────────────────
+
+export interface GroupHealthSummary {
+  name: string;
+  tabs: {
+    performance: boolean;
+    uptime: boolean;
+    seo: boolean;
+    links: boolean;
+    accessibility: boolean;
+  };
+}

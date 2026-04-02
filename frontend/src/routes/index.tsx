@@ -196,6 +196,7 @@ function DashboardPage() {
                       <Link
                         to="/groups/$groupName"
                         params={{ groupName: group.name }}
+                        search={{ tab: 'overview' }}
                         className="font-medium hover:text-primary hover:underline"
                       >
                         {group.name}

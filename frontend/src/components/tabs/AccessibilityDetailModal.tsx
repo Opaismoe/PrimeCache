@@ -43,7 +43,11 @@ function CopyButton({ text }: { text: string }) {
       className="ml-1 inline-flex items-center rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
       title="Copy to clipboard"
     >
-      {copied ? <CheckIcon className="h-3.5 w-3.5 text-green-500" /> : <CopyIcon className="h-3.5 w-3.5" />}
+      {copied ? (
+        <CheckIcon className="h-3.5 w-3.5 text-green-500" />
+      ) : (
+        <CopyIcon className="h-3.5 w-3.5" />
+      )}
     </button>
   );
 }
@@ -125,8 +129,8 @@ function ViolationCard({ violation }: { violation: AccessibilityViolation }) {
       {/* Fallback: no nodes stored (old visits) */}
       {!hasNodes && violation.nodeCount > 0 && (
         <p className="text-xs text-muted-foreground">
-          {violation.nodeCount} element{violation.nodeCount !== 1 ? 's' : ''} affected
-          {' '}(node details available from new visits only)
+          {violation.nodeCount} element{violation.nodeCount !== 1 ? 's' : ''} affected (node details
+          available from new visits only)
         </p>
       )}
     </div>
@@ -158,12 +162,15 @@ export function AccessibilityDetailModal({ urlData, onClose }: Props) {
   const filters: ImpactFilter[] = ['all', 'critical', 'serious', 'moderate', 'minor'];
 
   return (
-    <Dialog open={urlData !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog
+      open={urlData !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="pr-8">
-            Accessibility violations
-          </DialogTitle>
+          <DialogTitle className="pr-8">Accessibility violations</DialogTitle>
           <DialogDescription className="font-mono text-xs truncate">
             {urlData?.url}
           </DialogDescription>
