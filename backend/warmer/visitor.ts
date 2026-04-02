@@ -173,8 +173,7 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       try {
         new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            const ev = entry as PerformanceEventTiming;
-            const dur = ev.processingEnd - ev.startTime;
+            const dur = entry.duration;
             if (cwv.inp === null || dur > cwv.inp) {
               cwv.inp = dur;
             }

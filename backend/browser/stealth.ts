@@ -16,6 +16,11 @@ export async function simulateMouseMovement(page: Page): Promise<void> {
       await page.mouse.move(x, y, { steps: 8 + Math.floor(Math.random() * 8) });
       await randomDelay(50, 200);
     }
+
+    // Click on a neutral spot to generate a PointerEvent/click entry that INP can measure
+    const cx = Math.floor(viewport.width * 0.3 + Math.random() * viewport.width * 0.4);
+    const cy = Math.floor(viewport.height * 0.3 + Math.random() * viewport.height * 0.4);
+    await page.mouse.click(cx, cy);
   } catch {
     // page closed mid-simulation — safe to ignore
   }
