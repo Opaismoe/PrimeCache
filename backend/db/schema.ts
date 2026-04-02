@@ -148,4 +148,5 @@ export const lighthouse_reports = pgTable('lighthouse_reports', {
   failed: boolean('failed').notNull().default(false),
   error: text('error'),
   audited_at: timestamp('audited_at').notNull(),
+  form_factor: varchar('form_factor', { length: 20 }).notNull().default('desktop'),
 });

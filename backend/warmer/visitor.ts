@@ -178,7 +178,11 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
               cwv.inp = dur;
             }
           }
-        }).observe({ type: 'event', buffered: true, durationThreshold: 0 } as PerformanceObserverInit);
+        }).observe({
+          type: 'event',
+          buffered: true,
+          durationThreshold: 0,
+        } as PerformanceObserverInit);
       } catch (_) {
         /* unsupported */
       }

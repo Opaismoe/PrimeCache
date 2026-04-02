@@ -145,10 +145,16 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
   // Lighthouse audit — run after warm run if enabled (fire-and-forget per URL)
   if (group.options.checkLighthouse) {
     const uniqueUrls = [...visited];
-    for (const visitedUrl of uniqueUrls) {
-      runLighthouseAudit(visitedUrl)
-        .then((result) => insertLighthouseReport(db, group.name, 'schedule', result))
-        .catch(() => {}); // fire-and-forget, never crash the runner
-    }
+    // Run in series to avoid 429 from Browserless rate limiting
+    (async () => {
+      for (const visitedUrl of uniqueUrls) {
+        try {
+          const result = await runLighthouseAudit(visitedUrl, 'desktop');
+          await insertLighthouseReport(db, group.name, 'schedule', result);
+        } catch {
+          // fire-and-forget, never crash the runner
+        }
+      }
+    })();
   }
 }

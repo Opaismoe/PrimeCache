@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 
 export interface LighthouseResult {
   url: string;
+  formFactor: 'mobile' | 'desktop';
   performanceScore: number | null;
   accessibilityScore: number | null;
   seoScore: number | null;
@@ -42,10 +43,13 @@ function auditNum(audits: Record<string, unknown>, key: string): number | null {
   return a?.numericValue != null ? Math.round(a.numericValue) : null;
 }
 
-export async function runLighthouseAudit(url: string): Promise<LighthouseResult> {
+export async function runLighthouseAudit(
+  url: string,
+  formFactor: 'mobile' | 'desktop' = 'desktop',
+): Promise<LighthouseResult> {
   const base = lighthouseBaseUrl();
   const endpoint = `${base}/chromium/performance?token=${env.BROWSERLESS_TOKEN}`;
-  logger.debug({ url, base }, 'running lighthouse audit');
+  logger.debug({ url, base, formFactor }, 'running lighthouse audit');
 
   try {
     const res = await fetch(endpoint, {
@@ -57,6 +61,29 @@ export async function runLighthouseAudit(url: string): Promise<LighthouseResult>
           extends: 'lighthouse:default',
           settings: {
             onlyCategories: ['performance', 'accessibility', 'seo', 'best-practices'],
+            ...(formFactor === 'desktop'
+              ? {
+                  formFactor: 'desktop',
+                  screenEmulation: {
+                    mobile: false,
+                    width: 1350,
+                    height: 940,
+                    deviceScaleFactor: 1,
+                    disabled: false,
+                  },
+                  throttling: {
+                    rttMs: 40,
+                    throughputKbps: 10240,
+                    cpuSlowdownMultiplier: 1,
+                    requestLatencyMs: 0,
+                    downloadThroughputKbps: 0,
+                    uploadThroughputKbps: 0,
+                  },
+                }
+              : {
+                  // Mobile: Lighthouse default (Moto G4, throttled 4G)
+                  formFactor: 'mobile',
+                }),
           },
         },
       }),
@@ -84,6 +111,7 @@ export async function runLighthouseAudit(url: string): Promise<LighthouseResult>
 
     return {
       url,
+      formFactor,
       performanceScore: scoreToInt(categories['performance']?.score),
       accessibilityScore: scoreToInt(categories['accessibility']?.score),
       seoScore: scoreToInt(categories['seo']?.score),
@@ -113,6 +141,7 @@ export async function runLighthouseAudit(url: string): Promise<LighthouseResult>
     logger.error({ url, endpoint, error }, 'lighthouse audit failed');
     return {
       url,
+      formFactor,
       performanceScore: null,
       accessibilityScore: null,
       seoScore: null,

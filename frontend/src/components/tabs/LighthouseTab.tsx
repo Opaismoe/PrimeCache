@@ -1,9 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { LighthouseUrlSummary } from '@/lib/types';
-import { triggerGroupLighthouse } from '../../lib/api';
+import { getGroupLighthouse, triggerGroupLighthouse } from '../../lib/api';
 import { formatDate, formatMs } from '../../lib/formatters';
 import { queryKeys } from '../../lib/queryKeys';
 import { ExternalLink } from '../ExternalLink';
@@ -27,7 +26,7 @@ function ScoreCircle({ label, score }: { label: string; score: number | null }) 
 
 function CardSkeleton() {
   return (
-    <div className="space-y-3 animate-pulse">
+    <div className="animate-pulse space-y-3">
       <div className="grid grid-cols-4 gap-2">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="flex flex-col items-center gap-1">
@@ -49,18 +48,24 @@ function CardSkeleton() {
 }
 
 interface Props {
-  data: LighthouseUrlSummary[];
   groupName: string;
   groupUrls: string[];
 }
 
-export function LighthouseTab({ data, groupName, groupUrls }: Props) {
+export function LighthouseTab({ groupName, groupUrls }: Props) {
   const queryClient = useQueryClient();
+  const [formFactor, setFormFactor] = useState<'mobile' | 'desktop'>('desktop');
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [elapsed, setElapsed] = useState(0);
 
   const AUDIT_DURATION_MS = 90_000;
+
+  const { data = [], isLoading } = useQuery({
+    queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
+    queryFn: () => getGroupLighthouse(groupName, formFactor),
+    refetchInterval: running ? false : 30_000,
+  });
 
   // Progress timer while running
   useEffect(() => {
@@ -78,29 +83,33 @@ export function LighthouseTab({ data, groupName, groupUrls }: Props) {
     return () => clearInterval(tick);
   }, [running]);
 
-  // Poll every 5s while running to pick up results as they come in
+  // Poll every 5s during run to surface results as they arrive
   useEffect(() => {
     if (!running) return;
     const poll = setInterval(() => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.groups.lighthouse(groupName) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
+      });
     }, 5_000);
     return () => clearInterval(poll);
-  }, [running, groupName, queryClient]);
+  }, [running, groupName, formFactor, queryClient]);
 
   const trigger = useMutation({
-    mutationFn: () => triggerGroupLighthouse(groupName),
+    mutationFn: () => triggerGroupLighthouse(groupName, formFactor),
     onSuccess: () => {
       setRunning(true);
       setTimeout(() => {
         setRunning(false);
-        queryClient.invalidateQueries({ queryKey: queryKeys.groups.lighthouse(groupName) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
+        });
       }, AUDIT_DURATION_MS);
     },
   });
 
   // Show all group URLs — merge config list with audit results
   const auditByUrl = new Map(data.map((d) => [d.url, d]));
-  const allItems: LighthouseUrlSummary[] =
+  const allItems =
     groupUrls.length > 0
       ? groupUrls.map((url) => auditByUrl.get(url) ?? { url, latestReport: null })
       : data;
@@ -110,21 +119,40 @@ export function LighthouseTab({ data, groupName, groupUrls }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header: form factor toggle + run button */}
       <div className="flex items-center justify-between gap-4">
-        {running ? (
-          <p className="text-sm text-muted-foreground">
-            Auditing {urlCount} URL{urlCount !== 1 ? 's' : ''}…{' '}
-            <span className="tabular-nums">{elapsed}s</span> elapsed
-          </p>
-        ) : !hasAnyData ? (
-          <p className="text-sm text-muted-foreground">
-            No Lighthouse audits yet. Enable <code>checkLighthouse</code> in Settings or trigger one
-            manually.
-          </p>
-        ) : (
-          <div />
-        )}
+        <div className="flex items-center gap-3">
+          {/* Mobile / Desktop toggle */}
+          <div className="flex rounded-md border border-border text-xs font-medium overflow-hidden">
+            {(['desktop', 'mobile'] as const).map((ff) => (
+              <button
+                key={ff}
+                type="button"
+                onClick={() => setFormFactor(ff)}
+                className={`px-3 py-1.5 transition-colors capitalize ${
+                  formFactor === ff
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {ff}
+              </button>
+            ))}
+          </div>
+
+          {running ? (
+            <p className="text-sm text-muted-foreground">
+              Auditing {urlCount} URL{urlCount !== 1 ? 's' : ''}…{' '}
+              <span className="tabular-nums">{elapsed}s</span> elapsed
+            </p>
+          ) : !hasAnyData && !isLoading ? (
+            <p className="text-sm text-muted-foreground">
+              No {formFactor} audits yet. Trigger one manually or enable{' '}
+              <code>checkLighthouse</code> in Settings.
+            </p>
+          ) : null}
+        </div>
+
         <Button
           onClick={() => trigger.mutate()}
           disabled={running || trigger.isPending}
@@ -146,7 +174,7 @@ export function LighthouseTab({ data, groupName, groupUrls }: Props) {
       )}
 
       {/* Cards */}
-      {allItems.length > 0 && (
+      {isLoading && !running ? null : allItems.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
           {allItems.map((item) => {
             const report = item.latestReport;
@@ -161,25 +189,29 @@ export function LighthouseTab({ data, groupName, groupUrls }: Props) {
                     >
                       {item.url}
                     </ExternalLink>
-                    {report && (
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                            report.triggeredBy === 'manual'
-                              ? 'bg-blue-500/10 text-blue-500'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {report.triggeredBy}
+                    <div className="flex shrink-0 items-center gap-2">
+                      {running && (
+                        <span className="animate-pulse text-xs text-muted-foreground">
+                          {report ? 'refreshing…' : 'auditing…'}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(report.auditedAt)}
-                        </span>
-                      </div>
-                    )}
-                    {!report && running && (
-                      <span className="animate-pulse text-xs text-muted-foreground">auditing…</span>
-                    )}
+                      )}
+                      {report && !running && (
+                        <>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                              report.triggeredBy === 'manual'
+                                ? 'bg-blue-500/10 text-blue-500'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {report.triggeredBy}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(report.auditedAt)}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Skeleton while auditing and no result yet */}
@@ -244,7 +276,7 @@ export function LighthouseTab({ data, groupName, groupUrls }: Props) {
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -31,7 +31,6 @@ import {
   getGroupBrokenLinks,
   getGroupCwv,
   getGroupExportUrl,
-  getGroupLighthouse,
   getGroupOverview,
   getGroupPerformance,
   getGroupSeo,
@@ -125,13 +124,6 @@ function GroupDetailPage() {
     queryKey: queryKeys.groups.accessibility(groupName),
     queryFn: () => getGroupAccessibility(groupName),
     enabled: activeTab === 'accessibility',
-  });
-
-  const { data: lighthouse, isLoading: lighthouseLoading } = useQuery({
-    queryKey: queryKeys.groups.lighthouse(groupName),
-    queryFn: () => getGroupLighthouse(groupName),
-    enabled: activeTab === 'lighthouse',
-    refetchInterval: activeTab === 'lighthouse' ? 30_000 : false,
   });
 
   const { data: historyRuns, isLoading: historyLoading } = useQuery({
@@ -300,15 +292,7 @@ function GroupDetailPage() {
         </TabsContent>
 
         <TabsContent value="lighthouse">
-          {lighthouseLoading ? (
-            <TabLoadingSkeleton rows={4} cols={4} />
-          ) : (
-            <LighthouseTab
-              data={lighthouse ?? []}
-              groupName={groupName}
-              groupUrls={group?.urls ?? []}
-            />
-          )}
+          <LighthouseTab groupName={groupName} groupUrls={group?.urls ?? []} />
         </TabsContent>
 
         <TabsContent value="history">
