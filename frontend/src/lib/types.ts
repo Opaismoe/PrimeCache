@@ -259,6 +259,22 @@ export interface GroupCwv {
 
 // ── Accessibility types ────────────────────────────────────────────────────────
 
+export interface ViolationNode {
+  html: string;
+  target: string[];
+  failureSummary: string | undefined;
+}
+
+export interface AccessibilityViolation {
+  id: string;
+  impact: 'critical' | 'serious' | 'moderate' | 'minor';
+  help: string;
+  description: string;
+  helpUrl: string;
+  nodeCount: number;
+  nodes: ViolationNode[];
+}
+
 export interface UrlAccessibilitySummary {
   url: string;
   latestViolationCount: number;
@@ -271,6 +287,7 @@ export interface UrlAccessibilitySummary {
     helpUrl: string;
     occurrences: number;
   }>;
+  latestViolations: AccessibilityViolation[];
 }
 
 export interface GroupAccessibility {

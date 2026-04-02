@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Table,
   TableBody,
@@ -6,8 +7,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { GroupAccessibility } from '@/lib/types';
+import type { GroupAccessibility, UrlAccessibilitySummary } from '@/lib/types';
 import { ExternalLink } from '../ExternalLink';
+import { AccessibilityDetailModal } from './AccessibilityDetailModal';
 
 const IMPACT_COLORS: Record<string, string> = {
   critical: 'bg-destructive text-destructive-foreground',
@@ -17,6 +19,8 @@ const IMPACT_COLORS: Record<string, string> = {
 };
 
 export function AccessibilityTab({ data }: { data: GroupAccessibility }) {
+  const [selectedUrl, setSelectedUrl] = useState<UrlAccessibilitySummary | null>(null);
+
   const totalCritical = data.urls.reduce((s, u) => s + u.latestCriticalCount, 0);
   const totalSerious = data.urls.reduce((s, u) => s + u.latestSeriousCount, 0);
 
@@ -33,6 +37,8 @@ export function AccessibilityTab({ data }: { data: GroupAccessibility }) {
   );
 
   return (
+    <>
+    <AccessibilityDetailModal urlData={selectedUrl} onClose={() => setSelectedUrl(null)} />
     <div className="space-y-4">
       <div className={`rounded-lg border p-4 text-sm font-medium ${bannerClass}`}>
         {totalCritical > 0 || totalSerious > 0
@@ -53,9 +59,18 @@ export function AccessibilityTab({ data }: { data: GroupAccessibility }) {
           </TableHeader>
           <TableBody>
             {sorted.map((url) => (
-              <TableRow key={url.url}>
+              <TableRow
+                key={url.url}
+                className="cursor-pointer hover:bg-muted/60"
+                onClick={() => setSelectedUrl(url)}
+              >
                 <TableCell className="max-w-xs truncate font-mono text-xs">
-                  <ExternalLink href={url.url}>{url.url}</ExternalLink>
+                  <ExternalLink
+                    href={url.url}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {url.url}
+                  </ExternalLink>
                 </TableCell>
                 <TableCell>
                   {url.latestCriticalCount > 0 ? (
@@ -81,6 +96,7 @@ export function AccessibilityTab({ data }: { data: GroupAccessibility }) {
                         key={v.id}
                         href={v.helpUrl}
                         title={v.help}
+                        onClick={(e) => e.stopPropagation()}
                         className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${IMPACT_COLORS[v.impact] ?? IMPACT_COLORS.minor} hover:opacity-80`}
                       >
                         {v.id}
@@ -95,5 +111,6 @@ export function AccessibilityTab({ data }: { data: GroupAccessibility }) {
         </Table>
       </div>
     </div>
+    </>
   );
 }

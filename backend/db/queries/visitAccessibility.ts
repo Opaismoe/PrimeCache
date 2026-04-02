@@ -33,6 +33,7 @@ export interface UrlAccessibilitySummary {
     helpUrl: string;
     occurrences: number;
   }>;
+  latestViolations: AccessibilityViolation[];
 }
 
 export interface GroupAccessibilityResult {
@@ -144,6 +145,7 @@ export async function getGroupAccessibility(
       latestCriticalCount: latest.criticalCount,
       latestSeriousCount: latest.seriousCount,
       topViolations,
+      latestViolations: latest.violations as AccessibilityViolation[],
     });
   }
 

@@ -61,6 +61,12 @@ export interface BrokenLink {
   error: string | null;
 }
 
+export interface ViolationNode {
+  html: string;
+  target: string[];
+  failureSummary: string | undefined;
+}
+
 export interface AccessibilityViolation {
   id: string;
   impact: 'critical' | 'serious' | 'moderate' | 'minor';
@@ -68,6 +74,7 @@ export interface AccessibilityViolation {
   description: string;
   helpUrl: string;
   nodeCount: number;
+  nodes: ViolationNode[];
 }
 
 export interface AccessibilitySnapshot {
@@ -380,6 +387,11 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
             description: v.description,
             helpUrl: v.helpUrl,
             nodeCount: v.nodes.length,
+            nodes: v.nodes.map((n) => ({
+              html: n.html,
+              target: n.target as string[],
+              failureSummary: n.failureSummary,
+            })),
           })),
         };
       } catch {
