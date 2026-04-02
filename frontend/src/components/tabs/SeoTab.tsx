@@ -1,8 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import type { GroupCwv, UrlCwv, UrlSeoSummary } from '@/lib/types';
-import { CwvTile } from '../CwvTile';
+import type { GroupCwv, UrlSeoSummary } from '@/lib/types';
+// import { CwvTile } from '../CwvTile';
 import { ExternalLink } from '../ExternalLink';
 import { SeoFieldRow } from '../SeoFieldRow';
 
@@ -56,10 +56,10 @@ export function SeoTab({
 
       <div className="flex flex-col gap-3">
         {data.urls.map((u) => {
-          const urlCwv: UrlCwv | undefined = cwv?.urls.find((c) => c.url === u.url);
+          // const urlCwv: UrlCwv | undefined = cwv?.urls.find((c) => c.url === u.url);
           return (
             <Card key={u.url}>
-              {cwv && (
+              {/* {cwv && (
                 <div className="border-b border-border px-4 pt-4 pb-3">
                   <p className="mb-2 text-xs text-muted-foreground font-medium">
                     Core Web Vitals (P75)
@@ -91,7 +91,7 @@ export function SeoTab({
                     />
                   </div>
                 </div>
-              )}
+              )} */}
 
               <CardContent className="pt-4">
                 <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
