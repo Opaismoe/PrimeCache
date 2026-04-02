@@ -11,6 +11,7 @@ const empty = (val: unknown) => (val === '' ? undefined : val);
 const EnvSchema = z.object({
   BROWSERLESS_WS_URL: z.string().min(1, 'BROWSERLESS_WS_URL is required'),
   BROWSERLESS_TOKEN: z.string().min(1, 'BROWSERLESS_TOKEN is required'),
+  BROWSERLESS_HTTP_URL: z.preprocess(empty, z.string().optional()),
   API_KEY: z.string().min(16, 'API_KEY must be at least 16 characters'),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   CONFIG_PATH: z.preprocess(empty, z.string().default('/app/config/config.yaml')),

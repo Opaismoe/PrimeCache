@@ -25,6 +25,13 @@ function wsToHttp(wsUrl: string): string {
     .replace(/\/chromium\/playwright.*$/, '');
 }
 
+function lighthouseBaseUrl(): string {
+  // BROWSERLESS_HTTP_URL lets you point directly at the internal Browserless host,
+  // bypassing any Cloudflare / reverse-proxy that only passes WebSocket traffic.
+  // e.g. BROWSERLESS_HTTP_URL=http://browserless:3000
+  return env.BROWSERLESS_HTTP_URL ?? wsToHttp(env.BROWSERLESS_WS_URL);
+}
+
 function scoreToInt(score: unknown): number | null {
   if (score == null || typeof score !== 'number') return null;
   return Math.round(score * 100);
@@ -36,7 +43,7 @@ function auditNum(audits: Record<string, unknown>, key: string): number | null {
 }
 
 export async function runLighthouseAudit(url: string): Promise<LighthouseResult> {
-  const base = wsToHttp(env.BROWSERLESS_WS_URL);
+  const base = lighthouseBaseUrl();
   const endpoint = `${base}/chromium/performance?token=${env.BROWSERLESS_TOKEN}`;
 
   try {

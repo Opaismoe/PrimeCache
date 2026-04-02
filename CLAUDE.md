@@ -58,6 +58,7 @@ Required (no defaults):
 - `ADMIN_PASSWORD` — minimum 8 characters
 
 Optional (defaults shown):
+- `BROWSERLESS_HTTP_URL` — direct HTTP base URL for Lighthouse audits, e.g. `http://browserless:3000`. Use this when `BROWSERLESS_WS_URL` points to a public domain behind Cloudflare (CF passes WS but blocks HTTP). Defaults to deriving from `BROWSERLESS_WS_URL`.
 - `CONFIG_PATH=/app/config/config.yaml`
 - `PORT=3000`
 - `LOG_LEVEL=info` (trace|debug|info|warn|error)
