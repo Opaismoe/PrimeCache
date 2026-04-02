@@ -45,6 +45,7 @@ function auditNum(audits: Record<string, unknown>, key: string): number | null {
 export async function runLighthouseAudit(url: string): Promise<LighthouseResult> {
   const base = lighthouseBaseUrl();
   const endpoint = `${base}/chromium/performance?token=${env.BROWSERLESS_TOKEN}`;
+  logger.debug({ url, base }, 'running lighthouse audit');
 
   try {
     const res = await fetch(endpoint, {
@@ -97,8 +98,15 @@ export async function runLighthouseAudit(url: string): Promise<LighthouseResult>
       error: null,
     };
   } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    logger.error({ url, error }, 'lighthouse audit failed');
+    // Unwrap the root cause — Node's fetch wraps connection errors in a TypeError
+    // whose message is just "fetch failed", hiding the real reason (ECONNREFUSED etc.)
+    const cause = err instanceof Error && err.cause instanceof Error ? err.cause : null;
+    const error = cause
+      ? `${err instanceof Error ? err.message : String(err)}: ${cause.message}`
+      : err instanceof Error
+        ? err.message
+        : String(err);
+    logger.error({ url, endpoint, error }, 'lighthouse audit failed');
     return {
       url,
       performanceScore: null,
