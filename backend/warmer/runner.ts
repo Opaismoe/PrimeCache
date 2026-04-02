@@ -2,6 +2,7 @@ import { randomDelay } from '../browser/stealth';
 import { env } from '../config/env';
 import type { WarmGroup } from '../config/urls';
 import type { Db } from '../db/client';
+import { insertLighthouseReport } from '../db/queries/lighthouse';
 import { finalizeRun, insertRun } from '../db/queries/runs';
 import { insertVisitAccessibility } from '../db/queries/visitAccessibility';
 import { insertVisitBrokenLinks } from '../db/queries/visitBrokenLinks';
@@ -10,6 +11,7 @@ import { insertVisitHeaders } from '../db/queries/visitHeaders';
 import { insertVisitScreenshot } from '../db/queries/visitScreenshot';
 import { insertVisitSeo } from '../db/queries/visitSeo';
 import { insertVisit } from '../db/queries/visits';
+import { runLighthouseAudit } from '../services/lighthouseAudit';
 import { logger } from '../utils/logger';
 import { cancelRun, registerRun, unregisterRun } from './registry';
 import { visitUrl } from './visitor';
@@ -139,4 +141,14 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
 
   await finalizeRun(db, runId, { status, successCount, failureCount });
   log.info({ status, successCount, failureCount, totalVisited: visited.size }, 'warm run finished');
+
+  // Lighthouse audit — run after warm run if enabled (fire-and-forget per URL)
+  if (group.options.checkLighthouse) {
+    const uniqueUrls = [...visited];
+    for (const visitedUrl of uniqueUrls) {
+      runLighthouseAudit(visitedUrl)
+        .then((result) => insertLighthouseReport(db, group.name, 'schedule', result))
+        .catch(() => {}); // fire-and-forget, never crash the runner
+    }
+  }
 }

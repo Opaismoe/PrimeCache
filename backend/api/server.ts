@@ -197,7 +197,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       protected_.register(putConfigRoute(db));
 
       // GET /groups/:name/overview|performance|uptime
-      protected_.register(groupRoutes(db));
+      protected_.register(groupRoutes(db, getConfig));
 
       // Secrets CRUD
       protected_.register(secretsRoutes(db));
