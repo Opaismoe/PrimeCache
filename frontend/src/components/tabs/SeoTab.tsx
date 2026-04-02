@@ -1,10 +1,10 @@
-import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+// import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CHART_TOOLTIP_STYLE, getColor } from '@/lib/chartStyles';
-import { formatChartDate } from '@/lib/formatChartDate';
-import { formatMs } from '@/lib/formatters';
+// import { CHART_TOOLTIP_STYLE, getColor } from '@/lib/chartStyles';
+// import { formatChartDate } from '@/lib/formatChartDate';
+// import { formatMs } from '@/lib/formatters';
 import type { CwvStatus, GroupCwv, UrlCwv, UrlSeoSummary } from '@/lib/types';
 import { ExternalLink } from '../ExternalLink';
 
@@ -222,147 +222,147 @@ function CwvTile({
 //   );
 // }
 
-function CwvSection({ cwv }: { cwv: GroupCwv }) {
-  const aggregate = cwv.urls.reduce<{
-    lcp: number | null;
-    fcp: number | null;
-    cls: number | null;
-    inp: number | null;
-    lcpStatus: CwvStatus | null;
-    fcpStatus: CwvStatus | null;
-    clsStatus: CwvStatus | null;
-    inpStatus: CwvStatus | null;
-  }>(
-    (acc, u) => ({
-      lcp: acc.lcp === null ? u.lcpP75 : u.lcpP75 !== null ? Math.max(acc.lcp, u.lcpP75) : acc.lcp,
-      fcp: acc.fcp === null ? u.fcpP75 : u.fcpP75 !== null ? Math.max(acc.fcp, u.fcpP75) : acc.fcp,
-      cls: acc.cls === null ? u.clsP75 : u.clsP75 !== null ? Math.max(acc.cls, u.clsP75) : acc.cls,
-      inp: acc.inp === null ? u.inpP75 : u.inpP75 !== null ? Math.max(acc.inp, u.inpP75) : acc.inp,
-      lcpStatus:
-        acc.lcpStatus === null
-          ? u.lcpStatus
-          : u.lcpStatus === 'poor'
-            ? 'poor'
-            : acc.lcpStatus === 'poor'
-              ? 'poor'
-              : (u.lcpStatus ?? acc.lcpStatus),
-      fcpStatus:
-        acc.fcpStatus === null
-          ? u.fcpStatus
-          : u.fcpStatus === 'poor'
-            ? 'poor'
-            : acc.fcpStatus === 'poor'
-              ? 'poor'
-              : (u.fcpStatus ?? acc.fcpStatus),
-      clsStatus:
-        acc.clsStatus === null
-          ? u.clsStatus
-          : u.clsStatus === 'poor'
-            ? 'poor'
-            : acc.clsStatus === 'poor'
-              ? 'poor'
-              : (u.clsStatus ?? acc.clsStatus),
-      inpStatus:
-        acc.inpStatus === null
-          ? u.inpStatus
-          : u.inpStatus === 'poor'
-            ? 'poor'
-            : acc.inpStatus === 'poor'
-              ? 'poor'
-              : (u.inpStatus ?? acc.inpStatus),
-    }),
-    {
-      lcp: null,
-      fcp: null,
-      cls: null,
-      inp: null,
-      lcpStatus: null,
-      fcpStatus: null,
-      clsStatus: null,
-      inpStatus: null,
-    },
-  );
+// function CwvSection({ cwv }: { cwv: GroupCwv }) {
+//   const aggregate = cwv.urls.reduce<{
+//     lcp: number | null;
+//     fcp: number | null;
+//     cls: number | null;
+//     inp: number | null;
+//     lcpStatus: CwvStatus | null;
+//     fcpStatus: CwvStatus | null;
+//     clsStatus: CwvStatus | null;
+//     inpStatus: CwvStatus | null;
+//   }>(
+//     (acc, u) => ({
+//       lcp: acc.lcp === null ? u.lcpP75 : u.lcpP75 !== null ? Math.max(acc.lcp, u.lcpP75) : acc.lcp,
+//       fcp: acc.fcp === null ? u.fcpP75 : u.fcpP75 !== null ? Math.max(acc.fcp, u.fcpP75) : acc.fcp,
+//       cls: acc.cls === null ? u.clsP75 : u.clsP75 !== null ? Math.max(acc.cls, u.clsP75) : acc.cls,
+//       inp: acc.inp === null ? u.inpP75 : u.inpP75 !== null ? Math.max(acc.inp, u.inpP75) : acc.inp,
+//       lcpStatus:
+//         acc.lcpStatus === null
+//           ? u.lcpStatus
+//           : u.lcpStatus === 'poor'
+//             ? 'poor'
+//             : acc.lcpStatus === 'poor'
+//               ? 'poor'
+//               : (u.lcpStatus ?? acc.lcpStatus),
+//       fcpStatus:
+//         acc.fcpStatus === null
+//           ? u.fcpStatus
+//           : u.fcpStatus === 'poor'
+//             ? 'poor'
+//             : acc.fcpStatus === 'poor'
+//               ? 'poor'
+//               : (u.fcpStatus ?? acc.fcpStatus),
+//       clsStatus:
+//         acc.clsStatus === null
+//           ? u.clsStatus
+//           : u.clsStatus === 'poor'
+//             ? 'poor'
+//             : acc.clsStatus === 'poor'
+//               ? 'poor'
+//               : (u.clsStatus ?? acc.clsStatus),
+//       inpStatus:
+//         acc.inpStatus === null
+//           ? u.inpStatus
+//           : u.inpStatus === 'poor'
+//             ? 'poor'
+//             : acc.inpStatus === 'poor'
+//               ? 'poor'
+//               : (u.inpStatus ?? acc.inpStatus),
+//     }),
+//     {
+//       lcp: null,
+//       fcp: null,
+//       cls: null,
+//       inp: null,
+//       lcpStatus: null,
+//       fcpStatus: null,
+//       clsStatus: null,
+//       inpStatus: null,
+//     },
+//   );
 
-  return (
-    <div className="mb-6">
-      <h3 className="mb-3 text-sm font-medium text-muted-foreground">Core Web Vitals (P75)</h3>
+//   return (
+//     <div className="mb-6">
+//       <h3 className="mb-3 text-sm font-medium text-muted-foreground">Core Web Vitals (P75)</h3>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <CwvTile label="LCP" value={aggregate.lcp} unit="ms" status={aggregate.lcpStatus} />
-        <CwvTile label="FCP" value={aggregate.fcp} unit="ms" status={aggregate.fcpStatus} />
-        <CwvTile label="CLS" value={aggregate.cls} unit="" status={aggregate.clsStatus} />
-        <CwvTile label="INP" value={aggregate.inp} unit="ms" status={aggregate.inpStatus} />
-      </div>
+//       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+//         <CwvTile label="LCP" value={aggregate.lcp} unit="ms" status={aggregate.lcpStatus} />
+//         <CwvTile label="FCP" value={aggregate.fcp} unit="ms" status={aggregate.fcpStatus} />
+//         <CwvTile label="CLS" value={aggregate.cls} unit="" status={aggregate.clsStatus} />
+//         <CwvTile label="INP" value={aggregate.inp} unit="ms" status={aggregate.inpStatus} />
+//       </div>
 
-      {cwv.trend.length > 1 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <h3 className="text-sm font-medium">CWV trend (avg per run)</h3>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={cwv.trend} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                <XAxis
-                  dataKey="startedAt"
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={formatChartDate}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  tickFormatter={(v) => `${v}ms`}
-                />
-                <Tooltip
-                  contentStyle={CHART_TOOLTIP_STYLE}
-                  labelFormatter={formatChartDate}
-                  formatter={(v, name) => [`${v}ms`, String(name).toUpperCase()]}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: 10 }}
-                  formatter={(v) => String(v).toUpperCase()}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="avgLcpMs"
-                  name="lcp"
-                  stroke="#60a5fa"
-                  fill="#60a5fa20"
-                  dot={false}
-                  strokeWidth={2}
-                  activeDot={{ r: 3 }}
-                  connectNulls
-                />
-                <Area
-                  type="monotone"
-                  dataKey="avgFcpMs"
-                  name="fcp"
-                  stroke="#4ade80"
-                  fill="#4ade8020"
-                  dot={false}
-                  strokeWidth={2}
-                  activeDot={{ r: 3 }}
-                  connectNulls
-                />
-                <Area
-                  type="monotone"
-                  dataKey="avgInpMs"
-                  name="inp"
-                  stroke="#fb923c"
-                  fill="#fb923c20"
-                  dot={false}
-                  strokeWidth={2}
-                  activeDot={{ r: 3 }}
-                  connectNulls
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+//       {cwv.trend.length > 1 && (
+//         <Card>
+//           <CardHeader className="pb-2">
+//             <h3 className="text-sm font-medium">CWV trend (avg per run)</h3>
+//           </CardHeader>
+//           <CardContent>
+//             <ResponsiveContainer width="100%" height={220}>
+//               <AreaChart data={cwv.trend} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
+//                 <XAxis
+//                   dataKey="startedAt"
+//                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+//                   tickFormatter={formatChartDate}
+//                 />
+//                 <YAxis
+//                   tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+//                   tickFormatter={(v) => `${v}ms`}
+//                 />
+//                 <Tooltip
+//                   contentStyle={CHART_TOOLTIP_STYLE}
+//                   labelFormatter={formatChartDate}
+//                   formatter={(v, name) => [`${v}ms`, String(name).toUpperCase()]}
+//                 />
+//                 <Legend
+//                   wrapperStyle={{ fontSize: 10 }}
+//                   formatter={(v) => String(v).toUpperCase()}
+//                 />
+//                 <Area
+//                   type="monotone"
+//                   dataKey="avgLcpMs"
+//                   name="lcp"
+//                   stroke="#60a5fa"
+//                   fill="#60a5fa20"
+//                   dot={false}
+//                   strokeWidth={2}
+//                   activeDot={{ r: 3 }}
+//                   connectNulls
+//                 />
+//                 <Area
+//                   type="monotone"
+//                   dataKey="avgFcpMs"
+//                   name="fcp"
+//                   stroke="#4ade80"
+//                   fill="#4ade8020"
+//                   dot={false}
+//                   strokeWidth={2}
+//                   activeDot={{ r: 3 }}
+//                   connectNulls
+//                 />
+//                 <Area
+//                   type="monotone"
+//                   dataKey="avgInpMs"
+//                   name="inp"
+//                   stroke="#fb923c"
+//                   fill="#fb923c20"
+//                   dot={false}
+//                   strokeWidth={2}
+//                   activeDot={{ r: 3 }}
+//                   connectNulls
+//                 />
+//               </AreaChart>
+//             </ResponsiveContainer>
+//           </CardContent>
+//         </Card>
+//       )}
 
-      <CwvUrlTrendCharts urlTrend={cwv.urlTrend} />
-    </div>
-  );
-}
+//       <CwvUrlTrendCharts urlTrend={cwv.urlTrend} />
+//     </div>
+//   );
+// }
 
 // ── SeoTab ────────────────────────────────────────────────────────────────────
 
@@ -404,7 +404,7 @@ export function SeoTab({
         )}
       </div>
 
-      {cwv && cwv.urls.length > 0 && <CwvSection cwv={cwv} />}
+      {/* {cwv && cwv.urls.length > 0 && <CwvSection cwv={cwv} />} */}
 
       <div className="flex flex-col gap-3">
         {data.urls.map((u) => {
