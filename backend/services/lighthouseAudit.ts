@@ -69,8 +69,12 @@ export async function runLighthouseAudit(url: string): Promise<LighthouseResult>
     }
 
     const body = (await res.json()) as Record<string, unknown>;
-    // Self-hosted may return the LH report directly or wrapped in lighthouseStats
-    const lh = (body.lighthouseStats ?? body) as {
+    logger.debug(
+      { url, responseKeys: Object.keys(body), hasLighthouseStats: 'lighthouseStats' in body },
+      'lighthouse response structure',
+    );
+    // Self-hosted Browserless may wrap the report in lighthouseStats, data, or return it directly
+    const lh = (body.lighthouseStats ?? body.data ?? body) as {
       categories?: Record<string, { score?: number }>;
       audits?: Record<string, { numericValue?: number }>;
     };

@@ -303,7 +303,11 @@ function GroupDetailPage() {
           {lighthouseLoading ? (
             <TabLoadingSkeleton rows={4} cols={4} />
           ) : (
-            <LighthouseTab data={lighthouse ?? []} groupName={groupName} />
+            <LighthouseTab
+              data={lighthouse ?? []}
+              groupName={groupName}
+              groupUrls={group?.urls ?? []}
+            />
           )}
         </TabsContent>
 
