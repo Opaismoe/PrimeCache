@@ -20,6 +20,7 @@ export const queryKeys = {
     brokenLinks: (name: string) => ['groups', name, 'broken-links'] as const,
     cwv: (name: string) => ['groups', name, 'cwv'] as const,
     accessibility: (name: string) => ['groups', name, 'accessibility'] as const,
+    lighthouse: (name: string) => ['groups', name, 'lighthouse'] as const,
   },
   publicStatus: {
     all: () => ['public-status'] as const,
