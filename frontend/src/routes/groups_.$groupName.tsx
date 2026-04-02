@@ -22,9 +22,7 @@ import { AccessibilityTab } from '../components/tabs/AccessibilityTab';
 import { LighthouseTab } from '../components/tabs/LighthouseTab';
 import { LinksTab } from '../components/tabs/LinksTab';
 import { OverviewTab } from '../components/tabs/OverviewTab';
-import { PerformanceTab } from '../components/tabs/PerformanceTab';
 import { SeoTab } from '../components/tabs/SeoTab';
-import { UptimeTab } from '../components/tabs/UptimeTab';
 import {
   getApiKey,
   getConfig,
@@ -89,16 +87,16 @@ function GroupDetailPage() {
     queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig }),
   );
 
-  const { data: performance, isLoading: perfLoading } = useQuery({
+  const { data: performance } = useQuery({
     queryKey: queryKeys.groups.performance(groupName),
     queryFn: () => getGroupPerformance(groupName),
-    enabled: activeTab === 'performance',
+    enabled: activeTab === 'overview',
   });
 
-  const { data: uptime, isLoading: uptimeLoading } = useQuery({
+  const { data: uptime } = useQuery({
     queryKey: queryKeys.groups.uptime(groupName),
     queryFn: () => getGroupUptime(groupName),
-    enabled: activeTab === 'uptime',
+    enabled: activeTab === 'overview',
   });
 
   const { data: seo, isLoading: seoLoading } = useQuery({
@@ -205,8 +203,6 @@ function GroupDetailPage() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="uptime">Uptime</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
@@ -214,7 +210,7 @@ function GroupDetailPage() {
             <TabsTrigger value="history">Cache runs</TabsTrigger>
             <TabsTrigger value="settings">Config</TabsTrigger>
           </TabsList>
-          {['performance', 'uptime', 'seo', 'links'].includes(activeTab) && (
+          {['seo', 'links'].includes(activeTab) && (
             <a
               href={getGroupExportUrl(groupName, activeTab)}
               download
@@ -226,27 +222,7 @@ function GroupDetailPage() {
         </div>
 
         <TabsContent value="overview">
-          <OverviewTab overview={overview} />
-        </TabsContent>
-
-        <TabsContent value="performance">
-          {perfLoading ? (
-            <TabLoadingSkeleton rows={6} cols={6} />
-          ) : performance ? (
-            <PerformanceTab data={performance} />
-          ) : (
-            <EmptyTab message="No performance data yet — run the group to start collecting data." />
-          )}
-        </TabsContent>
-
-        <TabsContent value="uptime">
-          {uptimeLoading ? (
-            <TabLoadingSkeleton rows={5} cols={4} />
-          ) : uptime ? (
-            <UptimeTab data={uptime} />
-          ) : (
-            <EmptyTab message="No uptime data yet — run the group to start collecting data." />
-          )}
+          <OverviewTab overview={overview} performance={performance} uptime={uptime} />
         </TabsContent>
 
         <TabsContent value="seo">
@@ -255,7 +231,7 @@ function GroupDetailPage() {
           ) : seo ? (
             <SeoTab data={seo} />
           ) : (
-            <EmptyTab message="No SEO data collected — visits may be failing. Check the Uptime tab for errors." />
+            <EmptyTab message="No SEO data collected — visits may be failing. Check the Overview tab for uptime errors." />
           )}
         </TabsContent>
 
