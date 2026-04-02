@@ -31,6 +31,7 @@ export async function finalizeRun(
       status: params.status,
       success_count: params.successCount,
       failure_count: params.failureCount,
+      total_urls: params.successCount + params.failureCount,
       ended_at: new Date(),
     })
     .where(eq(runs.id, id));

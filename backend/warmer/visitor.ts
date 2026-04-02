@@ -300,7 +300,12 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       }))
       .catch(() => null);
 
-    // Read CWV values collected by the init script observer
+    const consentResult = await dismissCookieConsent(page);
+    await simulateMouseMovement(page);
+    if (options.scrollToBottom) await simulateScroll(page);
+    await simulateReading(page);
+
+    // Read CWV values after interactions so INP (which requires user events) is populated
     const cwvRaw = await page
       .evaluate((): WindowWithCwv['__cwv'] | null => {
         const w = window as unknown as WindowWithCwv;
@@ -315,11 +320,6 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
           fcpMs: cwvRaw.fcp != null ? Math.round(cwvRaw.fcp) : null,
         }
       : null;
-
-    const consentResult = await dismissCookieConsent(page);
-    await simulateMouseMovement(page);
-    if (options.scrollToBottom) await simulateScroll(page);
-    await simulateReading(page);
 
     const finalUrl = page.url();
 
