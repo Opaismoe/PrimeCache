@@ -66,6 +66,7 @@ export interface GroupOptions {
   screenshot?: boolean;
   checkBrokenLinks?: boolean;
   checkAccessibility?: boolean;
+  checkLighthouse?: boolean;
   retryCount?: number;
 }
 
@@ -305,4 +306,29 @@ export interface GroupHealthSummary {
     links: boolean;
     accessibility: boolean;
   };
+}
+
+// ── Lighthouse types ──────────────────────────────────────────────────────────
+
+export interface LighthouseReport {
+  performanceScore: number | null;
+  accessibilityScore: number | null;
+  seoScore: number | null;
+  bestPracticesScore: number | null;
+  lcpMs: number | null;
+  fcpMs: number | null;
+  clsScore: number | null;
+  tbtMs: number | null;
+  speedIndexMs: number | null;
+  inpMs: number | null;
+  ttfbMs: number | null;
+  triggeredBy: 'schedule' | 'manual';
+  auditedAt: string;
+  failed: boolean;
+  error: string | null;
+}
+
+export interface LighthouseUrlSummary {
+  url: string;
+  latestReport: LighthouseReport | null;
 }

@@ -10,6 +10,7 @@ import type {
   GroupSeo,
   GroupStatus,
   GroupUptime,
+  LighthouseUrlSummary,
   Run,
   RunDetail,
   Stats,
@@ -141,3 +142,9 @@ export const getGroupExportUrl = (name: string, tab: string) =>
   `/api/groups/${encodeURIComponent(name)}/export?tab=${tab}`;
 
 export const getGroupsHealth = () => request<GroupHealthSummary[]>('GET', '/api/groups-health');
+
+export const getGroupLighthouse = (name: string) =>
+  request<LighthouseUrlSummary[]>('GET', `/api/groups/${encodeURIComponent(name)}/lighthouse`);
+
+export const triggerGroupLighthouse = (name: string) =>
+  request<{ ok: boolean }>('POST', `/api/groups/${encodeURIComponent(name)}/lighthouse/trigger`);

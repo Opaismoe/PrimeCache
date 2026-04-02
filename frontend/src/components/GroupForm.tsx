@@ -463,6 +463,23 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
                 </p>
               </div>
 
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="checkLighthouse"
+                    checked={group.options.checkLighthouse === true}
+                    onCheckedChange={(v) => setOpt('checkLighthouse', v === true)}
+                  />
+                  <Label htmlFor="checkLighthouse" className="cursor-pointer">
+                    Check Lighthouse
+                  </Label>
+                </div>
+                <p className="pl-6 text-xs text-muted-foreground">
+                  Runs a Lighthouse audit (performance, SEO, accessibility) after each warm run
+                  using Browserless&apos;s built-in Lighthouse integration.
+                </p>
+              </div>
+
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="navigationTimeout">Navigation timeout (ms)</Label>
                 <Input

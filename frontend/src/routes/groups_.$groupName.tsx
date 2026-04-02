@@ -18,6 +18,7 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { TabLoadingSkeleton } from '../components/TabLoadingSkeleton';
 import { AccessibilityTab } from '../components/tabs/AccessibilityTab';
+import { LighthouseTab } from '../components/tabs/LighthouseTab';
 import { LinksTab } from '../components/tabs/LinksTab';
 import { OverviewTab } from '../components/tabs/OverviewTab';
 import { PerformanceTab } from '../components/tabs/PerformanceTab';
@@ -30,6 +31,7 @@ import {
   getGroupBrokenLinks,
   getGroupCwv,
   getGroupExportUrl,
+  getGroupLighthouse,
   getGroupOverview,
   getGroupPerformance,
   getGroupSeo,
@@ -125,6 +127,13 @@ function GroupDetailPage() {
     enabled: activeTab === 'accessibility',
   });
 
+  const { data: lighthouse, isLoading: lighthouseLoading } = useQuery({
+    queryKey: queryKeys.groups.lighthouse(groupName),
+    queryFn: () => getGroupLighthouse(groupName),
+    enabled: activeTab === 'lighthouse',
+    refetchInterval: activeTab === 'lighthouse' ? 30_000 : false,
+  });
+
   const { data: historyRuns, isLoading: historyLoading } = useQuery({
     queryKey: [...queryKeys.runs.all(), 'group-tab', groupName, historyPage],
     queryFn: () =>
@@ -215,6 +224,7 @@ function GroupDetailPage() {
             <TabsTrigger value="seo">SEO</TabsTrigger>
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
+            <TabsTrigger value="lighthouse">Lighthouse</TabsTrigger>
             <TabsTrigger value="history">Cache runs</TabsTrigger>
             <TabsTrigger value="settings">Config</TabsTrigger>
           </TabsList>
@@ -286,6 +296,14 @@ function GroupDetailPage() {
               No accessibility data yet. Enable <code>checkAccessibility: true</code> in config and
               run the group.
             </EmptyTab>
+          )}
+        </TabsContent>
+
+        <TabsContent value="lighthouse">
+          {lighthouseLoading ? (
+            <TabLoadingSkeleton rows={4} cols={4} />
+          ) : (
+            <LighthouseTab data={lighthouse ?? []} groupName={groupName} />
           )}
         </TabsContent>
 
