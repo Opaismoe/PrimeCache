@@ -55,13 +55,13 @@ function Tile({
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-interface Props {
+interface OverviewTabProps {
   overview: GroupOverview | undefined;
   performance: GroupPerformance | undefined;
   uptime: GroupUptime | undefined;
 }
 
-export function OverviewTab({ overview, performance, uptime }: Props) {
+export function OverviewTab({ overview, performance, uptime }: OverviewTabProps) {
   const navigate = useNavigate();
   if (!overview) return null;
 
@@ -101,24 +101,27 @@ export function OverviewTab({ overview, performance, uptime }: Props) {
           className={`grid gap-3 ${hasSeoTile ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}
         >
           <Tile
-            label="Success rate"
+            label="Last run success"
             value={`${latest.successRate.toFixed(1)}%`}
             delta={previous ? latest.successRate - previous.successRate : null}
           />
           <Tile
-            label="Avg load time"
+            label="Last run load time"
             value={formatMs(latest.avgLoadTimeMs)}
             delta={previous ? latest.avgLoadTimeMs - previous.avgLoadTimeMs : null}
             higherIsBetter={false}
           />
           <Tile
-            label="Uptime"
-            value={`${latest.uptimePct.toFixed(1)}%`}
-            delta={previous ? latest.uptimePct - previous.uptimePct : null}
+            label="30-day uptime"
+            value={
+              uptime && uptime.urls.length > 0
+                ? `${(uptime.urls.reduce((sum, u) => sum + u.uptimePct, 0) / uptime.urls.length).toFixed(1)}%`
+                : '—'
+            }
           />
           {hasSeoTile && (
             <Tile
-              label="SEO score"
+              label="Last run SEO"
               value={String((latest.avgSeoScore as number).toFixed(1))}
               delta={
                 previous?.avgSeoScore != null && latest.avgSeoScore != null
