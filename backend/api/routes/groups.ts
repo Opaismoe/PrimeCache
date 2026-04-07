@@ -1,16 +1,13 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import type { Config } from '../../config/urls';
 import type { Db } from '../../db/client';
+import { deleteGroupCrawledUrl, getGroupCrawledUrls } from '../../db/queries/groupCrawledUrls';
 import { getGroupCwv } from '../../db/queries/groupCwv';
 import { getGroupOverview } from '../../db/queries/groupOverview';
 import { getGroupPerformance } from '../../db/queries/groupPerformance';
 import { getGroupSeo } from '../../db/queries/groupSeo';
 import { getGroupsHealth } from '../../db/queries/groupsHealth';
 import { getGroupUptime } from '../../db/queries/groupUptime';
-import {
-  deleteGroupCrawledUrl,
-  getGroupCrawledUrls,
-} from '../../db/queries/groupCrawledUrls';
 import { getGroupLighthouse, insertLighthouseReport } from '../../db/queries/lighthouse';
 import { getGroupAccessibility } from '../../db/queries/visitAccessibility';
 import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks';
@@ -85,7 +82,8 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
 
         const targetUrl = request.body?.url;
         const urls = targetUrl ? group.urls.filter((u) => u === targetUrl) : group.urls;
-        if (urls.length === 0) return reply.code(404).send({ ok: false, error: 'URL not found in group' });
+        if (urls.length === 0)
+          return reply.code(404).send({ ok: false, error: 'URL not found in group' });
 
         // Run audits in series to avoid 429 from Browserless rate limiting
         (async () => {

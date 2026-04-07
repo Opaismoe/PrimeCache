@@ -182,7 +182,10 @@ function GroupDetailPage() {
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total runs" value={stats ? String(stats.totalRuns) : '—'} />
-        <StatCard label="All-time success" value={stats ? `${stats.successRate.toFixed(1)}%` : '—'} />
+        <StatCard
+          label="All-time success"
+          value={stats ? `${stats.successRate.toFixed(1)}%` : '—'}
+        />
         <StatCard
           label="All-time avg load"
           value={stats?.avgLoadTimeMs != null ? `${stats.avgLoadTimeMs}ms` : '—'}
@@ -222,7 +225,12 @@ function GroupDetailPage() {
         </div>
 
         <TabsContent value="overview">
-          <OverviewTab groupName={groupName} overview={overview} performance={performance} uptime={uptime} />
+          <OverviewTab
+            groupName={groupName}
+            overview={overview}
+            performance={performance}
+            uptime={uptime}
+          />
         </TabsContent>
 
         <TabsContent value="seo">

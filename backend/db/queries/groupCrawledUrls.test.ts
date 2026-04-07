@@ -50,7 +50,9 @@ describe('groupCrawledUrls queries', () => {
 
   it('deleteGroupCrawledUrl removes the specific URL', async () => {
     const db = await createTestDb();
-    const { upsertCrawledUrl, getGroupCrawledUrls, deleteGroupCrawledUrl } = await import('./groupCrawledUrls');
+    const { upsertCrawledUrl, getGroupCrawledUrls, deleteGroupCrawledUrl } = await import(
+      './groupCrawledUrls'
+    );
 
     await upsertCrawledUrl(db, 'my-group', 'https://example.com/a');
     await upsertCrawledUrl(db, 'my-group', 'https://example.com/b');
@@ -63,7 +65,9 @@ describe('groupCrawledUrls queries', () => {
 
   it('deleteGroupCrawledUrl does not affect other groups', async () => {
     const db = await createTestDb();
-    const { upsertCrawledUrl, getGroupCrawledUrls, deleteGroupCrawledUrl } = await import('./groupCrawledUrls');
+    const { upsertCrawledUrl, getGroupCrawledUrls, deleteGroupCrawledUrl } = await import(
+      './groupCrawledUrls'
+    );
 
     await upsertCrawledUrl(db, 'group-a', 'https://example.com/page');
     await upsertCrawledUrl(db, 'group-b', 'https://example.com/page');

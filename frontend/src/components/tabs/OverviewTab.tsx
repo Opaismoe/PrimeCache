@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useCallback, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -100,7 +100,10 @@ function UrlTrendTile({
                 Crawled
               </Badge>
             )}
-            <ExternalLink href={url} className="truncate font-mono text-[11px] text-muted-foreground leading-tight">
+            <ExternalLink
+              href={url}
+              className="truncate font-mono text-[11px] text-muted-foreground leading-tight"
+            >
               {url}
             </ExternalLink>
           </div>
@@ -129,9 +132,13 @@ function UrlTrendTile({
         {/* Load time + delta */}
         {latest ? (
           <div className="flex items-baseline gap-1.5">
-            <span className="text-lg font-semibold tabular-nums">{formatMs(latest.avgLoadTimeMs)}</span>
+            <span className="text-lg font-semibold tabular-nums">
+              {formatMs(latest.avgLoadTimeMs)}
+            </span>
             {delta != null && Math.abs(delta) > 50 && (
-              <span className={`text-xs font-medium ${delta > 0 ? 'text-destructive' : 'text-green-500'}`}>
+              <span
+                className={`text-xs font-medium ${delta > 0 ? 'text-destructive' : 'text-green-500'}`}
+              >
                 {delta > 0 ? `+${formatMs(delta)}` : `-${formatMs(Math.abs(delta))}`}
               </span>
             )}
@@ -212,6 +219,16 @@ interface Props {
 
 export function OverviewTab({ groupName, overview, performance, uptime }: Props) {
   const navigate = useNavigate();
+
+  // All hooks must be called before any early return
+  const { data: crawledUrlsData = [] } = useQuery({
+    queryKey: queryKeys.groups.crawledUrls(groupName),
+    queryFn: () => getGroupCrawledUrls(groupName),
+  });
+  const pinned = useLocalSet(`overview-pinned:${groupName}`);
+  const hidden = useLocalSet(`overview-hidden:${groupName}`);
+  const [showHidden, setShowHidden] = useState(false);
+
   if (!overview) return null;
 
   const { recentRuns, series } = overview;
@@ -219,15 +236,6 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
   const latest = series.length > 0 ? series[series.length - 1] : null;
   const previous = series.length > 1 ? series[series.length - 2] : null;
   const hasSeoTile = latest?.avgSeoScore != null;
-
-  const { data: crawledUrlsData = [] } = useQuery({
-    queryKey: queryKeys.groups.crawledUrls(groupName),
-    queryFn: () => getGroupCrawledUrls(groupName),
-  });
-
-  const pinned = useLocalSet(`overview-pinned:${groupName}`);
-  const hidden = useLocalSet(`overview-hidden:${groupName}`);
-  const [showHidden, setShowHidden] = useState(false);
 
   const slowCount = performance ? performance.urls.filter((u) => u.isSlow).length : 0;
   const downCount = uptime ? uptime.urls.filter((u) => u.lastStatus === 'down').length : 0;
@@ -237,7 +245,8 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
   if (performance) {
     for (const p of performance.loadTimeTrend) {
       if (!trendByUrl.has(p.url)) trendByUrl.set(p.url, []);
-      trendByUrl.get(p.url)!.push({ startedAt: p.startedAt, avgLoadTimeMs: p.avgLoadTimeMs });
+      const entry = trendByUrl.get(p.url);
+      if (entry) entry.push({ startedAt: p.startedAt, avgLoadTimeMs: p.avgLoadTimeMs });
     }
   }
 
@@ -263,7 +272,10 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
       trend={trendByUrl.get(url) ?? []}
       isCrawled={isCrawled}
       isPinned={pinned.set.has(url)}
-      onPin={() => { pinned.add(url); hidden.remove(url); }}
+      onPin={() => {
+        pinned.add(url);
+        hidden.remove(url);
+      }}
       onUnpin={() => pinned.remove(url)}
       onRemove={() => hidden.add(url)}
     />
@@ -366,7 +378,9 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
           {/* Per-URL trend tiles */}
           {allUrls.length > 0 && (
             <div>
-              <h4 className="mb-2 text-xs font-medium text-muted-foreground">Load time trend per URL</h4>
+              <h4 className="mb-2 text-xs font-medium text-muted-foreground">
+                Load time trend per URL
+              </h4>
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {pinnedItems.map(renderTile)}
                 {unpinnedVisible.map(renderTile)}
@@ -379,7 +393,9 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
                     onClick={() => setShowHidden((v) => !v)}
                     className="text-xs text-muted-foreground hover:text-foreground underline"
                   >
-                    {showHidden ? 'Hide removed' : `Show ${hiddenItems.length} removed URL${hiddenItems.length !== 1 ? 's' : ''}`}
+                    {showHidden
+                      ? 'Hide removed'
+                      : `Show ${hiddenItems.length} removed URL${hiddenItems.length !== 1 ? 's' : ''}`}
                   </button>
                   {showHidden && (
                     <div className="mt-2 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 opacity-50">
@@ -387,7 +403,10 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
                         <Card key={url} className="border-dashed">
                           <CardContent className="pt-3 pb-3 px-3">
                             <div className="flex items-center justify-between gap-2">
-                              <ExternalLink href={url} className="truncate font-mono text-[11px] text-muted-foreground">
+                              <ExternalLink
+                                href={url}
+                                className="truncate font-mono text-[11px] text-muted-foreground"
+                              >
                                 {url}
                               </ExternalLink>
                               <button

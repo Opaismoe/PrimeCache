@@ -1,8 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
-import path from 'path'
+import tailwindcss from '@tailwindcss/vite';
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   resolve: {
@@ -10,11 +10,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  plugins: [
-    TanStackRouterVite({ routesDirectory: './src/routes' }),
-    react(),
-    tailwindcss(),
-  ],
+  plugins: [TanStackRouterVite({ routesDirectory: './src/routes' }), react(), tailwindcss()],
   server: {
     port: 5173,
     proxy: {
@@ -25,4 +21,4 @@ export default defineConfig({
       '/health': 'http://localhost:3000',
     },
   },
-})
+});

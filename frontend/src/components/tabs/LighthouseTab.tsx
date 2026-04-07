@@ -86,7 +86,8 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
 
   const removeCrawledUrl = useMutation({
     mutationFn: (url: string) => deleteGroupCrawledUrl(groupName, url),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.groups.crawledUrls(groupName) }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.groups.crawledUrls(groupName) }),
     onError: () => toast.error('Failed to remove URL'),
   });
 
@@ -119,11 +120,17 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
   // Clear all timeouts on unmount
   useEffect(() => {
     const ref = timeoutsRef.current;
-    return () => { for (const t of ref.values()) clearTimeout(t); };
+    return () => {
+      for (const t of ref.values()) clearTimeout(t);
+    };
   }, []);
 
   const finishUrl = (url: string) => {
-    setRunningUrls((prev) => { const next = new Map(prev); next.delete(url); return next; });
+    setRunningUrls((prev) => {
+      const next = new Map(prev);
+      next.delete(url);
+      return next;
+    });
     timeoutsRef.current.delete(url);
     queryClient.invalidateQueries({ queryKey: queryKeys.groups.lighthouse(groupName, formFactor) });
   };
@@ -141,7 +148,11 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to trigger Lighthouse audit');
     } finally {
-      setPendingUrls((prev) => { const next = new Set(prev); next.delete(url); return next; });
+      setPendingUrls((prev) => {
+        const next = new Set(prev);
+        next.delete(url);
+        return next;
+      });
     }
   };
 

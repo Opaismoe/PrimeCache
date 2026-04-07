@@ -27,18 +27,12 @@ export async function getGroupCrawledUrls(db: Db, groupName: string): Promise<Cr
   }));
 }
 
-export async function deleteGroupCrawledUrl(
-  db: Db,
-  groupName: string,
-  url: string,
-): Promise<void> {
+export async function deleteGroupCrawledUrl(db: Db, groupName: string, url: string): Promise<void> {
   await db
     .delete(group_crawled_urls)
     .where(and(eq(group_crawled_urls.group_name, groupName), eq(group_crawled_urls.url, url)));
 }
 
 export async function deleteAllGroupCrawledUrls(db: Db, groupName: string): Promise<void> {
-  await db
-    .delete(group_crawled_urls)
-    .where(eq(group_crawled_urls.group_name, groupName));
+  await db.delete(group_crawled_urls).where(eq(group_crawled_urls.group_name, groupName));
 }
