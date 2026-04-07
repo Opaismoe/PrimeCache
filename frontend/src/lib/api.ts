@@ -149,6 +149,17 @@ export const getGroupLighthouse = (name: string, formFactor: 'mobile' | 'desktop
     `/api/groups/${encodeURIComponent(name)}/lighthouse?formFactor=${formFactor}`,
   );
 
+export const getGroupCrawledUrls = (name: string) =>
+  request<{ url: string; firstDiscoveredAt: string }[]>(
+    'GET',
+    `/api/groups/${encodeURIComponent(name)}/crawled-urls`,
+  );
+
+export const deleteGroupCrawledUrl = (name: string, url: string) =>
+  request<{ ok: boolean }>('DELETE', `/api/groups/${encodeURIComponent(name)}/crawled-urls`, {
+    url,
+  });
+
 export const triggerGroupLighthouse = (
   name: string,
   formFactor: 'mobile' | 'desktop' = 'desktop',

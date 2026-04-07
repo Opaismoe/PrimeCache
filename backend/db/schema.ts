@@ -129,6 +129,13 @@ export const secrets = pgTable('secrets', {
   updated_at: timestamp('updated_at').notNull().defaultNow(),
 });
 
+export const group_crawled_urls = pgTable('group_crawled_urls', {
+  id: serial('id').primaryKey(),
+  group_name: varchar('group_name', { length: 255 }).notNull(),
+  url: varchar('url', { length: 2048 }).notNull(),
+  first_discovered_at: timestamp('first_discovered_at').notNull(),
+});
+
 export const lighthouse_reports = pgTable('lighthouse_reports', {
   id: serial('id').primaryKey(),
   group_name: varchar('group_name', { length: 255 }).notNull(),
