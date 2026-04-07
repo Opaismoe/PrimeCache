@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -75,10 +75,13 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
   const [pendingUrls, setPendingUrls] = useState<Set<string>>(new Set());
 
   // Subscribe to the module-level audit store — survives tab/page switches
-  const storeEntries = useSyncExternalStore(
-    auditStore.subscribe,
-    () => auditStore.forGroup(groupName, formFactor),
+  const [storeEntries, setStoreEntries] = useState(() =>
+    auditStore.forGroup(groupName, formFactor),
   );
+  useEffect(() => {
+    setStoreEntries(auditStore.forGroup(groupName, formFactor));
+    return auditStore.subscribe(() => setStoreEntries(auditStore.forGroup(groupName, formFactor)));
+  }, [groupName, formFactor]);
   const runningUrls = new Map(storeEntries.map((e) => [e.url, e.startedAt]));
 
   // Elapsed timer — re-renders every 500ms while audits are running
