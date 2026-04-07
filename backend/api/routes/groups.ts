@@ -7,6 +7,10 @@ import { getGroupPerformance } from '../../db/queries/groupPerformance';
 import { getGroupSeo } from '../../db/queries/groupSeo';
 import { getGroupsHealth } from '../../db/queries/groupsHealth';
 import { getGroupUptime } from '../../db/queries/groupUptime';
+import {
+  deleteGroupCrawledUrl,
+  getGroupCrawledUrls,
+} from '../../db/queries/groupCrawledUrls';
 import { getGroupLighthouse, insertLighthouseReport } from '../../db/queries/lighthouse';
 import { getGroupAccessibility } from '../../db/queries/visitAccessibility';
 import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks';
@@ -94,6 +98,24 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
             }
           }
         })();
+        return { ok: true };
+      },
+    );
+
+    // GET /groups/:name/crawled-urls
+    app.get<{ Params: { name: string } }>('/groups/:name/crawled-urls', async (request) => {
+      const name = decodeURIComponent(request.params.name);
+      return getGroupCrawledUrls(db, name);
+    });
+
+    // DELETE /groups/:name/crawled-urls  body: { url: string }
+    app.delete<{ Params: { name: string }; Body: { url: string } }>(
+      '/groups/:name/crawled-urls',
+      async (request, reply) => {
+        const name = decodeURIComponent(request.params.name);
+        const { url } = request.body ?? {};
+        if (!url) return reply.code(400).send({ ok: false, error: 'url is required' });
+        await deleteGroupCrawledUrl(db, name, url);
         return { ok: true };
       },
     );

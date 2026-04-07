@@ -1,9 +1,15 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { getGroupLighthouse, triggerGroupLighthouse } from '../../lib/api';
+import {
+  deleteGroupCrawledUrl,
+  getGroupCrawledUrls,
+  getGroupLighthouse,
+  triggerGroupLighthouse,
+} from '../../lib/api';
 import { formatDate, formatMs } from '../../lib/formatters';
 import { queryKeys } from '../../lib/queryKeys';
 import { ExternalLink } from '../ExternalLink';
@@ -73,6 +79,17 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
     refetchInterval: runningUrls.size > 0 ? false : 30_000,
   });
 
+  const { data: crawledUrls = [] } = useQuery({
+    queryKey: queryKeys.groups.crawledUrls(groupName),
+    queryFn: () => getGroupCrawledUrls(groupName),
+  });
+
+  const removeCrawledUrl = useMutation({
+    mutationFn: (url: string) => deleteGroupCrawledUrl(groupName, url),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.groups.crawledUrls(groupName) }),
+    onError: () => toast.error('Failed to remove URL'),
+  });
+
   // Tick elapsed counters for all running audits
   useEffect(() => {
     if (runningUrls.size === 0) {
@@ -129,10 +146,22 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
   };
 
   const auditByUrl = new Map(data.map((d) => [d.url, d]));
-  const allItems =
-    groupUrls.length > 0
-      ? groupUrls.map((url) => auditByUrl.get(url) ?? { url, latestReport: null })
-      : data;
+  const configUrlSet = new Set(groupUrls);
+  const configItems = (groupUrls.length > 0 ? groupUrls : data.map((d) => d.url)).map((url) => ({
+    url,
+    latestReport: auditByUrl.get(url)?.latestReport ?? null,
+    isCrawled: false,
+  }));
+
+  const crawledItems = crawledUrls
+    .filter((c) => !configUrlSet.has(c.url))
+    .map((c) => ({
+      url: c.url,
+      latestReport: auditByUrl.get(c.url)?.latestReport ?? null,
+      isCrawled: true,
+    }));
+
+  const allItems = [...configItems, ...crawledItems];
 
   return (
     <div className="space-y-4">
@@ -178,12 +207,19 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
                 <CardContent className="space-y-4 pt-4">
                   {/* URL + meta + per-URL button */}
                   <div className="flex items-start justify-between gap-2">
-                    <ExternalLink
-                      href={item.url}
-                      className="max-w-xs truncate font-mono text-xs text-muted-foreground"
-                    >
-                      {item.url}
-                    </ExternalLink>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      {item.isCrawled && (
+                        <Badge variant="secondary" className="w-fit text-xs">
+                          Crawled
+                        </Badge>
+                      )}
+                      <ExternalLink
+                        href={item.url}
+                        className="truncate font-mono text-xs text-muted-foreground"
+                      >
+                        {item.url}
+                      </ExternalLink>
+                    </div>
                     <div className="flex shrink-0 items-center gap-2">
                       {isRunning && (
                         <span className="text-xs text-muted-foreground tabular-nums">
@@ -215,6 +251,17 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
                       >
                         {isRunning || isPending ? 'Running…' : 'Run'}
                       </Button>
+                      {item.isCrawled && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                          disabled={removeCrawledUrl.isPending}
+                          onClick={() => removeCrawledUrl.mutate(item.url)}
+                        >
+                          Remove
+                        </Button>
+                      )}
                     </div>
                   </div>
 

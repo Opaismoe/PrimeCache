@@ -2,6 +2,7 @@ import { randomDelay } from '../browser/stealth';
 import { env } from '../config/env';
 import type { WarmGroup } from '../config/urls';
 import type { Db } from '../db/client';
+import { upsertCrawledUrl } from '../db/queries/groupCrawledUrls';
 import { insertLighthouseReport } from '../db/queries/lighthouse';
 import { finalizeRun, insertRun } from '../db/queries/runs';
 import { insertVisitAccessibility } from '../db/queries/visitAccessibility';
@@ -118,6 +119,11 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
         for (const link of result.discoveredLinks) {
           if (!visited.has(link)) queue.push({ url: link, depth: depth + 1 });
         }
+      }
+
+      // Persist crawled (depth > 0) URLs so they can be reused in Lighthouse audits
+      if (group.options.crawl && depth > 0 && result.error === null) {
+        await upsertCrawledUrl(db, group.name, url).catch(() => {});
       }
 
       if (queue.length > 0 && !signal.aborted) {

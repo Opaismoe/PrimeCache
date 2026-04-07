@@ -22,6 +22,7 @@ export const queryKeys = {
     accessibility: (name: string) => ['groups', name, 'accessibility'] as const,
     lighthouse: (name: string, formFactor: 'mobile' | 'desktop' = 'desktop') =>
       ['groups', name, 'lighthouse', formFactor] as const,
+    crawledUrls: (name: string) => ['groups', name, 'crawled-urls'] as const,
   },
   publicStatus: {
     all: () => ['public-status'] as const,
