@@ -152,7 +152,9 @@ export const getGroupLighthouse = (name: string, formFactor: 'mobile' | 'desktop
 export const triggerGroupLighthouse = (
   name: string,
   formFactor: 'mobile' | 'desktop' = 'desktop',
+  url?: string,
 ) =>
   request<{ ok: boolean }>('POST', `/api/groups/${encodeURIComponent(name)}/lighthouse/trigger`, {
     formFactor,
+    ...(url ? { url } : {}),
   });
