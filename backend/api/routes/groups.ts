@@ -81,9 +81,16 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
           request.body?.formFactor === 'mobile' ? 'mobile' : 'desktop';
 
         const targetUrl = request.body?.url;
-        const urls = targetUrl ? group.urls.filter((u) => u === targetUrl) : group.urls;
-        if (urls.length === 0)
-          return reply.code(404).send({ ok: false, error: 'URL not found in group' });
+        let urls: string[];
+        if (targetUrl) {
+          const crawledUrls = await getGroupCrawledUrls(db, name);
+          const allowed = new Set([...group.urls, ...crawledUrls.map((c) => c.url)]);
+          if (!allowed.has(targetUrl))
+            return reply.code(404).send({ ok: false, error: 'URL not found in group' });
+          urls = [targetUrl];
+        } else {
+          urls = group.urls;
+        }
 
         // Run audits in series to avoid 429 from Browserless rate limiting
         (async () => {
