@@ -228,6 +228,7 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
   const pinned = useLocalSet(`overview-pinned:${groupName}`);
   const hidden = useLocalSet(`overview-hidden:${groupName}`);
   const [showHidden, setShowHidden] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   if (!overview) return null;
 
@@ -378,13 +379,23 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
           {/* Per-URL trend tiles */}
           {allUrls.length > 0 && (
             <div>
-              <h4 className="mb-2 text-xs font-medium text-muted-foreground">
-                Load time trend per URL
-              </h4>
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="text-xs font-medium text-muted-foreground">
+                  Load time trend per URL
+                </h4>
+                {pinnedItems.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAll((v) => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    {showAll ? 'Pinned only' : `Show all (${unpinnedVisible.length} more)`}
+                  </button>
+                )}
+              </div>
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {pinnedItems.map(renderTile)}
-                {/* When more than 1 tile is pinned, only show pinned tiles */}
-                {pinnedItems.length <= 1 && unpinnedVisible.map(renderTile)}
+                {(pinnedItems.length <= 1 || showAll) && unpinnedVisible.map(renderTile)}
               </div>
 
               {hiddenItems.length > 0 && (
