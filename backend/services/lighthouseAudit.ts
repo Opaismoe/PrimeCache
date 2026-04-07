@@ -48,7 +48,7 @@ export async function runLighthouseAudit(
   formFactor: 'mobile' | 'desktop' = 'desktop',
 ): Promise<LighthouseResult> {
   const base = lighthouseBaseUrl();
-  const endpoint = `${base}/chromium/performance?token=${env.BROWSERLESS_TOKEN}`;
+  const endpoint = `${base}/chromium/performance?token=${env.BROWSERLESS_TOKEN}&timeout=120000`;
   logger.debug({ url, base, formFactor }, 'running lighthouse audit');
 
   try {
