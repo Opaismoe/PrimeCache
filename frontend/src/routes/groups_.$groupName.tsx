@@ -222,7 +222,7 @@ function GroupDetailPage() {
         </div>
 
         <TabsContent value="overview">
-          <OverviewTab overview={overview} performance={performance} uptime={uptime} />
+          <OverviewTab groupName={groupName} overview={overview} performance={performance} uptime={uptime} />
         </TabsContent>
 
         <TabsContent value="seo">
