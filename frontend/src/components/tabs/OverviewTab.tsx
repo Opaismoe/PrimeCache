@@ -383,7 +383,8 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
               </h4>
               <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                 {pinnedItems.map(renderTile)}
-                {unpinnedVisible.map(renderTile)}
+                {/* When more than 1 tile is pinned, only show pinned tiles */}
+                {pinnedItems.length <= 1 && unpinnedVisible.map(renderTile)}
               </div>
 
               {hiddenItems.length > 0 && (

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,10 @@ import {
   getGroupLighthouse,
   triggerGroupLighthouse,
 } from '../../lib/api';
+import { auditStore } from '../../lib/auditStore';
 import { formatDate, formatMs } from '../../lib/formatters';
 import { queryKeys } from '../../lib/queryKeys';
 import { ExternalLink } from '../ExternalLink';
-
-const AUDIT_DURATION_MS = 90_000;
 
 function ScoreCircle({ label, score }: { label: string; score: number | null }) {
   const color =
@@ -56,6 +55,15 @@ function CardSkeleton() {
   );
 }
 
+/** Indeterminate progress bar — honest about unknown duration */
+function IndeterminateBar() {
+  return (
+    <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+      <div className="animate-lh-scan h-full rounded-full bg-primary" />
+    </div>
+  );
+}
+
 interface Props {
   groupName: string;
   groupUrls: string[];
@@ -64,14 +72,75 @@ interface Props {
 export function LighthouseTab({ groupName, groupUrls }: Props) {
   const queryClient = useQueryClient();
   const [formFactor, setFormFactor] = useState<'mobile' | 'desktop'>('desktop');
-
-  // url -> start timestamp for each in-progress audit
-  const [runningUrls, setRunningUrls] = useState<Map<string, number>>(new Map());
-  // url -> elapsed seconds (updated every 500ms while running)
-  const [elapsed, setElapsed] = useState<Map<string, number>>(new Map());
-  // url -> pending (waiting for API ack before starting timer)
   const [pendingUrls, setPendingUrls] = useState<Set<string>>(new Set());
-  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Subscribe to the module-level audit store — survives tab/page switches
+  const storeEntries = useSyncExternalStore(
+    auditStore.subscribe,
+    () => auditStore.forGroup(groupName, formFactor),
+  );
+  const runningUrls = new Map(storeEntries.map((e) => [e.url, e.startedAt]));
+
+  // Elapsed timer — re-renders every 500ms while audits are running
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (runningUrls.size === 0) return;
+    const id = setInterval(() => setTick((n) => n + 1), 500);
+    return () => clearInterval(id);
+  }, [runningUrls.size]);
+
+  // On mount: dismiss any Sonner toasts that were shown while we were away,
+  // and reconnect the onFinish callbacks so query invalidation still fires
+  useEffect(() => {
+    const entries = auditStore.forGroup(groupName, formFactor);
+    for (const entry of entries) {
+      if (entry.toastShown) {
+        toast.dismiss(`audit:${entry.url}`);
+        auditStore.clearToast(entry.url);
+      }
+      auditStore.setOnFinish(entry.url, (url) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
+        });
+        toast.success('Lighthouse audit complete', { description: url.split('/').pop() });
+      });
+    }
+  }, [groupName, formFactor, queryClient]);
+
+  // On unmount: show a Sonner loading toast for any audit still in flight
+  useEffect(() => {
+    return () => {
+      for (const entry of auditStore.forGroup(groupName, formFactor)) {
+        if (!entry.toastShown) {
+          auditStore.markToastShown(entry.url);
+          toast.loading('Lighthouse audit running…', {
+            id: `audit:${entry.url}`,
+            description: entry.url.split('/').pop(),
+            duration: Number.POSITIVE_INFINITY,
+          });
+          // Replace onFinish so the toast gets dismissed on completion
+          auditStore.setOnFinish(entry.url, (url) => {
+            toast.dismiss(`audit:${url}`);
+            toast.success('Lighthouse audit complete', { description: url.split('/').pop() });
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
+            });
+          });
+        }
+      }
+    };
+  }, [groupName, formFactor, queryClient]);
+
+  // Poll every 5s while audits are in flight
+  useEffect(() => {
+    if (runningUrls.size === 0) return;
+    const poll = setInterval(() => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
+      });
+    }, 5_000);
+    return () => clearInterval(poll);
+  }, [runningUrls.size, groupName, formFactor, queryClient]);
 
   const { data = [], isLoading } = useQuery({
     queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
@@ -91,60 +160,18 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
     onError: () => toast.error('Failed to remove URL'),
   });
 
-  // Tick elapsed counters for all running audits
-  useEffect(() => {
-    if (runningUrls.size === 0) {
-      setElapsed(new Map());
-      return;
-    }
-    const tick = setInterval(() => {
-      const now = Date.now();
-      setElapsed(
-        new Map([...runningUrls].map(([url, start]) => [url, Math.floor((now - start) / 1000)])),
-      );
-    }, 500);
-    return () => clearInterval(tick);
-  }, [runningUrls]);
-
-  // Poll every 5s while any audit is in flight so results surface as they arrive
-  useEffect(() => {
-    if (runningUrls.size === 0) return;
-    const poll = setInterval(() => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
-      });
-    }, 5_000);
-    return () => clearInterval(poll);
-  }, [runningUrls.size, groupName, formFactor, queryClient]);
-
-  // Clear all timeouts on unmount
-  useEffect(() => {
-    const ref = timeoutsRef.current;
-    return () => {
-      for (const t of ref.values()) clearTimeout(t);
-    };
-  }, []);
-
-  const finishUrl = (url: string) => {
-    setRunningUrls((prev) => {
-      const next = new Map(prev);
-      next.delete(url);
-      return next;
-    });
-    timeoutsRef.current.delete(url);
-    queryClient.invalidateQueries({ queryKey: queryKeys.groups.lighthouse(groupName, formFactor) });
-  };
-
   const runUrl = async (url: string) => {
     setPendingUrls((prev) => new Set(prev).add(url));
     try {
       await triggerGroupLighthouse(groupName, formFactor, url);
-      setRunningUrls((prev) => new Map(prev).set(url, Date.now()));
-      const t = setTimeout(() => {
-        finishUrl(url);
-        toast.success('Lighthouse audit complete');
-      }, AUDIT_DURATION_MS);
-      timeoutsRef.current.set(url, t);
+      auditStore.start(url, groupName, formFactor, (finishedUrl) => {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
+        });
+        toast.success('Lighthouse audit complete', {
+          description: finishedUrl.split('/').pop(),
+        });
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to trigger Lighthouse audit');
     } finally {
@@ -163,7 +190,6 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
     latestReport: auditByUrl.get(url)?.latestReport ?? null,
     isCrawled: false,
   }));
-
   const crawledItems = crawledUrls
     .filter((c) => !configUrlSet.has(c.url))
     .map((c) => ({
@@ -171,7 +197,6 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
       latestReport: auditByUrl.get(c.url)?.latestReport ?? null,
       isCrawled: true,
     }));
-
   const allItems = [...configItems, ...crawledItems];
 
   return (
@@ -208,10 +233,8 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
             const report = item.latestReport;
             const isRunning = runningUrls.has(item.url);
             const isPending = pendingUrls.has(item.url);
-            const urlElapsed = elapsed.get(item.url) ?? 0;
-            const progress = isRunning
-              ? Math.min(95, (urlElapsed / (AUDIT_DURATION_MS / 1000)) * 100)
-              : 0;
+            const startedAt = runningUrls.get(item.url);
+            const urlElapsed = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0;
 
             return (
               <Card key={item.url}>
@@ -276,15 +299,8 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
                     </div>
                   </div>
 
-                  {/* Progress bar */}
-                  {isRunning && (
-                    <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full bg-primary transition-all duration-500 ease-linear"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  )}
+                  {/* Indeterminate progress bar — shown while auditing */}
+                  {isRunning && <IndeterminateBar />}
 
                   {/* Skeleton while auditing with no result yet */}
                   {!report && isRunning && <CardSkeleton />}
