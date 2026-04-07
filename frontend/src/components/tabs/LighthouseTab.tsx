@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,8 @@ import { getGroupLighthouse, triggerGroupLighthouse } from '../../lib/api';
 import { formatDate, formatMs } from '../../lib/formatters';
 import { queryKeys } from '../../lib/queryKeys';
 import { ExternalLink } from '../ExternalLink';
+
+const AUDIT_DURATION_MS = 90_000;
 
 function ScoreCircle({ label, score }: { label: string; score: number | null }) {
   const color =
@@ -56,136 +58,125 @@ interface Props {
 export function LighthouseTab({ groupName, groupUrls }: Props) {
   const queryClient = useQueryClient();
   const [formFactor, setFormFactor] = useState<'mobile' | 'desktop'>('desktop');
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [elapsed, setElapsed] = useState(0);
 
-  const AUDIT_DURATION_MS = 90_000;
+  // url -> start timestamp for each in-progress audit
+  const [runningUrls, setRunningUrls] = useState<Map<string, number>>(new Map());
+  // url -> elapsed seconds (updated every 500ms while running)
+  const [elapsed, setElapsed] = useState<Map<string, number>>(new Map());
+  // url -> pending (waiting for API ack before starting timer)
+  const [pendingUrls, setPendingUrls] = useState<Set<string>>(new Set());
+  const timeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const { data = [], isLoading } = useQuery({
     queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
     queryFn: () => getGroupLighthouse(groupName, formFactor),
-    refetchInterval: running ? false : 30_000,
+    refetchInterval: runningUrls.size > 0 ? false : 30_000,
   });
 
-  // Progress timer while running
+  // Tick elapsed counters for all running audits
   useEffect(() => {
-    if (!running) {
-      setProgress(0);
-      setElapsed(0);
+    if (runningUrls.size === 0) {
+      setElapsed(new Map());
       return;
     }
-    const start = Date.now();
     const tick = setInterval(() => {
-      const ms = Date.now() - start;
-      setElapsed(Math.floor(ms / 1000));
-      setProgress(Math.min(95, (ms / AUDIT_DURATION_MS) * 100));
+      const now = Date.now();
+      setElapsed(
+        new Map([...runningUrls].map(([url, start]) => [url, Math.floor((now - start) / 1000)])),
+      );
     }, 500);
     return () => clearInterval(tick);
-  }, [running]);
+  }, [runningUrls]);
 
-  // Poll every 5s during run to surface results as they arrive
+  // Poll every 5s while any audit is in flight so results surface as they arrive
   useEffect(() => {
-    if (!running) return;
+    if (runningUrls.size === 0) return;
     const poll = setInterval(() => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
       });
     }, 5_000);
     return () => clearInterval(poll);
-  }, [running, groupName, formFactor, queryClient]);
+  }, [runningUrls.size, groupName, formFactor, queryClient]);
 
-  const trigger = useMutation({
-    mutationFn: () => triggerGroupLighthouse(groupName, formFactor),
-    onSuccess: () => {
-      setRunning(true);
-      setTimeout(() => {
-        setRunning(false);
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.groups.lighthouse(groupName, formFactor),
-        });
+  // Clear all timeouts on unmount
+  useEffect(() => {
+    const ref = timeoutsRef.current;
+    return () => { for (const t of ref.values()) clearTimeout(t); };
+  }, []);
+
+  const finishUrl = (url: string) => {
+    setRunningUrls((prev) => { const next = new Map(prev); next.delete(url); return next; });
+    timeoutsRef.current.delete(url);
+    queryClient.invalidateQueries({ queryKey: queryKeys.groups.lighthouse(groupName, formFactor) });
+  };
+
+  const runUrl = async (url: string) => {
+    setPendingUrls((prev) => new Set(prev).add(url));
+    try {
+      await triggerGroupLighthouse(groupName, formFactor, url);
+      setRunningUrls((prev) => new Map(prev).set(url, Date.now()));
+      const t = setTimeout(() => {
+        finishUrl(url);
         toast.success('Lighthouse audit complete');
       }, AUDIT_DURATION_MS);
-    },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : 'Failed to trigger Lighthouse audit'),
-  });
+      timeoutsRef.current.set(url, t);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to trigger Lighthouse audit');
+    } finally {
+      setPendingUrls((prev) => { const next = new Set(prev); next.delete(url); return next; });
+    }
+  };
 
-  // Show all group URLs — merge config list with audit results
   const auditByUrl = new Map(data.map((d) => [d.url, d]));
   const allItems =
     groupUrls.length > 0
       ? groupUrls.map((url) => auditByUrl.get(url) ?? { url, latestReport: null })
       : data;
 
-  const hasAnyData = data.some((d) => d.latestReport !== null);
-  const urlCount = allItems.length;
-
   return (
     <div className="space-y-4">
-      {/* Header: form factor toggle + run button */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {/* Mobile / Desktop toggle */}
-          <div className="flex rounded-md border border-border text-xs font-medium overflow-hidden">
-            {(['desktop', 'mobile'] as const).map((ff) => (
-              <button
-                key={ff}
-                type="button"
-                onClick={() => setFormFactor(ff)}
-                className={`px-3 py-1.5 transition-colors capitalize ${
-                  formFactor === ff
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {ff}
-              </button>
-            ))}
-          </div>
-
-          {running ? (
-            <p className="text-sm text-muted-foreground">
-              Auditing {urlCount} URL{urlCount !== 1 ? 's' : ''}…{' '}
-              <span className="tabular-nums">{elapsed}s</span> elapsed
-            </p>
-          ) : !hasAnyData && !isLoading ? (
-            <p className="text-sm text-muted-foreground">
-              No {formFactor} audits yet. Trigger one manually or enable{' '}
-              <code>checkLighthouse</code> in Settings.
-            </p>
-          ) : null}
+      {/* Form factor toggle */}
+      <div className="flex items-center gap-3">
+        <div className="flex rounded-md border border-border text-xs font-medium overflow-hidden">
+          {(['desktop', 'mobile'] as const).map((ff) => (
+            <button
+              key={ff}
+              type="button"
+              onClick={() => setFormFactor(ff)}
+              className={`px-3 py-1.5 transition-colors capitalize ${
+                formFactor === ff
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              {ff}
+            </button>
+          ))}
         </div>
-
-        <Button
-          onClick={() => trigger.mutate()}
-          disabled={running || trigger.isPending}
-          size="sm"
-          variant="outline"
-        >
-          {running || trigger.isPending ? 'Running…' : 'Run audit'}
-        </Button>
+        {runningUrls.size > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {runningUrls.size} audit{runningUrls.size !== 1 ? 's' : ''} running…
+          </p>
+        )}
       </div>
 
-      {/* Progress bar */}
-      {running && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full bg-primary transition-all duration-500 ease-linear"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      )}
-
-      {/* Cards */}
-      {isLoading && !running ? null : allItems.length > 0 ? (
+      {/* Per-URL cards */}
+      {isLoading ? null : allItems.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
           {allItems.map((item) => {
             const report = item.latestReport;
+            const isRunning = runningUrls.has(item.url);
+            const isPending = pendingUrls.has(item.url);
+            const urlElapsed = elapsed.get(item.url) ?? 0;
+            const progress = isRunning
+              ? Math.min(95, (urlElapsed / (AUDIT_DURATION_MS / 1000)) * 100)
+              : 0;
+
             return (
               <Card key={item.url}>
                 <CardContent className="space-y-4 pt-4">
-                  {/* URL + meta */}
+                  {/* URL + meta + per-URL button */}
                   <div className="flex items-start justify-between gap-2">
                     <ExternalLink
                       href={item.url}
@@ -194,12 +185,12 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
                       {item.url}
                     </ExternalLink>
                     <div className="flex shrink-0 items-center gap-2">
-                      {running && (
-                        <span className="animate-pulse text-xs text-muted-foreground">
-                          {report ? 'refreshing…' : 'auditing…'}
+                      {isRunning && (
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {urlElapsed}s
                         </span>
                       )}
-                      {report && !running && (
+                      {!isRunning && report && (
                         <>
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -215,14 +206,33 @@ export function LighthouseTab({ groupName, groupUrls }: Props) {
                           </span>
                         </>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-xs"
+                        disabled={isRunning || isPending}
+                        onClick={() => runUrl(item.url)}
+                      >
+                        {isRunning || isPending ? 'Running…' : 'Run'}
+                      </Button>
                     </div>
                   </div>
 
-                  {/* Skeleton while auditing and no result yet */}
-                  {!report && running && <CardSkeleton />}
+                  {/* Progress bar */}
+                  {isRunning && (
+                    <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full bg-primary transition-all duration-500 ease-linear"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Skeleton while auditing with no result yet */}
+                  {!report && isRunning && <CardSkeleton />}
 
                   {/* No data, not running */}
-                  {!report && !running && (
+                  {!report && !isRunning && (
                     <p className="text-xs text-muted-foreground">No audit yet for this URL.</p>
                   )}
 

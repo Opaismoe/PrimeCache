@@ -67,8 +67,8 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
       },
     );
 
-    // POST /groups/:name/lighthouse/trigger  body: { formFactor?: 'desktop'|'mobile' }
-    app.post<{ Params: { name: string }; Body: { formFactor?: string } }>(
+    // POST /groups/:name/lighthouse/trigger  body: { formFactor?: 'desktop'|'mobile', url?: string }
+    app.post<{ Params: { name: string }; Body: { formFactor?: string; url?: string } }>(
       '/groups/:name/lighthouse/trigger',
       async (request, reply) => {
         const name = decodeURIComponent(request.params.name);
@@ -79,9 +79,13 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
         const ff: 'mobile' | 'desktop' =
           request.body?.formFactor === 'mobile' ? 'mobile' : 'desktop';
 
+        const targetUrl = request.body?.url;
+        const urls = targetUrl ? group.urls.filter((u) => u === targetUrl) : group.urls;
+        if (urls.length === 0) return reply.code(404).send({ ok: false, error: 'URL not found in group' });
+
         // Run audits in series to avoid 429 from Browserless rate limiting
         (async () => {
-          for (const url of group.urls) {
+          for (const url of urls) {
             try {
               const result = await runLighthouseAudit(url, ff);
               await insertLighthouseReport(db, name, 'manual', result);
