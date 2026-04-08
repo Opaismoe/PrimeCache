@@ -46,10 +46,25 @@ function auditNum(audits: Record<string, unknown>, key: string): number | null {
 export async function runLighthouseAudit(
   url: string,
   formFactor: 'mobile' | 'desktop' = 'desktop',
+  cookies?: Array<{ name: string; value: string; domain: string; path: string }>,
 ): Promise<LighthouseResult> {
   const base = lighthouseBaseUrl();
   const endpoint = `${base}/chromium/performance?token=${env.BROWSERLESS_TOKEN}&timeout=120000`;
-  logger.debug({ url, base, formFactor }, 'running lighthouse audit');
+  logger.debug(
+    { url, base, formFactor, cookieCount: cookies?.length ?? 0 },
+    'running lighthouse audit',
+  );
+
+  // Forward cookies from the Playwright warm visit so CF clearance (cf_clearance) transfers.
+  // Also add realistic browser headers to reduce bot detection signal.
+  const cookieHeader = cookies?.length
+    ? cookies.map((c) => `${c.name}=${c.value}`).join('; ')
+    : undefined;
+  const extraHeaders: Record<string, string> = {
+    'Accept-Language': 'en-US,en;q=0.9,nl;q=0.8',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  };
+  if (cookieHeader) extraHeaders.Cookie = cookieHeader;
 
   try {
     const res = await fetch(endpoint, {
@@ -57,10 +72,12 @@ export async function runLighthouseAudit(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         url,
+        launch: { stealth: true },
         config: {
           extends: 'lighthouse:default',
           settings: {
             onlyCategories: ['performance', 'accessibility', 'seo', 'best-practices'],
+            extraHeaders,
             ...(formFactor === 'desktop'
               ? {
                   formFactor: 'desktop',
@@ -112,9 +129,9 @@ export async function runLighthouseAudit(
     return {
       url,
       formFactor,
-      performanceScore: scoreToInt(categories['performance']?.score),
-      accessibilityScore: scoreToInt(categories['accessibility']?.score),
-      seoScore: scoreToInt(categories['seo']?.score),
+      performanceScore: scoreToInt(categories.performance?.score),
+      accessibilityScore: scoreToInt(categories.accessibility?.score),
+      seoScore: scoreToInt(categories.seo?.score),
       bestPracticesScore: scoreToInt(categories['best-practices']?.score),
       lcpMs: auditNum(audits, 'largest-contentful-paint'),
       fcpMs: auditNum(audits, 'first-contentful-paint'),

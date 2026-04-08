@@ -33,6 +33,7 @@ vi.mock('./visitor', () => ({
     error: null,
     visitedAt: new Date(),
     discoveredLinks: [],
+    extractedCookies: [],
   }),
 }));
 
@@ -110,6 +111,7 @@ describe('runGroup', () => {
         error: null,
         visitedAt: new Date(),
         discoveredLinks: [],
+        extractedCookies: [],
       })
       .mockResolvedValueOnce({
         url: 'https://b.com/',
@@ -122,6 +124,7 @@ describe('runGroup', () => {
         error: 'Timeout',
         visitedAt: new Date(),
         discoveredLinks: [],
+        extractedCookies: [],
       });
 
     const { runGroup } = await import('./runner');
@@ -150,6 +153,7 @@ describe('runGroup', () => {
       error: 'Timeout',
       visitedAt: new Date(),
       discoveredLinks: [],
+      extractedCookies: [],
     });
 
     const { runGroup } = await import('./runner');
@@ -191,6 +195,7 @@ describe('runGroup', () => {
         url === 'https://example.com/'
           ? ['https://example.com/about', 'https://example.com/contact']
           : [],
+      extractedCookies: [],
     }));
 
     const { runGroup } = await import('./runner');
@@ -222,6 +227,7 @@ describe('runGroup', () => {
       error: null,
       visitedAt: new Date(),
       discoveredLinks: ['https://example.com/'],
+      extractedCookies: [],
     });
 
     const { runGroup } = await import('./runner');
@@ -254,6 +260,7 @@ describe('runGroup', () => {
           : url === 'https://example.com/depth1'
             ? ['https://example.com/depth2']
             : [],
+      extractedCookies: [],
     }));
 
     const { runGroup } = await import('./runner');
@@ -285,6 +292,7 @@ describe('runGroup', () => {
           error: 'Timeout',
           visitedAt: new Date(),
           discoveredLinks: [],
+          extractedCookies: [],
         })
         .mockResolvedValueOnce({
           url: 'https://a.com/',
@@ -297,6 +305,7 @@ describe('runGroup', () => {
           error: null,
           visitedAt: new Date(),
           discoveredLinks: [],
+          extractedCookies: [],
         });
 
       const { runGroup } = await import('./runner');
@@ -326,6 +335,7 @@ describe('runGroup', () => {
         error: 'Timeout',
         visitedAt: new Date(),
         discoveredLinks: [],
+        extractedCookies: [],
       });
 
       const { runGroup } = await import('./runner');
@@ -356,6 +366,7 @@ describe('runGroup', () => {
           error: 'Timeout',
           visitedAt: new Date(),
           discoveredLinks: [],
+          extractedCookies: [],
         })
         .mockResolvedValueOnce({
           url: 'https://a.com/',
@@ -368,6 +379,7 @@ describe('runGroup', () => {
           error: null,
           visitedAt: new Date(),
           discoveredLinks: [],
+          extractedCookies: [],
         });
 
       const { runGroup } = await import('./runner');
@@ -394,6 +406,7 @@ describe('runGroup', () => {
         error: null,
         visitedAt: new Date(),
         discoveredLinks: [],
+        extractedCookies: [],
       });
       const { runGroup } = await import('./runner');
       const runId = await runGroup(db, {
@@ -420,6 +433,7 @@ describe('runGroup', () => {
           error: 'Timeout',
           visitedAt: new Date(),
           discoveredLinks: [],
+          extractedCookies: [],
         })
         .mockResolvedValueOnce({
           url: 'https://a.com/',
@@ -432,6 +446,7 @@ describe('runGroup', () => {
           error: null,
           visitedAt: new Date(),
           discoveredLinks: [],
+          extractedCookies: [],
         });
 
       const { runGroup } = await import('./runner');
@@ -458,6 +473,7 @@ describe('runGroup', () => {
         error: 'Timeout',
         visitedAt: new Date(),
         discoveredLinks: [],
+        extractedCookies: [],
       });
 
       const { runGroup } = await import('./runner');
@@ -493,6 +509,7 @@ describe('runGroup', () => {
                   error: null,
                   visitedAt: new Date(),
                   discoveredLinks: [],
+                  extractedCookies: [],
                 }),
               61 * 60 * 1000,
             ),
