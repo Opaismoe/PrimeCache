@@ -210,7 +210,7 @@ function GroupDetailPage() {
             <TabsTrigger value="links">Links</TabsTrigger>
             <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
             <TabsTrigger value="lighthouse">Lighthouse</TabsTrigger>
-            <TabsTrigger value="history">Cache runs</TabsTrigger>
+            <TabsTrigger value="history">Runs</TabsTrigger>
             <TabsTrigger value="settings">Config</TabsTrigger>
           </TabsList>
           {['seo', 'links'].includes(activeTab) && (

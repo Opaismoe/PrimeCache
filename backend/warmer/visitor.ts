@@ -102,6 +102,8 @@ export interface VisitResult {
   screenshotBase64: string | null;
   brokenLinks: BrokenLink[];
   accessibility: AccessibilitySnapshot | null;
+  /** Cookies collected after the visit — used to prime Lighthouse so CF clearance transfers */
+  extractedCookies: Array<{ name: string; value: string; domain: string; path: string }>;
 }
 
 export async function visitUrl(url: string, options: WarmGroup['options']): Promise<VisitResult> {
@@ -402,6 +404,11 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       }
     }
 
+    const extractedCookies = await context
+      .cookies()
+      .then((cs) => cs.map(({ name, value, domain, path }) => ({ name, value, domain, path })))
+      .catch(() => []);
+
     return {
       url,
       finalUrl,
@@ -420,6 +427,7 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       screenshotBase64,
       brokenLinks,
       accessibility,
+      extractedCookies,
     };
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
@@ -442,6 +450,7 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       screenshotBase64: null,
       brokenLinks: [],
       accessibility: null,
+      extractedCookies: [],
     };
   } finally {
     await context?.close();
