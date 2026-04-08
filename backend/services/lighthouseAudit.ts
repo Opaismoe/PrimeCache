@@ -72,7 +72,6 @@ export async function runLighthouseAudit(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         url,
-        launch: { stealth: true },
         config: {
           extends: 'lighthouse:default',
           settings: {
