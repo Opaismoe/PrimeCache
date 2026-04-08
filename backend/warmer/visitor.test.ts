@@ -82,6 +82,7 @@ function makeMockContext(page: Page): BrowserContext {
   return {
     newPage: vi.fn().mockResolvedValue(page),
     close: vi.fn().mockResolvedValue(undefined),
+    cookies: vi.fn().mockResolvedValue([]),
   } as unknown as BrowserContext;
 }
 

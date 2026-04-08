@@ -48,6 +48,10 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
   let successCount = 0;
   let failureCount = 0;
   const visited = new Set<string>();
+  const cookiesByUrl = new Map<
+    string,
+    Array<{ name: string; value: string; domain: string; path: string }>
+  >();
   const queue: Array<{ url: string; depth: number }> = group.urls.map((url) => ({ url, depth: 0 }));
   const maxDepth = group.options.crawl ? (group.options.crawl_depth ?? 0) : 0;
 
@@ -112,6 +116,8 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
           collectedAt: new Date(),
         }).catch(() => {});
 
+      if (result.extractedCookies.length > 0) cookiesByUrl.set(url, result.extractedCookies);
+
       if (result.error === null) successCount++;
       else failureCount++;
 
@@ -155,7 +161,11 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
     (async () => {
       for (const visitedUrl of uniqueUrls) {
         try {
-          const result = await runLighthouseAudit(visitedUrl, 'desktop');
+          const result = await runLighthouseAudit(
+            visitedUrl,
+            'desktop',
+            cookiesByUrl.get(visitedUrl),
+          );
           await insertLighthouseReport(db, group.name, 'schedule', result);
         } catch {
           // fire-and-forget, never crash the runner
