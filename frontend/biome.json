@@ -18,11 +18,13 @@
     {
       "includes": ["**/routeTree.gen.ts"],
       "linter": {
-        "rules": {
-          "suspicious": {
-            "noExplicitAny": "off"
-          }
-        }
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      },
+      "assist": {
+        "enabled": false
       }
     }
   ]

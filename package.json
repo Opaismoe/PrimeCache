@@ -1,7 +1,7 @@
 {
   "name": "primecache",
   "private": true,
-  "packageManager": "pnpm@10.32.0",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "pnpm --filter primecache-backend dev",
     "build": "pnpm --filter primecache-backend build && pnpm --filter primecache-frontend build",
