@@ -109,6 +109,7 @@ options:
   waitForSelector: "main"     # wait for CSS selector before measuring
   crawl: true                 # BFS crawl — discover and visit internal links
   crawl_depth: 2              # required when crawl: true; max 10
+  crawl_timeout_ms: 3600000   # max ms the entire run may take before auto-cancel (default 3600000 = 1h; min 60000)
   userAgent: "MyBot/1.0"      # override the rotating user agent for this group
 ```
 

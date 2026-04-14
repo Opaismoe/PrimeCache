@@ -43,6 +43,7 @@ const GroupOptionsSchema = z
     checkAccessibility: z.boolean().default(false),
     checkLighthouse: z.boolean().default(false),
     retryCount: z.number().int().min(0).max(10).default(3),
+    crawl_timeout_ms: z.number().int().min(60_000).default(3_600_000),
   })
   .refine((opts) => !opts.crawl || opts.crawl_depth !== undefined, {
     message: 'crawl_depth is required when crawl is true',

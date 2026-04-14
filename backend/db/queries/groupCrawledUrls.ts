@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { Db } from '../client';
 import { group_crawled_urls } from '../schema';
 

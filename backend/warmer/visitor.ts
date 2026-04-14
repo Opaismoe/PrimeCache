@@ -106,11 +106,23 @@ export interface VisitResult {
   extractedCookies: Array<{ name: string; value: string; domain: string; path: string }>;
 }
 
-export async function visitUrl(url: string, options: WarmGroup['options']): Promise<VisitResult> {
+export async function visitUrl(
+  url: string,
+  options: WarmGroup['options'],
+  signal?: AbortSignal,
+): Promise<VisitResult> {
   const start = Date.now();
   let context: Awaited<ReturnType<typeof createContext>> | null = null;
+  // Close the browser context immediately when the run is cancelled so all
+  // in-flight Playwright calls (page.goto, evaluate, …) throw right away.
+  const onAbort = () => {
+    context?.close().catch(() => {});
+  };
+  signal?.addEventListener('abort', onAbort, { once: true });
 
   try {
+    if (signal?.aborted) throw new Error('run cancelled');
+
     const browser = await getBrowser(options.stealth);
     context = await createContext(browser, options.userAgent, options.basicAuth);
     const page = await context.newPage();
@@ -453,6 +465,7 @@ export async function visitUrl(url: string, options: WarmGroup['options']): Prom
       extractedCookies: [],
     };
   } finally {
+    signal?.removeEventListener('abort', onAbort);
     await context?.close();
   }
 }

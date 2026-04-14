@@ -37,13 +37,11 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
   const log = logger.child({ runId, group: group.name });
   log.info({ totalUrls: group.urls.length }, 'warm run started');
 
-  const timeoutId = setTimeout(
-    () => {
-      log.warn({ runId }, 'run exceeded 60-minute timeout — auto-cancelling');
-      cancelRun(runId);
-    },
-    60 * 60 * 1000,
-  );
+  const runTimeoutMs = group.options.crawl_timeout_ms;
+  const timeoutId = setTimeout(() => {
+    log.warn({ runId, runTimeoutMs }, 'run exceeded timeout — auto-cancelling');
+    cancelRun(runId);
+  }, runTimeoutMs);
 
   let successCount = 0;
   let failureCount = 0;
@@ -69,7 +67,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
       visited.add(url);
 
       log.info({ url, depth }, 'visiting');
-      let result = await visitUrl(url, group.options);
+      let result = await visitUrl(url, group.options, signal);
       let usedRetries = 0;
 
       for (
@@ -82,7 +80,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
           'visit failed — retrying',
         );
         await randomDelay(1000, 2000);
-        result = await visitUrl(url, group.options);
+        result = await visitUrl(url, group.options, signal);
         usedRetries = attempt;
       }
 
