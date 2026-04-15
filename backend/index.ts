@@ -18,7 +18,7 @@ async function main() {
   const fs = await import('node:fs/promises');
   try {
     const files = await fs.readdir(migrationsPath);
-    const sqlFiles = files.filter(f => f.endsWith('.sql')).sort();
+    const sqlFiles = files.filter((f) => f.endsWith('.sql')).sort();
     logger.info({ sqlFiles, count: sqlFiles.length }, 'found migration files');
   } catch (err) {
     logger.warn({ err }, 'failed to list migration files');

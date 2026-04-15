@@ -43,6 +43,10 @@ describe('boot sequence', () => {
     });
 
     await import('./index');
+    // Wait for the async main() function to execute
+    await vi.waitFor(() => {
+      expect(order.length).toBeGreaterThan(0);
+    });
     expect(order.indexOf('migrate')).toBeLessThan(order.indexOf('listen'));
   });
 });
