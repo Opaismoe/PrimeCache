@@ -27,6 +27,15 @@ vi.mock('../db/queries/runs', () => ({
   deleteRuns: vi.fn().mockResolvedValue(3),
   renameGroup: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('../db/queries/webhookTokens', () => ({
+  listWebhookTokens: vi.fn().mockResolvedValue([]),
+  createWebhookToken: vi.fn().mockResolvedValue({}),
+  deleteWebhookToken: vi.fn().mockResolvedValue(true),
+  setWebhookTokenActive: vi.fn().mockResolvedValue(true),
+  findWebhookToken: vi.fn().mockResolvedValue(null),
+  touchWebhookToken: vi.fn().mockResolvedValue(undefined),
+  renameGroupWebhookTokens: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('../warmer/registry', () => ({
   cancelRun: vi.fn().mockReturnValue(true),
 }));
