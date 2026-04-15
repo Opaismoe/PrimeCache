@@ -14,6 +14,8 @@ import type {
   Run,
   RunDetail,
   Stats,
+  WebhookToken,
+  WebhookTokenCreated,
 } from './types';
 
 const API_KEY_STORAGE = 'primecache-api-key';
@@ -169,3 +171,21 @@ export const triggerGroupLighthouse = (
     formFactor,
     ...(url ? { url } : {}),
   });
+
+export const getWebhookTokens = (groupName: string) =>
+  request<WebhookToken[]>('GET', `/api/groups/${encodeURIComponent(groupName)}/webhooks`);
+
+export const createWebhookToken = (groupName: string, description?: string) =>
+  request<WebhookTokenCreated>('POST', `/api/groups/${encodeURIComponent(groupName)}/webhooks`, {
+    description,
+  });
+
+export const deleteWebhookToken = (groupName: string, id: number) =>
+  request<{ deleted: boolean }>('DELETE', `/api/groups/${encodeURIComponent(groupName)}/webhooks/${id}`);
+
+export const setWebhookTokenActive = (groupName: string, id: number, active: boolean) =>
+  request<{ id: number; active: boolean }>(
+    'PATCH',
+    `/api/groups/${encodeURIComponent(groupName)}/webhooks/${id}`,
+    { active },
+  );

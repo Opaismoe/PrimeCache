@@ -21,6 +21,7 @@ A self-hosted website monitoring and cache-warming service. PrimeCache visits co
 - Configurable retry logic per URL (0–10 retries)
 - Live-reloads `config.yaml` without restarting the process
 - REST API for on-demand triggering, run history, analytics, and config management
+- Per-group inbound webhook URLs — trigger a run from any CMS publish hook with no extra headers
 - Public status page endpoint — embeddable on external sites, no API key required
 - React dashboard with performance trends, uptime, SEO scoring, Core Web Vitals, and CSV exports
 
@@ -122,6 +123,7 @@ A tabbed view per group with six sections:
 | **SEO** | SEO score (0–100) per URL with detected issues, title / meta description / H1 / canonical, last 5 snapshots, change detection |
 | **Core Web Vitals** | LCP, FCP, CLS, INP at P75 percentile per URL with good/needs-improvement/poor badges and trend charts |
 | **Broken Links** | Broken URLs with HTTP status code, error message, occurrence count, and last-seen timestamp |
+| **Webhooks** | Per-group inbound webhook URLs. Create tokens (with optional description), copy the trigger URL, enable/disable individual tokens, and track last-used timestamp |
 
 Performance, Uptime, SEO, and Broken Links tabs all support CSV export.
 
@@ -177,6 +179,7 @@ All endpoints except `GET /health`, `GET /api/public/status`, and `POST /api/aut
 | POST | `/api/trigger` | **Synchronous** — runs group, blocks until done, returns `{ runId }` |
 | POST | `/api/trigger/async` | **Async** — fires run, returns `{ runId }` immediately |
 | POST | `/webhook/warm` | **Async webhook** — `{ "group": "<name>" }`, use `"all"` for every group |
+| POST | `/webhook/trigger/:token` | **Inbound webhook** — no auth required; token in URL is the credential. Fires an async run for the token's group |
 | POST | `/api/runs/:id/cancel` | Cancel a running execution |
 | DELETE | `/api/runs` | Clear run history (`?group=<name>` to scope to one group) |
 | GET | `/api/config` | Current loaded config |
@@ -189,6 +192,10 @@ All endpoints except `GET /health`, `GET /api/public/status`, and `POST /api/aut
 | GET | `/api/groups/:name/broken-links` | Broken links discovered during visits |
 | GET | `/api/groups/:name/export` | CSV export (`?tab=performance\|uptime\|seo\|links`) |
 | GET | `/api/stats` | Global stats: run status breakdown, visits per day per group |
+| GET | `/api/groups/:name/webhooks` | List webhook tokens for a group (no token values returned) |
+| POST | `/api/groups/:name/webhooks` | Create a webhook token — body `{ description? }`. Token value returned once |
+| DELETE | `/api/groups/:name/webhooks/:id` | Delete a webhook token |
+| PATCH | `/api/groups/:name/webhooks/:id` | Enable or disable a token — body `{ active: boolean }` |
 
 ---
 

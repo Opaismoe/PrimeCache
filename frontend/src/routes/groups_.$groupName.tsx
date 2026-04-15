@@ -23,6 +23,7 @@ import { LighthouseTab } from '../components/tabs/LighthouseTab';
 import { LinksTab } from '../components/tabs/LinksTab';
 import { OverviewTab } from '../components/tabs/OverviewTab';
 import { SeoTab } from '../components/tabs/SeoTab';
+import { WebhooksTab } from '../components/tabs/WebhooksTab';
 import {
   getApiKey,
   getConfig,
@@ -211,6 +212,7 @@ function GroupDetailPage() {
             <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
             <TabsTrigger value="lighthouse">Lighthouse</TabsTrigger>
             <TabsTrigger value="history">Runs</TabsTrigger>
+            <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
             <TabsTrigger value="settings">Config</TabsTrigger>
           </TabsList>
           {['seo', 'links'].includes(activeTab) && (
@@ -340,6 +342,10 @@ function GroupDetailPage() {
               </div>
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value="webhooks">
+          <WebhooksTab groupName={groupName} />
         </TabsContent>
 
         <TabsContent value="settings">

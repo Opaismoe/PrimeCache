@@ -6,6 +6,7 @@ import { env } from '../../config/env';
 import { ConfigSchema } from '../../config/urls';
 import type { Db } from '../../db/client';
 import { renameGroup } from '../../db/queries/runs';
+import { renameGroupWebhookTokens } from '../../db/queries/webhookTokens';
 
 const RenameSchema = z.array(z.object({ from: z.string(), to: z.string() })).optional();
 
@@ -28,7 +29,7 @@ export function putConfigRoute(db: Db): FastifyPluginAsync {
       }
 
       for (const { from, to } of renamesResult.data ?? []) {
-        await renameGroup(db, from, to);
+        await Promise.all([renameGroup(db, from, to), renameGroupWebhookTokens(db, from, to)]);
       }
 
       const yamlContent = yaml.dump(configResult.data);

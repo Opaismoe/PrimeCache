@@ -136,6 +136,16 @@ export const group_crawled_urls = pgTable('group_crawled_urls', {
   first_discovered_at: timestamp('first_discovered_at').notNull(),
 });
 
+export const webhook_tokens = pgTable('webhook_tokens', {
+  id: serial('id').primaryKey(),
+  group_name: varchar('group_name', { length: 255 }).notNull(),
+  token: varchar('token', { length: 64 }).notNull().unique(),
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  last_used_at: timestamp('last_used_at'),
+});
+
 export const lighthouse_reports = pgTable('lighthouse_reports', {
   id: serial('id').primaryKey(),
   group_name: varchar('group_name', { length: 255 }).notNull(),

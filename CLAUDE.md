@@ -128,6 +128,7 @@ All routes except `GET /health`, `GET /api/public/status`, and `POST /api/auth/l
 | POST | `/api/trigger` | **Synchronous** — runs group, blocks until done, returns `{ runId }` |
 | POST | `/api/trigger/async` | **Async** — fires run, returns `{ runId }` immediately |
 | POST | `/webhook/warm` | **Async webhook** — `{ "group": "<name>" }`, use `"all"` for every group |
+| POST | `/webhook/trigger/:token` | **Inbound webhook** — no auth; token in URL is the credential. Fires async run for token's group |
 | POST | `/api/runs/:id/cancel` | Cancel a running execution |
 | DELETE | `/api/runs` | Clear run history (`?group=<name>` to scope) |
 | GET | `/api/config` | Current loaded config |
@@ -143,6 +144,10 @@ All routes except `GET /health`, `GET /api/public/status`, and `POST /api/auth/l
 | GET | `/api/secrets` | List secret names (no values) |
 | POST | `/api/secrets` | Upsert secret `{ name, value }` — encrypts and stores |
 | DELETE | `/api/secrets/:name` | Remove a secret |
+| GET | `/api/groups/:name/webhooks` | List webhook tokens (no token values) |
+| POST | `/api/groups/:name/webhooks` | Create webhook token; body `{ description? }`; token returned once |
+| DELETE | `/api/groups/:name/webhooks/:id` | Delete a webhook token |
+| PATCH | `/api/groups/:name/webhooks/:id` | Toggle active; body `{ active: boolean }` |
 
 ### API authentication
 All protected routes require `X-API-Key` header. Auth is implemented as a Fastify `preHandler` hook scoped to a protected plugin — not per-route. Comparison uses `timingSafeEqual`.
