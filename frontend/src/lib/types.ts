@@ -308,6 +308,22 @@ export interface GroupHealthSummary {
   };
 }
 
+// ── Webhook token types ───────────────────────────────────────────────────────
+
+export interface WebhookToken {
+  id: number;
+  group_name: string;
+  description: string | null;
+  active: boolean;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+/** Returned only on creation — includes the raw token value */
+export interface WebhookTokenCreated extends WebhookToken {
+  token: string;
+}
+
 // ── Lighthouse types ──────────────────────────────────────────────────────────
 
 export interface LighthouseReport {
