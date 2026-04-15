@@ -1,4 +1,4 @@
-import { ChevronDown, Upload } from 'lucide-react';
+import { ChevronDown, Copy, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -199,6 +199,33 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
             onChange={(e) => set('name', e.target.value)}
           />
         </div>
+
+        {initial && (
+          <div className="flex flex-col gap-1.5">
+            <Label>Webhook URL</Label>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-2">
+              <code className="flex-1 text-xs break-all">
+                {`${window.location.origin}/webhook/trigger/[token]`}
+              </code>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `See the Webhooks tab to create tokens and copy the full URL.`,
+                  );
+                  toast.success('Instructions copied');
+                }}
+                className="shrink-0 p-1 text-muted-foreground transition-colors hover:text-foreground"
+                title="View webhook tokens in the Webhooks tab"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Go to the <strong>Webhooks</strong> tab to create tokens and copy the full trigger URL.
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <Label>Schedule</Label>
