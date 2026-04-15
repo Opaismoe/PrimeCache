@@ -11,7 +11,9 @@ import { logger } from './utils/logger';
 
 async function main() {
   // 1. Run DB migrations — must complete before anything else starts
-  await migrate(db, { migrationsFolder: path.join(__dirname, 'db', 'migrations') });
+  const migrationsPath = path.resolve(__dirname, 'db', 'migrations');
+  logger.info({ migrationsPath }, 'attempting migrations');
+  await migrate(db, { migrationsFolder: migrationsPath });
   logger.info('migrations complete');
 
   // 2. Load and validate config, then resolve secret: references
