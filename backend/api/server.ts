@@ -26,6 +26,7 @@ import { putConfigRoute } from './routes/config';
 import { groupRoutes } from './routes/groups';
 import { getGroupUptime as getPublicStatus } from './routes/publicStatus';
 import { secretsRoutes } from './routes/secrets';
+import { webhookManagementRoutes, webhookTriggerRoute } from './routes/webhooks';
 
 interface ServerDeps {
   db: Db;
@@ -201,9 +202,15 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
       // Secrets CRUD
       protected_.register(secretsRoutes(db));
+
+      // Webhook token management: GET/POST/DELETE/PATCH /api/groups/:name/webhooks[/:id]
+      protected_.register(webhookManagementRoutes(db, getConfig));
     },
     { prefix: '/api' },
   );
+
+  // Inbound webhook trigger (no auth — token in URL is the credential)
+  app.register(webhookTriggerRoute(db, getConfig));
 
   // SPA catch-all: serve index.html for any unmatched non-API path
   app.setNotFoundHandler((_request, reply: FastifyReply) => {
