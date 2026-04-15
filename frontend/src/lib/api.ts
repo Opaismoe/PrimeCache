@@ -181,7 +181,10 @@ export const createWebhookToken = (groupName: string, description?: string) =>
   });
 
 export const deleteWebhookToken = (groupName: string, id: number) =>
-  request<{ deleted: boolean }>('DELETE', `/api/groups/${encodeURIComponent(groupName)}/webhooks/${id}`);
+  request<{ deleted: boolean }>(
+    'DELETE',
+    `/api/groups/${encodeURIComponent(groupName)}/webhooks/${id}`,
+  );
 
 export const setWebhookTokenActive = (groupName: string, id: number, active: boolean) =>
   request<{ id: number; active: boolean }>(

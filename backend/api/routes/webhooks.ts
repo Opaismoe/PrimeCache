@@ -63,7 +63,10 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
     app.patch<{ Params: { name: string; id: string }; Body: { active: boolean } }>(
       '/groups/:name/webhooks/:id',
       async (
-        request: FastifyRequest<{ Params: { name: string; id: string }; Body: { active: boolean } }>,
+        request: FastifyRequest<{
+          Params: { name: string; id: string };
+          Body: { active: boolean };
+        }>,
         reply: FastifyReply,
       ) => {
         const id = Number(request.params.id);
@@ -90,7 +93,7 @@ export function webhookTriggerRoute(db: Db, getConfig: () => Config): FastifyPlu
         const row = await findWebhookToken(db, token);
 
         // Return 404 for both unknown and inactive tokens to avoid enumeration
-        if (!row || !row.active) return reply.code(404).send({ error: 'Not found' });
+        if (!row?.active) return reply.code(404).send({ error: 'Not found' });
 
         const group = getConfig().groups.find((g) => g.name === row.group_name);
         if (!group) return reply.code(404).send({ error: 'Not found' });
@@ -103,10 +106,16 @@ export function webhookTriggerRoute(db: Db, getConfig: () => Config): FastifyPlu
         const { runId, promise } = await startRunGroup(db, group);
         promise
           .then(() =>
-            logger.info({ group: group.name, runId, tokenId: row.id }, 'webhook trigger run complete'),
+            logger.info(
+              { group: group.name, runId, tokenId: row.id },
+              'webhook trigger run complete',
+            ),
           )
           .catch((err) =>
-            logger.error({ group: group.name, runId, tokenId: row.id, err }, 'webhook trigger run failed'),
+            logger.error(
+              { group: group.name, runId, tokenId: row.id, err },
+              'webhook trigger run failed',
+            ),
           );
 
         return { queued: true, runId };

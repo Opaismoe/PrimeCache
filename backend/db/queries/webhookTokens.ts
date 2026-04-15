@@ -45,11 +45,7 @@ export async function deleteWebhookToken(db: Db, id: number): Promise<boolean> {
   return deleted.length > 0;
 }
 
-export async function setWebhookTokenActive(
-  db: Db,
-  id: number,
-  active: boolean,
-): Promise<boolean> {
+export async function setWebhookTokenActive(db: Db, id: number, active: boolean): Promise<boolean> {
   const updated = await db
     .update(webhook_tokens)
     .set({ active })
@@ -58,10 +54,7 @@ export async function setWebhookTokenActive(
   return updated.length > 0;
 }
 
-export async function findWebhookToken(
-  db: Db,
-  token: string,
-): Promise<WebhookTokenRow | null> {
+export async function findWebhookToken(db: Db, token: string): Promise<WebhookTokenRow | null> {
   const [row] = await db
     .select()
     .from(webhook_tokens)

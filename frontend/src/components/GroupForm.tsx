@@ -222,7 +222,8 @@ export function GroupForm({ initial, onSave, onCancel }: Props) {
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Go to the <strong>Webhooks</strong> tab to create tokens and copy the full trigger URL.
+              Go to the <strong>Webhooks</strong> tab to create tokens and copy the full trigger
+              URL.
             </p>
           </div>
         )}

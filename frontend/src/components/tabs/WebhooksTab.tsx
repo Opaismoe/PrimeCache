@@ -78,8 +78,8 @@ function CreatedDialog({ created, onClose }: CreatedDialogProps) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            POST to this URL — no headers or body required. Your CMS can call it directly on
-            content publish.
+            POST to this URL — no headers or body required. Your CMS can call it directly on content
+            publish.
           </p>
         </div>
         <DialogFooter>
@@ -209,7 +209,9 @@ export function WebhooksTab({ groupName }: { groupName: string }) {
               {tokens.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="font-medium">
-                    {t.description ?? <span className="text-muted-foreground italic">No description</span>}
+                    {t.description ?? (
+                      <span className="text-muted-foreground italic">No description</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={t.active ? 'default' : 'secondary'}>
@@ -238,7 +240,9 @@ export function WebhooksTab({ groupName }: { groupName: string }) {
                         size="sm"
                         className="h-7 px-2 text-destructive hover:text-destructive"
                         onClick={() => {
-                          if (confirm('Delete this webhook? Existing integrations will stop working.')) {
+                          if (
+                            confirm('Delete this webhook? Existing integrations will stop working.')
+                          ) {
                             remove.mutate(t.id);
                           }
                         }}
@@ -266,9 +270,7 @@ export function WebhooksTab({ groupName }: { groupName: string }) {
         />
       )}
 
-      {justCreated && (
-        <CreatedDialog created={justCreated} onClose={() => setJustCreated(null)} />
-      )}
+      {justCreated && <CreatedDialog created={justCreated} onClose={() => setJustCreated(null)} />}
     </div>
   );
 }
