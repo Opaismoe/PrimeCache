@@ -13,6 +13,17 @@ async function main() {
   // 1. Run DB migrations — must complete before anything else starts
   const migrationsPath = path.resolve(__dirname, 'db', 'migrations');
   logger.info({ migrationsPath }, 'attempting migrations');
+
+  // List migration files to debug
+  const fs = await import('node:fs/promises');
+  try {
+    const files = await fs.readdir(migrationsPath);
+    const sqlFiles = files.filter(f => f.endsWith('.sql')).sort();
+    logger.info({ sqlFiles, count: sqlFiles.length }, 'found migration files');
+  } catch (err) {
+    logger.warn({ err }, 'failed to list migration files');
+  }
+
   await migrate(db, { migrationsFolder: migrationsPath });
   logger.info('migrations complete');
 
