@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useState } from 'react';
-import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -151,6 +151,7 @@ function UrlTrendTile({
         {trend.length > 1 && (
           <ResponsiveContainer width="100%" height={52}>
             <LineChart data={trend} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+              <YAxis hide domain={['dataMin - 200', 'dataMax + 200']} />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
                 labelFormatter={formatChartDate}
@@ -255,7 +256,7 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
   const configUrlSet = new Set(performance?.urls.map((u) => u.url) ?? []);
   const crawledUrlSet = new Set(crawledUrlsData.map((c) => c.url));
   const allUrls: { url: string; isCrawled: boolean }[] = [
-    ...[...configUrlSet].map((url) => ({ url, isCrawled: false })),
+    ...[...configUrlSet].map((url) => ({ url, isCrawled: crawledUrlSet.has(url) })),
     ...[...crawledUrlSet]
       .filter((url) => !configUrlSet.has(url))
       .map((url) => ({ url, isCrawled: true })),
