@@ -1,16 +1,10 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createColumnHelper } from '@tanstack/react-table';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GroupDetailSkeleton } from '../components/GroupDetailSkeleton';
 import { GroupForm } from '../components/GroupForm';
@@ -41,7 +35,7 @@ import {
 import { describeCron } from '../lib/cronUtils';
 import { formatDate, formatDuration } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
-import type { Config, Group } from '../lib/types';
+import type { Config, Group, Run } from '../lib/types';
 
 export const Route = createFileRoute('/groups_/$groupName')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -69,6 +63,40 @@ export const Route = createFileRoute('/groups_/$groupName')({
 });
 
 const HISTORY_PAGE_SIZE = 20;
+
+const runColumnHelper = createColumnHelper<Run>();
+const historyColumns = [
+  runColumnHelper.accessor('id', {
+    header: 'Run #',
+    cell: (info) => <span className="text-muted-foreground">#{info.getValue()}</span>,
+  }),
+  runColumnHelper.accessor('started_at', {
+    header: 'Started',
+    cell: (info) => formatDate(info.getValue()),
+  }),
+  runColumnHelper.display({
+    id: 'duration',
+    header: 'Duration',
+    enableSorting: false,
+    cell: (info) => formatDuration(info.row.original.started_at, info.row.original.ended_at),
+  }),
+  runColumnHelper.accessor('status', {
+    header: 'Status',
+    cell: (info) => <StatusBadge status={info.getValue()} />,
+    enableSorting: false,
+  }),
+  runColumnHelper.display({
+    id: 'results',
+    header: 'Results',
+    enableSorting: false,
+    cell: (info) => (
+      <RunResults
+        successCount={info.row.original.success_count}
+        failureCount={info.row.original.failure_count}
+      />
+    ),
+  }),
+];
 
 function GroupDetailPage() {
   const { groupName } = Route.useParams();
@@ -282,45 +310,16 @@ function GroupDetailPage() {
             <EmptyTab message="No runs found for this group." />
           ) : (
             <>
-              <div className="rounded-lg border border-border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Run #</TableHead>
-                      <TableHead>Started</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Results</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {historyRuns.map((run) => (
-                      <TableRow
-                        key={run.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() =>
-                          navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
-                        }
-                      >
-                        <TableCell>
-                          <span className="text-muted-foreground">#{run.id}</span>
-                        </TableCell>
-                        <TableCell>{formatDate(run.started_at)}</TableCell>
-                        <TableCell>{formatDuration(run.started_at, run.ended_at)}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={run.status} />
-                        </TableCell>
-                        <TableCell>
-                          <RunResults
-                            successCount={run.success_count}
-                            failureCount={run.failure_count}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <DataTable
+                columns={historyColumns}
+                data={historyRuns}
+                searchPlaceholder="Search runs…"
+                defaultSorting={[{ id: 'started_at', desc: true }]}
+                defaultPageSize={HISTORY_PAGE_SIZE}
+                onRowClick={(run) =>
+                  navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
+                }
+              />
               <div className="mt-4 flex items-center justify-between">
                 <Button
                   variant="outline"

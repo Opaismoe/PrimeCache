@@ -1,21 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { createColumnHelper } from '@tanstack/react-table';
 import { useCallback, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { CHART_TOOLTIP_STYLE } from '@/lib/chartStyles';
 import { formatChartDate } from '@/lib/formatChartDate';
 import { formatDate, formatDuration, formatMs } from '@/lib/formatters';
-import type { GroupOverview, GroupPerformance, GroupUptime, Run } from '@/lib/types';
+import type {
+  GroupOverview,
+  GroupPerformance,
+  GroupUptime,
+  Run,
+  UrlPerformance,
+  UrlUptime,
+} from '@/lib/types';
 import { getGroupCrawledUrls } from '../../lib/api';
 import { queryKeys } from '../../lib/queryKeys';
 import { ExternalLink } from '../ExternalLink';
@@ -209,6 +210,137 @@ function useLocalSet(key: string) {
   return { set, add, remove };
 }
 
+// ── Column definitions ────────────────────────────────────────────────────────
+
+const perfColumnHelper = createColumnHelper<UrlPerformance>();
+const perfColumns = [
+  perfColumnHelper.accessor('url', {
+    header: 'URL',
+    cell: (info) => (
+      <div className="flex items-center gap-2">
+        {info.row.original.isSlow && (
+          <Badge variant="destructive" className="shrink-0 text-xs">
+            Slow
+          </Badge>
+        )}
+        <ExternalLink href={info.getValue()} className="truncate font-mono text-xs">
+          {info.getValue()}
+        </ExternalLink>
+      </div>
+    ),
+  }),
+  perfColumnHelper.accessor('p50LoadTimeMs', {
+    header: 'P50 Load',
+    cell: (info) => formatMs(info.getValue()),
+  }),
+  perfColumnHelper.accessor('p95LoadTimeMs', {
+    header: 'P95 Load',
+    cell: (info) => (
+      <span className={info.row.original.isSlow ? 'font-medium text-destructive' : ''}>
+        {formatMs(info.getValue())}
+      </span>
+    ),
+  }),
+  perfColumnHelper.accessor('p50TtfbMs', {
+    header: 'P50 TTFB',
+    cell: (info) => (info.getValue() != null ? formatMs(info.getValue()) : '—'),
+  }),
+  perfColumnHelper.accessor('p95TtfbMs', {
+    header: 'P95 TTFB',
+    cell: (info) => (info.getValue() != null ? formatMs(info.getValue()) : '—'),
+  }),
+  perfColumnHelper.accessor('sampleCount', {
+    header: 'Samples',
+    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+  }),
+];
+
+const uptimeColumnHelper = createColumnHelper<UrlUptime>();
+const uptimeColumns = [
+  uptimeColumnHelper.accessor('url', {
+    header: 'URL',
+    cell: (info) => (
+      <ExternalLink href={info.getValue()} className="truncate font-mono text-xs">
+        {info.getValue()}
+      </ExternalLink>
+    ),
+  }),
+  uptimeColumnHelper.accessor('uptimePct', {
+    header: 'Uptime',
+    cell: (info) => {
+      const pct = info.getValue();
+      return (
+        <span
+          className={
+            pct >= 99
+              ? 'font-medium text-green-500'
+              : pct >= 95
+                ? 'font-medium text-yellow-500'
+                : 'font-medium text-destructive'
+          }
+        >
+          {pct.toFixed(1)}%
+        </span>
+      );
+    },
+  }),
+  uptimeColumnHelper.accessor('downCount', {
+    header: 'Down',
+    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+  }),
+  uptimeColumnHelper.accessor('totalChecks', {
+    header: 'Checks',
+    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+  }),
+  uptimeColumnHelper.accessor('lastStatus', {
+    header: 'Last status',
+    cell: (info) => (
+      <Badge variant={info.getValue() === 'up' ? 'default' : 'destructive'} className="text-xs">
+        {info.getValue() === 'up' ? 'Up' : 'Down'}
+      </Badge>
+    ),
+  }),
+  uptimeColumnHelper.accessor('lastCheckedAt', {
+    header: 'Last checked',
+    cell: (info) => (
+      <span className="text-xs text-muted-foreground">{formatDate(info.getValue())}</span>
+    ),
+  }),
+];
+
+const runColumnHelper = createColumnHelper<Run>();
+const runColumns = [
+  runColumnHelper.accessor('id', {
+    header: 'Run ID',
+    cell: (info) => <span className="text-muted-foreground">#{info.getValue()}</span>,
+  }),
+  runColumnHelper.accessor('started_at', {
+    header: 'Started',
+    cell: (info) => formatDate(info.getValue()),
+  }),
+  runColumnHelper.display({
+    id: 'duration',
+    header: 'Duration',
+    enableSorting: false,
+    cell: (info) => formatDuration(info.row.original.started_at, info.row.original.ended_at),
+  }),
+  runColumnHelper.accessor('status', {
+    header: 'Status',
+    cell: (info) => <StatusBadge status={info.getValue()} />,
+  }),
+  runColumnHelper.display({
+    id: 'results',
+    header: 'Results',
+    enableSorting: false,
+    cell: (info) => (
+      <RunResults
+        successCount={info.row.original.success_count}
+        failureCount={info.row.original.failure_count}
+      />
+    ),
+  }),
+];
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 interface Props {
@@ -337,44 +469,13 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
             </div>
           )}
 
-          <div className="mb-4 rounded-lg border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>URL</TableHead>
-                  <TableHead>P50 Load</TableHead>
-                  <TableHead>P95 Load</TableHead>
-                  <TableHead>P50 TTFB</TableHead>
-                  <TableHead>P95 TTFB</TableHead>
-                  <TableHead>Samples</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {performance.urls.map((u) => (
-                  <TableRow key={u.url}>
-                    <TableCell className="max-w-xs truncate font-mono text-xs">
-                      <div className="flex items-center gap-2">
-                        {u.isSlow && (
-                          <Badge variant="destructive" className="shrink-0 text-xs">
-                            Slow
-                          </Badge>
-                        )}
-                        <ExternalLink href={u.url} className="truncate">
-                          {u.url}
-                        </ExternalLink>
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatMs(u.p50LoadTimeMs)}</TableCell>
-                    <TableCell className={u.isSlow ? 'text-destructive font-medium' : ''}>
-                      {formatMs(u.p95LoadTimeMs)}
-                    </TableCell>
-                    <TableCell>{u.p50TtfbMs != null ? formatMs(u.p50TtfbMs) : '—'}</TableCell>
-                    <TableCell>{u.p95TtfbMs != null ? formatMs(u.p95TtfbMs) : '—'}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.sampleCount}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="mb-4">
+            <DataTable
+              columns={perfColumns}
+              data={performance.urls}
+              searchPlaceholder="Search URLs…"
+              defaultSorting={[{ id: 'p95LoadTimeMs', desc: true }]}
+            />
           </div>
 
           {/* Per-URL trend tiles */}
@@ -455,57 +556,12 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
             </div>
           )}
 
-          <div className="rounded-lg border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>URL</TableHead>
-                  <TableHead>Uptime</TableHead>
-                  <TableHead>Down</TableHead>
-                  <TableHead>Checks</TableHead>
-                  <TableHead>Last status</TableHead>
-                  <TableHead>Last checked</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {uptime.urls.map((u) => (
-                  <TableRow key={u.url}>
-                    <TableCell className="max-w-xs truncate font-mono text-xs">
-                      <ExternalLink href={u.url} className="truncate">
-                        {u.url}
-                      </ExternalLink>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={
-                          u.uptimePct >= 99
-                            ? 'text-green-500 font-medium'
-                            : u.uptimePct >= 95
-                              ? 'text-yellow-500 font-medium'
-                              : 'text-destructive font-medium'
-                        }
-                      >
-                        {u.uptimePct.toFixed(1)}%
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{u.downCount}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.totalChecks}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={u.lastStatus === 'up' ? 'default' : 'destructive'}
-                        className="text-xs"
-                      >
-                        {u.lastStatus === 'up' ? 'Up' : 'Down'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {formatDate(u.lastCheckedAt)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={uptimeColumns}
+            data={uptime.urls}
+            searchPlaceholder="Search URLs…"
+            defaultSorting={[{ id: 'uptimePct', desc: false }]}
+          />
         </div>
       )}
 
@@ -515,43 +571,15 @@ export function OverviewTab({ groupName, overview, performance, uptime }: Props)
         {recentRuns.length === 0 ? (
           <p className="text-sm text-muted-foreground">No runs yet.</p>
         ) : (
-          <div className="rounded-lg border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Run ID</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Results</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentRuns.map((run: Run) => (
-                  <TableRow
-                    key={run.id}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() =>
-                      navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
-                    }
-                  >
-                    <TableCell className="text-muted-foreground">#{run.id}</TableCell>
-                    <TableCell>{formatDate(run.started_at)}</TableCell>
-                    <TableCell>{formatDuration(run.started_at, run.ended_at)}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={run.status} />
-                    </TableCell>
-                    <TableCell>
-                      <RunResults
-                        successCount={run.success_count}
-                        failureCount={run.failure_count}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <DataTable
+            columns={runColumns}
+            data={recentRuns}
+            searchPlaceholder="Search runs…"
+            defaultSorting={[{ id: 'started_at', desc: true }]}
+            onRowClick={(run) =>
+              navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
+            }
+          />
         )}
       </div>
     </div>
