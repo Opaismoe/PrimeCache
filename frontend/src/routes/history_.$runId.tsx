@@ -1,7 +1,9 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { createColumnHelper } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { DataTable } from '@/components/ui/data-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -18,6 +20,48 @@ import { StatusBadge } from '../components/StatusBadge';
 import { cancelRun, getApiKey, getRunById } from '../lib/api';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
+import type { Visit } from '../lib/types';
+
+const columnHelper = createColumnHelper<Visit>();
+
+const columns = [
+  columnHelper.accessor('url', {
+    header: 'URL',
+    cell: (info) => (
+      <ExternalLink href={info.getValue()} className="font-mono text-xs">
+        {info.getValue()}
+      </ExternalLink>
+    ),
+  }),
+  columnHelper.accessor('status_code', {
+    header: 'Status',
+    cell: (info) => info.getValue() ?? '—',
+  }),
+  columnHelper.accessor('redirect_count', {
+    header: 'Redirects',
+    cell: (info) => (
+      <span className="text-muted-foreground">{info.getValue() > 0 ? info.getValue() : '—'}</span>
+    ),
+  }),
+  columnHelper.accessor('ttfb_ms', {
+    header: 'TTFB',
+    cell: (info) => formatMs(info.getValue()),
+  }),
+  columnHelper.accessor('load_time_ms', {
+    header: 'Load',
+    cell: (info) => formatMs(info.getValue()),
+  }),
+  columnHelper.accessor('retry_count', {
+    header: 'Retries',
+    cell: (info) => (
+      <span className="text-muted-foreground">{info.getValue() > 0 ? info.getValue() : '—'}</span>
+    ),
+  }),
+  columnHelper.accessor('error', {
+    header: 'Error',
+    cell: (info) => <span className="text-xs text-destructive">{info.getValue() ?? ''}</span>,
+  }),
+];
 
 export const Route = createFileRoute('/history_/$runId')({
   loader: ({ context: { queryClient }, params }) => {
@@ -71,7 +115,7 @@ function RunDetailSkeleton() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Array.from({ length: 6 }).map((_, i) => (
+            {[0, 1, 2, 3, 4, 5].map((i) => (
               <TableRow key={i}>
                 <TableCell>
                   <Skeleton className="h-4 w-64" />
@@ -182,40 +226,13 @@ function RunDetailPage() {
           </span>
         </div>
       ) : (
-        <div className="rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>URL</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Redirects</TableHead>
-                <TableHead>TTFB</TableHead>
-                <TableHead>Load</TableHead>
-                <TableHead>Retries</TableHead>
-                <TableHead>Error</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {run.visits.map((visit) => (
-                <TableRow key={visit.id} className={visit.error ? 'bg-destructive/10' : ''}>
-                  <TableCell className="max-w-xs truncate font-mono text-xs">
-                    <ExternalLink href={visit.url}>{visit.url}</ExternalLink>
-                  </TableCell>
-                  <TableCell>{visit.status_code ?? '—'}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {visit.redirect_count > 0 ? visit.redirect_count : '—'}
-                  </TableCell>
-                  <TableCell>{formatMs(visit.ttfb_ms)}</TableCell>
-                  <TableCell>{formatMs(visit.load_time_ms)}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {visit.retry_count > 0 ? visit.retry_count : '—'}
-                  </TableCell>
-                  <TableCell className="text-xs text-destructive">{visit.error ?? ''}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={run.visits}
+          searchPlaceholder="Search URLs…"
+          defaultSorting={[{ id: 'load_time_ms', desc: true }]}
+          getRowClassName={(v) => (v.error ? 'bg-destructive/10' : '')}
+        />
       )}
     </div>
   );

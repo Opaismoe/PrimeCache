@@ -1,11 +1,5 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { createColumnHelper } from '@tanstack/react-table';
+import { DataTable } from '@/components/ui/data-table';
 import { TooltipContent, TooltipTrigger, Tooltip as UiTooltip } from '@/components/ui/tooltip';
 import { formatDate } from '@/lib/formatters';
 import { HTTP_STATUS_CODES } from '@/lib/httpStatusCodes';
@@ -50,6 +44,41 @@ function HttpStatusBadge({ status }: { status: number | null }) {
   );
 }
 
+const columnHelper = createColumnHelper<BrokenLinkSummary>();
+
+const columns = [
+  columnHelper.accessor('url', {
+    header: 'URL',
+    cell: (info) => (
+      <ExternalLink href={info.getValue()} className="font-mono text-xs text-muted-foreground">
+        {info.getValue()}
+      </ExternalLink>
+    ),
+  }),
+  columnHelper.accessor('statusCode', {
+    header: 'Status',
+    cell: (info) => <HttpStatusBadge status={info.getValue()} />,
+  }),
+  columnHelper.accessor('error', {
+    header: 'Error',
+    cell: (info) => (
+      <span className="max-w-[200px] truncate text-xs text-muted-foreground">
+        {info.getValue() ?? '—'}
+      </span>
+    ),
+  }),
+  columnHelper.accessor('occurrences', {
+    header: 'Occurrences',
+    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('lastSeenAt', {
+    header: 'Last seen',
+    cell: (info) => (
+      <span className="text-xs text-muted-foreground">{formatDate(info.getValue())}</span>
+    ),
+  }),
+];
+
 export function LinksTab({ data }: { data: BrokenLinkSummary[] }) {
   if (data.length === 0) {
     return (
@@ -66,40 +95,12 @@ export function LinksTab({ data }: { data: BrokenLinkSummary[] }) {
           {data.length} broken {data.length === 1 ? 'link' : 'links'} detected
         </span>
       </div>
-      <div className="rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>URL</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Error</TableHead>
-              <TableHead>Occurrences</TableHead>
-              <TableHead>Last seen</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((l) => (
-              <TableRow key={l.url}>
-                <TableCell className="max-w-xs truncate font-mono text-xs">
-                  <ExternalLink href={l.url} className="text-muted-foreground">
-                    {l.url}
-                  </ExternalLink>
-                </TableCell>
-                <TableCell>
-                  <HttpStatusBadge status={l.statusCode ?? null} />
-                </TableCell>
-                <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
-                  {l.error ?? '—'}
-                </TableCell>
-                <TableCell className="text-muted-foreground">{l.occurrences}</TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {formatDate(l.lastSeenAt)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+        columns={columns}
+        data={data}
+        searchPlaceholder="Search URLs…"
+        defaultSorting={[{ id: 'occurrences', desc: true }]}
+      />
     </div>
   );
 }

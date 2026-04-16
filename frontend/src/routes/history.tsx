@@ -10,8 +10,10 @@ import {
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
+import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -64,6 +66,8 @@ export const Route = createFileRoute('/history')({
   component: HistoryPage,
 });
 
+const SKELETON_HEADERS = ['Run ID', 'Group', 'Started', 'Duration', 'Status', 'Results', ''];
+
 function HistorySkeleton() {
   return (
     <div>
@@ -82,14 +86,14 @@ function HistorySkeleton() {
         <Table>
           <TableHeader>
             <TableRow>
-              {['Run ID', 'Group', 'Started', 'Duration', 'Status', 'Results', ''].map((h) => (
+              {SKELETON_HEADERS.map((h) => (
                 <TableHead key={h}>{h}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <TableRow key={i}>
+            {SKELETON_HEADERS.map((h) => (
+              <TableRow key={h}>
                 <TableCell>
                   <Skeleton className="h-4 w-10" />
                 </TableCell>
@@ -123,6 +127,7 @@ function HistoryPage() {
   const navigate = useNavigate({ from: '/history' });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState('');
 
   const { data: runs, isLoading } = useQuery({
     queryKey: queryKeys.runs.list(page, group),
@@ -157,6 +162,7 @@ function HistoryPage() {
       header: 'Status',
       cell: (info) => <StatusBadge status={info.getValue()} />,
       filterFn: 'equals',
+      enableSorting: false,
     }),
     columnHelper.display({
       id: 'results',
@@ -174,9 +180,10 @@ function HistoryPage() {
   const table = useReactTable({
     data: runs ?? [],
     columns,
-    state: { sorting, columnFilters },
+    state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -211,23 +218,31 @@ function HistoryPage() {
         <p className="text-muted-foreground">No runs found.</p>
       ) : (
         <>
-          <div className="mb-3 flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Status</span>
-            <Select
-              value={(table.getColumn('status')?.getFilterValue() as string) ?? ''}
-              onValueChange={(v) => table.getColumn('status')?.setFilterValue(v || undefined)}
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="partial_failure">Partial failure</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-                <SelectItem value="running">Running</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <Input
+              placeholder="Search runs…"
+              value={globalFilter}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="h-8 w-56 text-sm"
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <Select
+                value={(table.getColumn('status')?.getFilterValue() as string) ?? ''}
+                onValueChange={(v) => table.getColumn('status')?.setFilterValue(v || undefined)}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="partial_failure">Partial failure</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="running">Running</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="rounded-lg border border-border">
@@ -235,18 +250,32 @@ function HistoryPage() {
               <TableHeader>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <div className="flex items-center gap-1">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {{ asc: ' ▲', desc: ' ▼' }[header.column.getIsSorted() as string] ?? null}
-                        </div>
-                      </TableHead>
-                    ))}
+                    {headerGroup.headers.map((header) => {
+                      const canSort = header.column.getCanSort();
+                      const sorted = header.column.getIsSorted();
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className={canSort ? 'cursor-pointer select-none' : ''}
+                          onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                        >
+                          <div className="flex items-center gap-1">
+                            {flexRender(header.column.columnDef.header, header.getContext())}
+                            {canSort && (
+                              <span className="text-muted-foreground">
+                                {sorted === 'asc' ? (
+                                  <ChevronUp className="h-3.5 w-3.5" />
+                                ) : sorted === 'desc' ? (
+                                  <ChevronDown className="h-3.5 w-3.5" />
+                                ) : (
+                                  <ChevronsUpDown className="h-3.5 w-3.5 opacity-40" />
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        </TableHead>
+                      );
+                    })}
                   </TableRow>
                 ))}
               </TableHeader>

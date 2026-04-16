@@ -1,18 +1,66 @@
+import { createColumnHelper } from '@tanstack/react-table';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { formatChartDate } from '@/lib/formatChartDate';
 import { formatDate } from '@/lib/formatters';
-import type { GroupUptime } from '@/lib/types';
+import type { GroupUptime, UrlUptime } from '@/lib/types';
 import { ExternalLink } from '../ExternalLink';
+
+const columnHelper = createColumnHelper<UrlUptime>();
+
+const columns = [
+  columnHelper.accessor('url', {
+    header: 'URL',
+    cell: (info) => (
+      <ExternalLink href={info.getValue()} className="truncate font-mono text-xs">
+        {info.getValue()}
+      </ExternalLink>
+    ),
+  }),
+  columnHelper.accessor('uptimePct', {
+    header: 'Uptime',
+    cell: (info) => {
+      const pct = info.getValue();
+      return (
+        <span
+          className={
+            pct >= 99
+              ? 'font-medium text-green-500'
+              : pct >= 95
+                ? 'font-medium text-yellow-500'
+                : 'font-medium text-destructive'
+          }
+        >
+          {pct.toFixed(1)}%
+        </span>
+      );
+    },
+  }),
+  columnHelper.accessor('downCount', {
+    header: 'Down',
+    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('totalChecks', {
+    header: 'Checks',
+    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+  }),
+  columnHelper.accessor('lastStatus', {
+    header: 'Last status',
+    cell: (info) => (
+      <Badge variant={info.getValue() === 'up' ? 'default' : 'destructive'} className="text-xs">
+        {info.getValue() === 'up' ? 'Up' : 'Down'}
+      </Badge>
+    ),
+  }),
+  columnHelper.accessor('lastCheckedAt', {
+    header: 'Last checked',
+    cell: (info) => (
+      <span className="text-xs text-muted-foreground">{formatDate(info.getValue())}</span>
+    ),
+  }),
+];
 
 export function UptimeTab({ data }: { data: GroupUptime }) {
   if (data.urls.length === 0) {
@@ -43,56 +91,13 @@ export function UptimeTab({ data }: { data: GroupUptime }) {
         </div>
       )}
 
-      <div className="mb-6 rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>URL</TableHead>
-              <TableHead>Uptime</TableHead>
-              <TableHead>Down</TableHead>
-              <TableHead>Checks</TableHead>
-              <TableHead>Last status</TableHead>
-              <TableHead>Last checked</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.urls.map((u) => (
-              <TableRow key={u.url}>
-                <TableCell className="max-w-xs truncate font-mono text-xs">
-                  <ExternalLink href={u.url} className="truncate">
-                    {u.url}
-                  </ExternalLink>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={
-                      u.uptimePct >= 99
-                        ? 'text-green-500 font-medium'
-                        : u.uptimePct >= 95
-                          ? 'text-yellow-500 font-medium'
-                          : 'text-destructive font-medium'
-                    }
-                  >
-                    {u.uptimePct.toFixed(1)}%
-                  </span>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{u.downCount}</TableCell>
-                <TableCell className="text-muted-foreground">{u.totalChecks}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={u.lastStatus === 'up' ? 'default' : 'destructive'}
-                    className="text-xs"
-                  >
-                    {u.lastStatus === 'up' ? 'Up' : 'Down'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-xs">
-                  {formatDate(u.lastCheckedAt)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="mb-6">
+        <DataTable
+          columns={columns}
+          data={data.urls}
+          searchPlaceholder="Search URLs…"
+          defaultSorting={[{ id: 'uptimePct', desc: false }]}
+        />
       </div>
 
       {urlEntries.length > 0 && (

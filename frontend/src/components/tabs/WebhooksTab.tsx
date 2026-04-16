@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createColumnHelper } from '@tanstack/react-table';
 import { Copy, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import {
   Dialog,
   DialogContent,
@@ -15,21 +17,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   createWebhookToken,
   deleteWebhookToken,
   getWebhookTokens,
   setWebhookTokenActive,
 } from '../../lib/api';
 import { formatDate } from '../../lib/formatters';
-import type { WebhookTokenCreated } from '../../lib/types';
+import type { WebhookToken, WebhookTokenCreated } from '../../lib/types';
 
 const QUERY_KEY = (groupName: string) => ['webhook-tokens', groupName];
 
@@ -145,6 +139,8 @@ function AddDialog({ groupName, onClose, onCreated }: AddDialogProps) {
   );
 }
 
+const columnHelper = createColumnHelper<WebhookToken>();
+
 export function WebhooksTab({ groupName }: { groupName: string }) {
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
@@ -167,6 +163,73 @@ export function WebhooksTab({ groupName }: { groupName: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY(groupName) }),
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to update webhook'),
   });
+
+  const columns = [
+    columnHelper.accessor('description', {
+      header: 'Description',
+      cell: (info) =>
+        info.getValue() ?? <span className="text-muted-foreground italic">No description</span>,
+    }),
+    columnHelper.accessor('active', {
+      header: 'Status',
+      cell: (info) => (
+        <Badge variant={info.getValue() ? 'default' : 'secondary'}>
+          {info.getValue() ? 'Active' : 'Disabled'}
+        </Badge>
+      ),
+    }),
+    columnHelper.accessor('created_at', {
+      header: 'Created',
+      cell: (info) => (
+        <span className="text-sm text-muted-foreground">{formatDate(info.getValue())}</span>
+      ),
+    }),
+    columnHelper.accessor('last_used_at', {
+      header: 'Last used',
+      cell: (info) => (
+        <span className="text-sm text-muted-foreground">
+          {info.getValue() ? formatDate(info.getValue() ?? '') : '—'}
+        </span>
+      ),
+    }),
+    columnHelper.display({
+      id: 'actions',
+      enableSorting: false,
+      cell: (info) => {
+        const t = info.row.original;
+        return (
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle.mutate({ id: t.id, active: !t.active });
+              }}
+              disabled={toggle.isPending}
+            >
+              {t.active ? 'Disable' : 'Enable'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm('Delete this webhook? Existing integrations will stop working.')) {
+                  remove.mutate(t.id);
+                }
+              }}
+              disabled={remove.isPending}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        );
+      },
+    }),
+  ];
 
   return (
     <div className="space-y-4">
@@ -194,69 +257,7 @@ export function WebhooksTab({ groupName }: { groupName: string }) {
           No webhooks yet. Add one to let your CMS trigger runs.
         </p>
       ) : (
-        <div className="rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Description</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead className="w-32" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tokens.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="font-medium">
-                    {t.description ?? (
-                      <span className="text-muted-foreground italic">No description</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={t.active ? 'default' : 'secondary'}>
-                      {t.active ? 'Active' : 'Disabled'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(t.created_at)}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {t.last_used_at ? formatDate(t.last_used_at) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => toggle.mutate({ id: t.id, active: !t.active })}
-                        disabled={toggle.isPending}
-                      >
-                        {t.active ? 'Disable' : 'Enable'}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-destructive hover:text-destructive"
-                        onClick={() => {
-                          if (
-                            confirm('Delete this webhook? Existing integrations will stop working.')
-                          ) {
-                            remove.mutate(t.id);
-                          }
-                        }}
-                        disabled={remove.isPending}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <DataTable columns={columns} data={tokens} searchPlaceholder="Search webhooks…" />
       )}
 
       {showAdd && (

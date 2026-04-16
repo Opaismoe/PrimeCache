@@ -1,19 +1,57 @@
+import { createColumnHelper } from '@tanstack/react-table';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { DataTable } from '@/components/ui/data-table';
 import { CHART_TOOLTIP_STYLE, getColor } from '@/lib/chartStyles';
 import { formatChartDate } from '@/lib/formatChartDate';
 import { formatMs } from '@/lib/formatters';
-import type { GroupPerformance } from '@/lib/types';
+import type { GroupPerformance, UrlPerformance } from '@/lib/types';
 import { ExternalLink } from '../ExternalLink';
+
+const columnHelper = createColumnHelper<UrlPerformance>();
+
+const columns = [
+  columnHelper.accessor('url', {
+    header: 'URL',
+    cell: (info) => (
+      <div className="flex items-center gap-2">
+        {info.row.original.isSlow && (
+          <Badge variant="destructive" className="shrink-0 text-xs">
+            Slow
+          </Badge>
+        )}
+        <ExternalLink href={info.getValue()} className="truncate font-mono text-xs">
+          {info.getValue()}
+        </ExternalLink>
+      </div>
+    ),
+  }),
+  columnHelper.accessor('p50LoadTimeMs', {
+    header: 'P50 Load',
+    cell: (info) => formatMs(info.getValue()),
+  }),
+  columnHelper.accessor('p95LoadTimeMs', {
+    header: 'P95 Load',
+    cell: (info) => (
+      <span className={info.row.original.isSlow ? 'font-medium text-destructive' : ''}>
+        {formatMs(info.getValue())}
+      </span>
+    ),
+  }),
+  columnHelper.accessor('p50TtfbMs', {
+    header: 'P50 TTFB',
+    cell: (info) => (info.getValue() != null ? formatMs(info.getValue()) : '—'),
+  }),
+  columnHelper.accessor('p95TtfbMs', {
+    header: 'P95 TTFB',
+    cell: (info) => (info.getValue() != null ? formatMs(info.getValue()) : '—'),
+  }),
+  columnHelper.accessor('sampleCount', {
+    header: 'Samples',
+    cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span>,
+  }),
+];
 
 export function PerformanceTab({ data }: { data: GroupPerformance }) {
   if (data.urls.length === 0) {
@@ -49,44 +87,13 @@ export function PerformanceTab({ data }: { data: GroupPerformance }) {
         </div>
       )}
 
-      <div className="mb-6 rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>URL</TableHead>
-              <TableHead>P50 Load</TableHead>
-              <TableHead>P95 Load</TableHead>
-              <TableHead>P50 TTFB</TableHead>
-              <TableHead>P95 TTFB</TableHead>
-              <TableHead>Samples</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.urls.map((u) => (
-              <TableRow key={u.url}>
-                <TableCell className="max-w-xs truncate font-mono text-xs">
-                  <div className="flex items-center gap-2">
-                    {u.isSlow && (
-                      <Badge variant="destructive" className="shrink-0 text-xs">
-                        Slow
-                      </Badge>
-                    )}
-                    <ExternalLink href={u.url} className="truncate">
-                      {u.url}
-                    </ExternalLink>
-                  </div>
-                </TableCell>
-                <TableCell>{formatMs(u.p50LoadTimeMs)}</TableCell>
-                <TableCell className={u.isSlow ? 'text-destructive font-medium' : ''}>
-                  {formatMs(u.p95LoadTimeMs)}
-                </TableCell>
-                <TableCell>{u.p50TtfbMs != null ? formatMs(u.p50TtfbMs) : '—'}</TableCell>
-                <TableCell>{u.p95TtfbMs != null ? formatMs(u.p95TtfbMs) : '—'}</TableCell>
-                <TableCell className="text-muted-foreground">{u.sampleCount}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="mb-6">
+        <DataTable
+          columns={columns}
+          data={data.urls}
+          searchPlaceholder="Search URLs…"
+          defaultSorting={[{ id: 'p95LoadTimeMs', desc: true }]}
+        />
       </div>
 
       {chartData.length > 1 && (
