@@ -45,6 +45,7 @@ Copy `.env.example` to `.env` and fill in the required values:
 | `BROWSERLESS_WS_URL` | yes | — | WebSocket URL of your Browserless instance, e.g. `ws://browserless:3000/chromium/playwright` |
 | `BROWSERLESS_TOKEN` | yes | — | Browserless auth token |
 | `API_KEY` | yes | — | Secret for the REST API (minimum 16 characters) |
+| `SECRET_ENCRYPTION_KEY` | yes | — | 64-character hex string (32 bytes) used to encrypt secrets at rest; generate with `openssl rand -hex 32` |
 | `ADMIN_USERNAME` | yes | — | Username for the dashboard login screen |
 | `ADMIN_PASSWORD` | yes | — | Password for the dashboard login screen (minimum 8 characters) |
 | `DATABASE_URL` | yes | — | PostgreSQL connection string, e.g. `postgres://primecache:<password>@postgres:5432/primecache` |
@@ -53,6 +54,7 @@ Copy `.env.example` to `.env` and fill in the required values:
 | `PORT` | no | `3000` | API server port |
 | `LOG_LEVEL` | no | `info` | Log verbosity: `trace` / `debug` / `info` / `warn` / `error` |
 | `TIMEZONE` | no | `Europe/Amsterdam` | Timezone used for cron schedule evaluation |
+| `BROWSERLESS_HTTP_URL` | no | derived from `BROWSERLESS_WS_URL` | Direct HTTP base URL for Lighthouse audits, e.g. `http://browserless:3000`. Set this when `BROWSERLESS_WS_URL` points to a domain behind Cloudflare (CF passes WS but blocks HTTP) |
 
 ### 2. Configure URL groups in `config.yaml`
 
@@ -148,6 +150,7 @@ All fields in the `options` block are optional unless noted.
 | `waitForSelector` | string | — | Wait for a CSS selector to appear before measuring (5 s timeout) |
 | `crawl` | bool | `false` | BFS-crawl same-origin internal links discovered on each configured URL |
 | `crawl_depth` | int (1–10) | — | Maximum crawl depth. **Required when `crawl: true`** |
+| `crawl_timeout_ms` | int (ms) | `3600000` | Maximum duration for an entire crawl run before auto-cancel (minimum 60000) |
 | `userAgent` | string | — | Override the rotating user agent string for this group |
 | `localStorage` | record | — | Key/value pairs injected into `localStorage` via init script before page load |
 | `cookies` | array | — | Cookies injected into the browser context before page load. Fields: `name`, `value`, and optionally `url`, `domain`, `path`, `httpOnly`, `secure`, `sameSite` (`Strict`/`Lax`/`None`), `expires` |
@@ -192,6 +195,9 @@ All endpoints except `GET /health`, `GET /api/public/status`, and `POST /api/aut
 | GET | `/api/groups/:name/broken-links` | Broken links discovered during visits |
 | GET | `/api/groups/:name/export` | CSV export (`?tab=performance\|uptime\|seo\|links`) |
 | GET | `/api/stats` | Global stats: run status breakdown, visits per day per group |
+| GET | `/api/secrets` | List secret names (values never returned) |
+| POST | `/api/secrets` | Create or update a secret — body `{ name, value }`. Encrypted at rest with AES-256-GCM |
+| DELETE | `/api/secrets/:name` | Remove a secret |
 | GET | `/api/groups/:name/webhooks` | List webhook tokens for a group (no token values returned) |
 | POST | `/api/groups/:name/webhooks` | Create a webhook token — body `{ description? }`. Token value returned once |
 | DELETE | `/api/groups/:name/webhooks/:id` | Delete a webhook token |
