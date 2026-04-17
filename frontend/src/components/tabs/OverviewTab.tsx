@@ -83,12 +83,12 @@ function UrlTrendTile({
 
   const trendColor =
     delta == null
-      ? 'hsl(var(--muted-foreground))'
+      ? 'var(--muted-foreground)'
       : delta > 50
-        ? 'hsl(var(--destructive))'
+        ? 'var(--destructive)'
         : delta < -50
           ? '#22c55e'
-          : 'hsl(var(--primary))';
+          : 'var(--primary)';
 
   return (
     <Card className={isPinned ? 'ring-1 ring-primary/40' : ''}>
