@@ -1,46 +1,30 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { createColumnHelper } from '@tanstack/react-table';
-import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { DataTable } from '@/components/ui/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GroupDetailSkeleton } from '../components/GroupDetailSkeleton';
-import { GroupForm } from '../components/GroupForm';
-import { RunResults } from '../components/RunResults';
 import { StatCard } from '../components/StatCard';
-import { StatusBadge } from '../components/StatusBadge';
-import { TabLoadingSkeleton } from '../components/TabLoadingSkeleton';
-import { AccessibilityTab } from '../components/tabs/AccessibilityTab';
-import { LighthouseTab } from '../components/tabs/LighthouseTab';
-import { LinksTab } from '../components/tabs/LinksTab';
+import { HistoryTab } from '../components/tabs/HistoryTab';
 import { OverviewTab } from '../components/tabs/OverviewTab';
-import { SeoTab } from '../components/tabs/SeoTab';
-import { WebhooksTab } from '../components/tabs/WebhooksTab';
+import { QualityTab } from '../components/tabs/QualityTab';
+import { SettingsTab } from '../components/tabs/SettingsTab';
 import {
   getApiKey,
   getConfig,
-  getGroupAccessibility,
-  getGroupBrokenLinks,
-  getGroupExportUrl,
   getGroupOverview,
   getGroupPerformance,
-  getGroupSeo,
   getGroupUptime,
-  getRuns,
   putConfig,
   triggerAsync,
 } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
-import { formatDate, formatDuration } from '../lib/formatters';
+import { type GroupDetailSearch, normaliseGroupDetailSearch } from '../lib/groupDetailSearch';
 import { queryKeys } from '../lib/queryKeys';
-import type { Config, Group, Run } from '../lib/types';
+import type { Config, Group } from '../lib/types';
 
 export const Route = createFileRoute('/groups_/$groupName')({
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: typeof search.tab === 'string' ? search.tab : 'overview',
-  }),
+  validateSearch: normaliseGroupDetailSearch,
   loader: ({ context: { queryClient }, params }) => {
     if (!getApiKey()) return;
     const name = params.groupName;
@@ -62,48 +46,11 @@ export const Route = createFileRoute('/groups_/$groupName')({
   component: GroupDetailPage,
 });
 
-const HISTORY_PAGE_SIZE = 20;
-
-const runColumnHelper = createColumnHelper<Run>();
-const historyColumns = [
-  runColumnHelper.accessor('id', {
-    header: 'Run #',
-    cell: (info) => <span className="text-muted-foreground">#{info.getValue()}</span>,
-  }),
-  runColumnHelper.accessor('started_at', {
-    header: 'Started',
-    cell: (info) => formatDate(info.getValue()),
-  }),
-  runColumnHelper.display({
-    id: 'duration',
-    header: 'Duration',
-    enableSorting: false,
-    cell: (info) => formatDuration(info.row.original.started_at, info.row.original.ended_at),
-  }),
-  runColumnHelper.accessor('status', {
-    header: 'Status',
-    cell: (info) => <StatusBadge status={info.getValue()} />,
-    enableSorting: false,
-  }),
-  runColumnHelper.display({
-    id: 'results',
-    header: 'Results',
-    enableSorting: false,
-    cell: (info) => (
-      <RunResults
-        successCount={info.row.original.success_count}
-        failureCount={info.row.original.failure_count}
-      />
-    ),
-  }),
-];
-
 function GroupDetailPage() {
   const { groupName } = Route.useParams();
-  const { tab: activeTab } = Route.useSearch();
+  const { tab: activeTab, qtab: activeQtab }: GroupDetailSearch = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
-  const [historyPage, setHistoryPage] = useState(0);
 
   const { data: overview } = useQuery(
     queryOptions({
@@ -116,45 +63,17 @@ function GroupDetailPage() {
     queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig }),
   );
 
+  // Performance + uptime are only needed on the Health tab
   const { data: performance } = useQuery({
     queryKey: queryKeys.groups.performance(groupName),
     queryFn: () => getGroupPerformance(groupName),
-    enabled: activeTab === 'overview',
+    enabled: activeTab === 'health',
   });
 
   const { data: uptime } = useQuery({
     queryKey: queryKeys.groups.uptime(groupName),
     queryFn: () => getGroupUptime(groupName),
-    enabled: activeTab === 'overview',
-  });
-
-  const { data: seo, isLoading: seoLoading } = useQuery({
-    queryKey: queryKeys.groups.seo(groupName),
-    queryFn: () => getGroupSeo(groupName),
-    enabled: activeTab === 'seo',
-  });
-
-  const { data: brokenLinks, isLoading: linksLoading } = useQuery({
-    queryKey: queryKeys.groups.brokenLinks(groupName),
-    queryFn: () => getGroupBrokenLinks(groupName),
-    enabled: activeTab === 'links',
-  });
-
-  const { data: accessibility, isLoading: accessibilityLoading } = useQuery({
-    queryKey: queryKeys.groups.accessibility(groupName),
-    queryFn: () => getGroupAccessibility(groupName),
-    enabled: activeTab === 'accessibility',
-  });
-
-  const { data: historyRuns, isLoading: historyLoading } = useQuery({
-    queryKey: [...queryKeys.runs.all(), 'group-tab', groupName, historyPage],
-    queryFn: () =>
-      getRuns({
-        group: groupName,
-        limit: HISTORY_PAGE_SIZE,
-        offset: historyPage * HISTORY_PAGE_SIZE,
-      }),
-    enabled: activeTab === 'history',
+    enabled: activeTab === 'health',
   });
 
   const trigger = useMutation({
@@ -184,13 +103,14 @@ function GroupDetailPage() {
       navigate({
         to: '/groups/$groupName',
         params: { groupName: updated.name },
-        search: { tab: 'overview' },
+        search: { tab: 'health', qtab: 'seo' },
       });
     }
   };
 
   return (
     <div>
+      {/* Breadcrumb */}
       <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
         <Link to="/" className="hover:text-foreground">
           Dashboard
@@ -199,6 +119,7 @@ function GroupDetailPage() {
         <span>{groupName}</span>
       </div>
 
+      {/* Page header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">{groupName}</h1>
@@ -209,6 +130,7 @@ function GroupDetailPage() {
         </Button>
       </div>
 
+      {/* All-time stat tiles */}
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total runs" value={stats ? String(stats.totalRuns) : '—'} />
         <StatCard
@@ -225,36 +147,25 @@ function GroupDetailPage() {
         />
       </div>
 
+      {/* 4-tab navigation */}
       <Tabs
         value={activeTab}
         onValueChange={(val) => {
-          navigate({ search: (prev) => ({ ...prev, tab: val }), replace: true });
-          setHistoryPage(0);
+          navigate({
+            search: (prev) => ({ ...prev, tab: val as GroupDetailSearch['tab'] }),
+            replace: true,
+          });
         }}
       >
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="seo">SEO</TabsTrigger>
-            <TabsTrigger value="links">Links</TabsTrigger>
-            <TabsTrigger value="accessibility">Accessibility</TabsTrigger>
-            <TabsTrigger value="lighthouse">Lighthouse</TabsTrigger>
-            <TabsTrigger value="history">Runs</TabsTrigger>
-            <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
-            <TabsTrigger value="settings">Config</TabsTrigger>
-          </TabsList>
-          {['seo', 'links'].includes(activeTab) && (
-            <a
-              href={getGroupExportUrl(groupName, activeTab)}
-              download
-              className="text-xs text-muted-foreground hover:text-foreground underline"
-            >
-              Export CSV
-            </a>
-          )}
-        </div>
+        <TabsList className="mb-4">
+          <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="quality">Quality</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
 
-        <TabsContent value="overview">
+        {/* Health — overview + per-URL sparklines */}
+        <TabsContent value="health">
           <OverviewTab
             groupName={groupName}
             overview={overview}
@@ -263,108 +174,39 @@ function GroupDetailPage() {
           />
         </TabsContent>
 
-        <TabsContent value="seo">
-          {seoLoading ? (
-            <TabLoadingSkeleton rows={5} cols={4} />
-          ) : seo ? (
-            <SeoTab data={seo} />
-          ) : (
-            <EmptyTab message="No SEO data collected — visits may be failing. Check the Overview tab for uptime errors." />
-          )}
+        {/* Quality — SEO / Links / Accessibility / Lighthouse sub-tabs */}
+        <TabsContent value="quality">
+          <QualityTab
+            groupName={groupName}
+            activeQtab={activeQtab}
+            onQtabChange={(qtab) =>
+              navigate({ search: (prev) => ({ ...prev, qtab }), replace: true })
+            }
+            groupUrls={group?.urls ?? []}
+          />
         </TabsContent>
 
-        <TabsContent value="links">
-          {linksLoading ? (
-            <TabLoadingSkeleton rows={5} cols={5} />
-          ) : brokenLinks ? (
-            <LinksTab data={brokenLinks} />
-          ) : (
-            <EmptyTab>
-              No broken link data yet. Enable <code>checkBrokenLinks: true</code> in config and run
-              the group.
-            </EmptyTab>
-          )}
-        </TabsContent>
-
-        <TabsContent value="accessibility">
-          {accessibilityLoading ? (
-            <TabLoadingSkeleton rows={5} cols={5} />
-          ) : accessibility && accessibility.urls.length > 0 ? (
-            <AccessibilityTab data={accessibility} />
-          ) : (
-            <EmptyTab>
-              No accessibility data yet. Enable <code>checkAccessibility: true</code> in config and
-              run the group.
-            </EmptyTab>
-          )}
-        </TabsContent>
-
-        <TabsContent value="lighthouse">
-          <LighthouseTab groupName={groupName} groupUrls={group?.urls ?? []} />
-        </TabsContent>
-
+        {/* History — run log with per-page pagination */}
         <TabsContent value="history">
-          {historyLoading ? (
-            <TabLoadingSkeleton rows={8} cols={5} />
-          ) : !historyRuns?.length ? (
-            <EmptyTab message="No runs found for this group." />
-          ) : (
-            <>
-              <DataTable
-                columns={historyColumns}
-                data={historyRuns}
-                searchPlaceholder="Search runs…"
-                defaultSorting={[{ id: 'started_at', desc: true }]}
-                defaultPageSize={HISTORY_PAGE_SIZE}
-                onRowClick={(run) =>
-                  navigate({ to: '/history/$runId', params: { runId: String(run.id) } })
-                }
-              />
-              <div className="mt-4 flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setHistoryPage((p) => p - 1)}
-                  disabled={historyPage <= 0}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm text-muted-foreground">Page {historyPage + 1}</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setHistoryPage((p) => p + 1)}
-                  disabled={historyRuns.length < HISTORY_PAGE_SIZE}
-                >
-                  Next
-                </Button>
-              </div>
-            </>
-          )}
+          <HistoryTab groupName={groupName} isActive={activeTab === 'history'} />
         </TabsContent>
 
-        <TabsContent value="webhooks">
-          <WebhooksTab groupName={groupName} />
-        </TabsContent>
-
+        {/* Settings — group config + webhooks */}
         <TabsContent value="settings">
           {group ? (
-            <GroupForm
-              initial={group}
+            <SettingsTab
+              group={group}
+              groupName={groupName}
               onSave={handleSettingsSave}
               onCancel={() =>
-                navigate({ search: (prev) => ({ ...prev, tab: 'overview' }), replace: true })
+                navigate({ search: (prev) => ({ ...prev, tab: 'health' }), replace: true })
               }
             />
           ) : (
-            <EmptyTab message="Loading group configuration…" />
+            <p className="text-sm text-muted-foreground">Loading group configuration…</p>
           )}
         </TabsContent>
       </Tabs>
     </div>
   );
-}
-
-function EmptyTab({ message, children }: { message?: string; children?: React.ReactNode }) {
-  return <p className="text-sm text-muted-foreground">{children ?? message}</p>;
 }
