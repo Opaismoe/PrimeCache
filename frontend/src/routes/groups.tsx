@@ -57,7 +57,7 @@ function GroupCard({
             <Link
               to="/groups/$groupName"
               params={{ groupName: group.name }}
-              search={{ tab: 'overview' }}
+              search={{ tab: 'health', qtab: 'seo' }}
               className="font-semibold text-base hover:text-primary hover:underline"
             >
               {group.name}

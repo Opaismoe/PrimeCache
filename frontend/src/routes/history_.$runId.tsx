@@ -169,7 +169,7 @@ function RunDetailPage() {
         <Link
           to="/groups/$groupName"
           params={{ groupName: run.group_name }}
-          search={{ tab: 'overview' }}
+          search={{ tab: 'health', qtab: 'seo' }}
           className="hover:text-foreground"
         >
           {run.group_name}
@@ -184,7 +184,7 @@ function RunDetailPage() {
           <Link
             to="/groups/$groupName"
             params={{ groupName: run.group_name }}
-            search={{ tab: 'overview' }}
+            search={{ tab: 'health', qtab: 'seo' }}
             className="text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
             {run.group_name}
