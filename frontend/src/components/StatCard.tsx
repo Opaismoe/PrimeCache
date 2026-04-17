@@ -1,12 +1,12 @@
-import { Card, CardContent } from '@/components/ui/card';
+/**
+ * @deprecated Use `<Metric>` from `@/components/ui/metric` instead.
+ *
+ * Kept as a thin shim so existing call sites compile during the redesign
+ * (see .ai/frontend-redesign.md). Will be removed in Batch 6 once all call
+ * sites have migrated.
+ */
+import { Metric } from '@/components/ui/metric';
 
 export function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="pt-4">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="mt-0.5 text-lg font-semibold">{value}</p>
-      </CardContent>
-    </Card>
-  );
+  return <Metric label={label} value={value} />;
 }
