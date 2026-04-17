@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { createColumnHelper } from '@tanstack/react-table';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -60,6 +60,32 @@ function Tile({
 
 // ── Per-URL trend tile ────────────────────────────────────────────────────────
 
+function loadTimeColor(ms: number): string {
+  if (ms <= 500) return '#22c55e';
+  if (ms >= 3000) return '#ef4444';
+  if (ms <= 1500) {
+    const t = (ms - 500) / 1000;
+    return lerpHex('#22c55e', '#eab308', t);
+  }
+  const t = (ms - 1500) / 1500;
+  return lerpHex('#eab308', '#ef4444', t);
+}
+
+function lerpHex(a: string, b: string, t: number): string {
+  const ca = parseInt(a.slice(1), 16);
+  const cb = parseInt(b.slice(1), 16);
+  const ar = (ca >> 16) & 0xff;
+  const ag = (ca >> 8) & 0xff;
+  const ab = ca & 0xff;
+  const br = (cb >> 16) & 0xff;
+  const bg = (cb >> 8) & 0xff;
+  const bb = cb & 0xff;
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const b2 = Math.round(ab + (bb - ab) * t);
+  return `#${((r << 16) | (g << 8) | b2).toString(16).padStart(6, '0')}`;
+}
+
 function UrlTrendTile({
   url,
   trend,
@@ -81,14 +107,7 @@ function UrlTrendTile({
   const previous = trend.length > 1 ? trend[trend.length - 2] : null;
   const delta = latest && previous ? latest.avgLoadTimeMs - previous.avgLoadTimeMs : null;
 
-  const trendColor =
-    delta == null
-      ? 'var(--muted-foreground)'
-      : delta > 50
-        ? 'var(--destructive)'
-        : delta < -50
-          ? '#22c55e'
-          : 'var(--primary)';
+  const gradientId = `spark${useId().replace(/:/g, '')}`;
 
   return (
     <Card className={isPinned ? 'ring-1 ring-primary/40' : ''}>
@@ -152,6 +171,17 @@ function UrlTrendTile({
         {trend.length > 1 && (
           <ResponsiveContainer width="100%" height={52}>
             <LineChart data={trend} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
+                  {trend.map((p, i) => (
+                    <stop
+                      key={`${p.startedAt}-${i}`}
+                      offset={`${(i / (trend.length - 1)) * 100}%`}
+                      stopColor={loadTimeColor(p.avgLoadTimeMs)}
+                    />
+                  ))}
+                </linearGradient>
+              </defs>
               <YAxis hide domain={['dataMin - 200', 'dataMax + 200']} />
               <Tooltip
                 contentStyle={CHART_TOOLTIP_STYLE}
@@ -161,7 +191,7 @@ function UrlTrendTile({
               <Line
                 type="monotone"
                 dataKey="avgLoadTimeMs"
-                stroke={trendColor}
+                stroke={`url(#${gradientId})`}
                 dot={false}
                 strokeWidth={1.5}
                 activeDot={{ r: 2 }}
