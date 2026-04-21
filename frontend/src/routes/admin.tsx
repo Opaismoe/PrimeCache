@@ -719,8 +719,7 @@ function SettingsSection({
             <div>
               <div className="text-sm font-medium">Purge all run history</div>
               <div className="text-xs text-muted-foreground">
-                Drops every row in{' '}
-                <code className="font-mono">runs</code> and{' '}
+                Drops every row in <code className="font-mono">runs</code> and{' '}
                 <code className="font-mono">visits</code>. Projects and config are preserved.
               </div>
             </div>

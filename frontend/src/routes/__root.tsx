@@ -82,9 +82,7 @@ function RootLayout() {
         />
         <div className="flex min-w-0 flex-1 flex-col">
           {shouldShowModal && <ApiKeyModal onSave={handleSave} />}
-          <main className="flex-1 px-6 py-6">
-            {!shouldShowModal && <Outlet />}
-          </main>
+          <main className="flex-1 px-6 py-6">{!shouldShowModal && <Outlet />}</main>
         </div>
       </div>
     </TooltipProvider>
@@ -138,7 +136,12 @@ function Sidebar({
             <div className="mb-1 mt-4 px-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
               Admin
             </div>
-            <SideLink to="/admin" icon={<Settings className="h-3.5 w-3.5" />} label="Groups" exactActive />
+            <SideLink
+              to="/admin"
+              icon={<Settings className="h-3.5 w-3.5" />}
+              label="Groups"
+              exactActive
+            />
             <SideLink
               href="/admin?section=webhooks"
               icon={<Webhook className="h-3.5 w-3.5" />}
@@ -227,11 +230,17 @@ function SideLink({
   );
 
   if (href) {
-    return <a href={href} className={cls}>{inner}</a>;
+    return (
+      <a href={href} className={cls}>
+        {inner}
+      </a>
+    );
   }
 
+  if (!to) return null;
+
   return (
-    <Link to={to!} className={cls}>
+    <Link to={to} className={cls}>
       {inner}
     </Link>
   );

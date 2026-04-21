@@ -191,8 +191,7 @@ function DashboardPage() {
             Overview · last 30 days
           </p>
           <h1 className="mb-2 text-3xl font-semibold tracking-tight">
-            Keeping{' '}
-            <span className="italic">{numberWord(groupCount)}</span>{' '}
+            Keeping <span className="italic">{numberWord(groupCount)}</span>{' '}
             {groupCount === 1 ? 'site' : 'sites'} warm
             <span className="text-amber-500">.</span>
           </h1>
@@ -245,7 +244,10 @@ function DashboardPage() {
         <>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-medium">Projects</h2>
-            <Link to="/groups" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <Link
+              to="/groups"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
               All projects <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
@@ -407,7 +409,9 @@ function DashboardPage() {
                           <span>{entry.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted-foreground">{entry.pct}%</span>
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {entry.pct}%
+                          </span>
                           <span className="font-mono text-sm">{entry.value}</span>
                         </div>
                       </div>
@@ -528,7 +532,10 @@ function buildHeroText(
   totalFailing: number,
 ): string {
   const parts: string[] = [];
-  if (totalUrls > 0) parts.push(`${totalUrls} URL${totalUrls !== 1 ? 's' : ''} across ${groupCount} ${groupCount === 1 ? 'project' : 'projects'}`);
+  if (totalUrls > 0)
+    parts.push(
+      `${totalUrls} URL${totalUrls !== 1 ? 's' : ''} across ${groupCount} ${groupCount === 1 ? 'project' : 'projects'}`,
+    );
   if (avgUptime != null) parts.push(`${avgUptime.toFixed(1)}% uptime`);
   const base = parts.join(' · ');
   const health =
@@ -538,7 +545,19 @@ function buildHeroText(
   return base ? `${base}. ${health}` : health;
 }
 
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const NUMBER_WORDS = [
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+];
 
 function numberWord(n: number): string {
   return n < NUMBER_WORDS.length ? NUMBER_WORDS[n] : String(n);

@@ -66,18 +66,18 @@ function RunDetailPage() {
   const successCount = run.success_count ?? visits.filter((v) => !v.error).length;
   const totalCount = run.total_urls ?? visits.length;
   const successPct = totalCount > 0 ? ((successCount / totalCount) * 100).toFixed(0) : '—';
-  const avgLoad = visits.length > 0
-    ? Math.round(visits.reduce((s, v) => s + v.load_time_ms, 0) / visits.length)
-    : null;
+  const avgLoad =
+    visits.length > 0
+      ? Math.round(visits.reduce((s, v) => s + v.load_time_ms, 0) / visits.length)
+      : null;
   const validTtfb = visits.filter((v) => v.ttfb_ms != null);
-  const avgTtfb = validTtfb.length > 0
-    ? Math.round(validTtfb.reduce((s, v) => s + (v.ttfb_ms ?? 0), 0) / validTtfb.length)
-    : null;
+  const avgTtfb =
+    validTtfb.length > 0
+      ? Math.round(validTtfb.reduce((s, v) => s + (v.ttfb_ms ?? 0), 0) / validTtfb.length)
+      : null;
 
   // Build waterfall data — sort by load_time desc, limit to 24
-  const waterfallVisits = [...visits]
-    .sort((a, b) => b.load_time_ms - a.load_time_ms)
-    .slice(0, 24);
+  const waterfallVisits = [...visits].sort((a, b) => b.load_time_ms - a.load_time_ms).slice(0, 24);
   const maxLoad = Math.max(...waterfallVisits.map((v) => v.load_time_ms), 1);
 
   return (
@@ -159,7 +159,8 @@ function RunDetailPage() {
               <div>
                 <h2 className="text-sm font-medium">Request waterfall</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {waterfallVisits.length} of {visits.length} URLs · sorted by load time · blue = TTFB · amber = content
+                  {waterfallVisits.length} of {visits.length} URLs · sorted by load time · blue =
+                  TTFB · amber = content
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -230,7 +231,15 @@ function RunDetailPage() {
   );
 }
 
-function MiniKpi({ label, value, tone }: { label: string; value: string; tone?: 'ok' | 'warn' | 'bad' }) {
+function MiniKpi({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: 'ok' | 'warn' | 'bad';
+}) {
   const cls =
     tone === 'ok'
       ? 'text-green-500'
@@ -251,9 +260,10 @@ function MiniKpi({ label, value, tone }: { label: string; value: string; tone?: 
 
 function WaterfallRow({ visit, maxLoad }: { visit: Visit; maxLoad: number }) {
   const ttfbW = visit.ttfb_ms != null ? (visit.ttfb_ms / maxLoad) * 100 : 0;
-  const contentW = visit.ttfb_ms != null
-    ? Math.max(0, ((visit.load_time_ms - visit.ttfb_ms) / maxLoad) * 100)
-    : (visit.load_time_ms / maxLoad) * 100;
+  const contentW =
+    visit.ttfb_ms != null
+      ? Math.max(0, ((visit.load_time_ms - visit.ttfb_ms) / maxLoad) * 100)
+      : (visit.load_time_ms / maxLoad) * 100;
   const hasError = !!visit.error;
   const statusOk = visit.status_code != null && visit.status_code < 400;
 
@@ -274,14 +284,10 @@ function WaterfallRow({ visit, maxLoad }: { visit: Visit; maxLoad: number }) {
           <span className="block truncate text-[10px] text-destructive">{visit.error}</span>
         )}
       </div>
-      <div
-        className={`font-mono text-xs ${statusOk ? 'text-green-500' : 'text-destructive'}`}
-      >
+      <div className={`font-mono text-xs ${statusOk ? 'text-green-500' : 'text-destructive'}`}>
         {visit.status_code ?? '—'}
       </div>
-      <div className="font-mono text-xs text-muted-foreground">
-        {formatMs(visit.load_time_ms)}
-      </div>
+      <div className="font-mono text-xs text-muted-foreground">{formatMs(visit.load_time_ms)}</div>
       <div className="flex h-3 items-center gap-0.5 overflow-hidden rounded-sm bg-muted/30">
         {ttfbW > 0 && (
           <div
