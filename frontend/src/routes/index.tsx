@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RunResults } from '../components/RunResults';
 import { StatusBadge } from '../components/StatusBadge';
+import { UptimeSegBars } from '../components/UptimeSegBars';
 import {
   getApiKey,
   getConfig,
@@ -27,7 +28,7 @@ import {
   getStats,
   triggerAsync,
 } from '../lib/api';
-import { CHART_TOOLTIP_STYLE } from '../lib/chartStyles';
+import { CHART_TOOLTIP_STYLE, getColor, STATUS_COLORS, STATUS_LABELS } from '../lib/chartStyles';
 import { describeCron } from '../lib/cronUtils';
 import { formatChartDate } from '../lib/formatChartDate';
 import { formatDate } from '../lib/formatters';
@@ -60,26 +61,6 @@ export const Route = createFileRoute('/')({
   pendingMinMs: 300,
   component: DashboardPage,
 });
-
-const STATUS_COLORS: Record<string, string> = {
-  completed: '#22c55e',
-  partial_failure: '#f59e0b',
-  failed: '#ef4444',
-  cancelled: '#6b7280',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  completed: 'Completed',
-  partial_failure: 'Partial failure',
-  failed: 'Failed',
-  cancelled: 'Cancelled / failed',
-};
-
-const GROUP_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
-
-function getGroupColor(index: number) {
-  return GROUP_COLORS[index % GROUP_COLORS.length];
-}
 
 function buildStackedBarData(visitsByDay: Stats['visitsByDay']) {
   const groups = [...new Set(visitsByDay.map((v) => v.group))];
@@ -306,61 +287,116 @@ function DashboardPage() {
       {publicStatus && publicStatus.length > 0 && (
         <div className="mt-10">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium">Uptime Status</h2>
+            <div>
+              <h2 className="text-sm font-medium">Uptime</h2>
+              <p className="text-xs text-muted-foreground">Last 30 days · hover a bar for detail</p>
+            </div>
             <Link
               to="/status"
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
-              View all
-              <ChevronRight className="h-3 w-3" />
+              View status page <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <Card>
-            <CardContent className="divide-y divide-border p-0">
-              {publicStatus.map((g) => {
-                const isHealthy = g.uptimePct >= 99;
-                const isDegraded = g.uptimePct >= 95 && g.uptimePct < 99;
-                return (
-                  <Link
-                    key={g.groupName}
-                    to="/status"
-                    className="flex items-center gap-3 rounded-md px-4 py-3 transition-colors hover:bg-muted/50"
-                  >
+          <div
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Header row */}
+            <div
+              className="font-mono text-[11px] uppercase tracking-widest"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '160px 1fr 70px 18px',
+                padding: '10px 18px',
+                color: 'var(--muted-foreground)',
+                borderBottom: '1px solid var(--border)',
+                letterSpacing: '0.08em',
+              }}
+            >
+              <div>Project</div>
+              <div>Timeline · 60 intervals</div>
+              <div style={{ textAlign: 'right' }}>Uptime</div>
+              <div />
+            </div>
+            {publicStatus.map((g, idx) => {
+              const isHealthy = g.uptimePct >= 99;
+              const isDegraded = g.uptimePct >= 95 && g.uptimePct < 99;
+              const dotColor = isHealthy
+                ? 'var(--pc-ok)'
+                : isDegraded
+                  ? 'var(--pc-warn)'
+                  : 'var(--pc-bad)';
+              const uptimeColor = isHealthy
+                ? 'var(--pc-ok)'
+                : isDegraded
+                  ? 'var(--pc-warn)'
+                  : 'var(--pc-bad)';
+              return (
+                <Link
+                  key={g.groupName}
+                  to="/status"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '160px 1fr 70px 18px',
+                    alignItems: 'center',
+                    gap: 16,
+                    padding: '14px 18px',
+                    borderBottom:
+                      idx < publicStatus.length - 1 ? '1px solid var(--border)' : 'none',
+                    transition: 'background 0.12s',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                  }}
+                  className="hover:bg-muted/50"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                     <span
-                      className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${
-                        isHealthy ? 'bg-green-500' : isDegraded ? 'bg-yellow-500' : 'bg-destructive'
-                      }`}
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: dotColor,
+                        flexShrink: 0,
+                      }}
                     />
-                    <span className="flex-1 text-sm font-medium">{g.groupName}</span>
-                    <span
-                      className={`font-mono text-sm font-semibold ${
-                        isHealthy
-                          ? 'text-green-500'
-                          : isDegraded
-                            ? 'text-yellow-500'
-                            : 'text-destructive'
-                      }`}
-                    >
-                      {g.uptimePct.toFixed(1)}%
-                    </span>
-                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                    <div style={{ minWidth: 0 }}>
                       <div
-                        className={`h-full rounded-full ${
-                          isHealthy
-                            ? 'bg-green-500'
-                            : isDegraded
-                              ? 'bg-yellow-500'
-                              : 'bg-destructive'
-                        }`}
-                        style={{ width: `${Math.min(100, g.uptimePct)}%` }}
-                      />
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {g.groupName}
+                      </div>
                     </div>
-                    <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
-                  </Link>
-                );
-              })}
-            </CardContent>
-          </Card>
+                  </div>
+                  <UptimeSegBars uptimePct={g.uptimePct} groupName={g.groupName} />
+                  <div
+                    className="font-mono"
+                    style={{
+                      textAlign: 'right',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: uptimeColor,
+                    }}
+                  >
+                    {g.uptimePct.toFixed(2)}%
+                  </div>
+                  <ChevronRight
+                    style={{ width: 14, height: 14, color: 'var(--muted-foreground)' }}
+                  />
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -449,7 +485,7 @@ function DashboardPage() {
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     {stackedGroups.map((group, i) => (
-                      <Bar key={group} dataKey={group} stackId="a" fill={getGroupColor(i)} />
+                      <Bar key={group} dataKey={group} stackId="a" fill={getColor(i)} />
                     ))}
                   </BarChart>
                 </ResponsiveContainer>

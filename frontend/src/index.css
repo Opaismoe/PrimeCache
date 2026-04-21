@@ -83,6 +83,16 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* PrimeCache semantic palette */
+  --pc-ok: oklch(74% 0.13 150);
+  --pc-ok-soft: oklch(74% 0.13 150 / 0.12);
+  --pc-warn: oklch(80% 0.14 75);
+  --pc-warn-soft: oklch(80% 0.14 75 / 0.12);
+  --pc-bad: oklch(68% 0.16 20);
+  --pc-bad-soft: oklch(68% 0.16 20 / 0.12);
+  --pc-accent: oklch(72% 0.17 24);
+  --pc-accent-soft: oklch(72% 0.17 24 / 0.12);
+  --pc-info: oklch(72% 0.1 240);
 }
 
 .dark {
@@ -117,6 +127,16 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* PrimeCache semantic palette — same values, dark mode doesn't shift them */
+  --pc-ok: oklch(74% 0.13 150);
+  --pc-ok-soft: oklch(74% 0.13 150 / 0.12);
+  --pc-warn: oklch(80% 0.14 75);
+  --pc-warn-soft: oklch(80% 0.14 75 / 0.12);
+  --pc-bad: oklch(68% 0.16 20);
+  --pc-bad-soft: oklch(68% 0.16 20 / 0.12);
+  --pc-accent: oklch(72% 0.17 24);
+  --pc-accent-soft: oklch(72% 0.17 24 / 0.12);
+  --pc-info: oklch(72% 0.1 240);
 }
 
 @layer base {
