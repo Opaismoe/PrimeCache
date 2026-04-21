@@ -106,7 +106,7 @@ function ProjectsPage() {
       {!config?.groups.length ? (
         <p className="text-muted-foreground">
           No groups configured yet.{' '}
-          <Link to="/admin" className="text-primary hover:underline">
+          <Link to="/admin" search={{ section: 'groups' }} className="text-primary hover:underline">
             Add a group
           </Link>
           .
