@@ -1,12 +1,14 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
   Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -68,12 +70,11 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
-  partial_failure: 'Partial Failure',
+  partial_failure: 'Partial failure',
   failed: 'Failed',
-  cancelled: 'Cancelled',
+  cancelled: 'Cancelled / failed',
 };
 
-// Generate a distinct color for each group bar
 const GROUP_COLORS = ['#60a5fa', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#e879f9'];
 
 function getGroupColor(index: number) {
@@ -100,7 +101,19 @@ function buildStackedBarData(visitsByDay: Stats['visitsByDay']) {
 function DashboardSkeleton() {
   return (
     <div>
-      <Skeleton className="mb-6 h-7 w-32" />
+      <Skeleton className="mb-2 h-5 w-40" />
+      <Skeleton className="mb-1 h-9 w-72" />
+      <Skeleton className="mb-8 h-4 w-96" />
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i}>
+            <CardContent className="pt-4">
+              <Skeleton className="mb-1.5 h-3 w-20" />
+              <Skeleton className="h-7 w-16" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <Card key={i} className="flex flex-col gap-3">
@@ -119,24 +132,6 @@ function DashboardSkeleton() {
             </CardContent>
           </Card>
         ))}
-      </div>
-      <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-40" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[220px] w-full" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-56" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-[220px] w-full" />
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
@@ -159,82 +154,155 @@ function DashboardPage() {
     },
   });
 
+  const syncAll = () => queryClient.invalidateQueries();
+
   const latestByGroup = new Map<string, Run>((latestRuns ?? []).map((r) => [r.group_name, r]));
 
-  const statusBarData = Object.entries(stats?.statusCounts ?? {}).map(([status, count]) => ({
-    status: STATUS_LABELS[status] ?? status,
-    count,
-    fill: STATUS_COLORS[status] ?? '#6b7280',
+  // KPI derivations
+  const groupCount = config?.groups.length ?? 0;
+  const totalUrls = config?.groups.reduce((s, g) => s + g.urls.length, 0) ?? 0;
+  const avgUptime =
+    publicStatus && publicStatus.length > 0
+      ? publicStatus.reduce((s, g) => s + g.uptimePct, 0) / publicStatus.length
+      : null;
+  const totalFailing = (latestRuns ?? []).reduce((s, r) => s + (r.failure_count ?? 0), 0);
+
+  // Donut chart data
+  const totalRuns = Object.values(stats?.statusCounts ?? {}).reduce((s, n) => s + n, 0);
+  const donutData = Object.entries(stats?.statusCounts ?? {}).map(([status, count]) => ({
+    name: STATUS_LABELS[status] ?? status,
+    value: count,
+    color: STATUS_COLORS[status] ?? '#6b7280',
+    pct: totalRuns > 0 ? ((count / totalRuns) * 100).toFixed(1) : '0',
   }));
 
   const { groups: stackedGroups, data: stackedData } = buildStackedBarData(
     stats?.visitsByDay ?? [],
   );
 
+  const heroText = buildHeroText(groupCount, totalUrls, avgUptime, totalFailing);
+
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold">Dashboard</h1>
+      {/* ── Hero callout ─────────────────────────────────────────────── */}
+      <div className="mb-8 flex items-start justify-between gap-6">
+        <div>
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+            Overview · last 30 days
+          </p>
+          <h1 className="mb-2 text-3xl font-semibold tracking-tight">
+            Keeping <span className="italic">{numberWord(groupCount)}</span>{' '}
+            {groupCount === 1 ? 'site' : 'sites'} warm
+            <span className="text-amber-500">.</span>
+          </h1>
+          <p className="text-sm text-muted-foreground">{heroText}</p>
+        </div>
+        {config?.groups.length ? (
+          <div className="flex shrink-0 gap-2">
+            <Button variant="outline" size="sm" onClick={syncAll}>
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              Sync
+            </Button>
+          </div>
+        ) : null}
+      </div>
 
+      {/* ── KPI row ──────────────────────────────────────────────────── */}
+      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTile label="Projects" value={String(groupCount)} />
+        <KpiTile label="Total URLs" value={String(totalUrls)} />
+        <KpiTile
+          label="Avg uptime · 30d"
+          value={avgUptime != null ? `${avgUptime.toFixed(1)}%` : '—'}
+          valueClass={
+            avgUptime == null
+              ? ''
+              : avgUptime >= 99
+                ? 'text-green-500'
+                : avgUptime >= 95
+                  ? 'text-amber-500'
+                  : 'text-destructive'
+          }
+        />
+        <KpiTile
+          label="Failing · 24h"
+          value={String(totalFailing)}
+          valueClass={totalFailing > 0 ? 'text-destructive' : 'text-green-500'}
+        />
+      </div>
+
+      {/* ── Project cards ─────────────────────────────────────────────── */}
       {!config?.groups.length ? (
         <p className="text-muted-foreground">
           No groups configured yet.{' '}
-          <Link to="/admin" className="text-primary hover:underline">
+          <Link to="/admin" search={{ section: 'groups' }} className="text-primary hover:underline">
             Add a group
           </Link>
           .
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {config.groups.map((group) => {
-            const latest = latestByGroup.get(group.name);
-            const isTriggering = trigger.isPending && trigger.variables === group.name;
-            return (
-              <Card key={group.name} className="flex flex-col gap-3">
-                <CardHeader className="pb-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <Link
-                        to="/groups/$groupName"
-                        params={{ groupName: group.name }}
-                        search={{ tab: 'health', qtab: 'seo' }}
-                        className="font-medium hover:text-primary hover:underline"
-                      >
-                        {group.name}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {describeCron(group.schedule)}
-                      </p>
+        <>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium">Projects</h2>
+            <Link
+              to="/groups"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              All projects <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {config.groups.map((group) => {
+              const latest = latestByGroup.get(group.name);
+              const isTriggering = trigger.isPending && trigger.variables === group.name;
+              return (
+                <Card key={group.name} className="flex flex-col gap-3">
+                  <CardHeader className="pb-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <Link
+                          to="/groups/$groupName"
+                          params={{ groupName: group.name }}
+                          search={{ tab: 'health', qtab: 'seo' }}
+                          className="font-medium hover:text-primary hover:underline"
+                        >
+                          {group.name}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {describeCron(group.schedule)}
+                        </p>
+                      </div>
+                      {latest && <StatusBadge status={latest.status} />}
                     </div>
-                    {latest && <StatusBadge status={latest.status} />}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3 pt-0">
-                  {latest ? (
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>Last run: {formatDate(latest.started_at)}</span>
-                      <RunResults
-                        successCount={latest.success_count}
-                        failureCount={latest.failure_count}
-                      />
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No runs yet</p>
-                  )}
-
-                  <Button
-                    onClick={() => trigger.mutate(group.name)}
-                    disabled={trigger.isPending}
-                    className="mt-auto"
-                  >
-                    {isTriggering ? 'Starting…' : 'Run now'}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-3 pt-0">
+                    {latest ? (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span>Last run: {formatDate(latest.started_at)}</span>
+                        <RunResults
+                          successCount={latest.success_count}
+                          failureCount={latest.failure_count}
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No runs yet</p>
+                    )}
+                    <Button
+                      onClick={() => trigger.mutate(group.name)}
+                      disabled={trigger.isPending}
+                      className="mt-auto"
+                    >
+                      {isTriggering ? 'Starting…' : 'Run now'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </>
       )}
 
+      {/* ── Uptime section ───────────────────────────────────────────── */}
       {publicStatus && publicStatus.length > 0 && (
         <div className="mt-10">
           <div className="mb-3 flex items-center justify-between">
@@ -256,7 +324,7 @@ function DashboardPage() {
                   <Link
                     key={g.groupName}
                     to="/status"
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 rounded-md transition-colors cursor-pointer"
+                    className="flex items-center gap-3 rounded-md px-4 py-3 transition-colors hover:bg-muted/50"
                   >
                     <span
                       className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${
@@ -265,7 +333,7 @@ function DashboardPage() {
                     />
                     <span className="flex-1 text-sm font-medium">{g.groupName}</span>
                     <span
-                      className={`text-sm font-semibold ${
+                      className={`font-mono text-sm font-semibold ${
                         isHealthy
                           ? 'text-green-500'
                           : isDegraded
@@ -296,50 +364,70 @@ function DashboardPage() {
         </div>
       )}
 
+      {/* ── Charts ───────────────────────────────────────────────────── */}
       {stats && (
         <div className="mt-10 grid gap-6 lg:grid-cols-2">
-          {/* Bar chart — run status breakdown */}
-          {statusBarData.length > 0 && (
+          {/* Donut chart — run outcomes */}
+          {donutData.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium">Run status breakdown</h2>
+                <h2 className="text-sm font-medium">Run outcomes · last {totalRuns}</h2>
+                <p className="text-xs text-muted-foreground">Completed vs. partial vs. failed</p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart
-                    data={statusBarData}
-                    margin={{ top: 4, right: 8, bottom: 0, left: -16 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="status"
-                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={CHART_TOOLTIP_STYLE}
-                      labelStyle={{ color: 'hsl(var(--foreground))' }}
-                      itemStyle={{ color: 'hsl(var(--muted-foreground))' }}
-                    />
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {statusBarData.map((entry) => (
-                        <Cell key={entry.status} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="flex items-center gap-6">
+                  <ResponsiveContainer width={140} height={140}>
+                    <PieChart>
+                      <Pie
+                        data={donutData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={42}
+                        outerRadius={62}
+                        dataKey="value"
+                        strokeWidth={2}
+                        stroke="hsl(var(--background))"
+                      >
+                        {donutData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={CHART_TOOLTIP_STYLE}
+                        formatter={(v) => [`${v}`, 'runs']}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="flex flex-1 flex-col gap-2.5">
+                    {donutData.map((entry) => (
+                      <div key={entry.name} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2 w-2 rounded-sm"
+                            style={{ background: entry.color }}
+                          />
+                          <span>{entry.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {entry.pct}%
+                          </span>
+                          <span className="font-mono text-sm">{entry.value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Stacked bar chart — URLs visited per day per group */}
+          {/* Stacked bar chart — URLs visited per day */}
           {stackedData.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
-                <h2 className="text-sm font-medium">URLs visited per day (last 30 days)</h2>
+                <h2 className="text-sm font-medium">URL visits · last 30 days</h2>
+                <p className="text-xs text-muted-foreground">Per project, stacked</p>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={220}>
@@ -370,6 +458,107 @@ function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* ── Recent activity ──────────────────────────────────────────── */}
+      {latestRuns && latestRuns.length > 0 && (
+        <div className="mt-10">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-medium">Recent activity</h2>
+            <Link
+              to="/history"
+              search={{ page: 1, group: '' }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              All events →
+            </Link>
+          </div>
+          <Card>
+            <CardContent className="p-0">
+              {latestRuns.map((run, i) => (
+                <Link
+                  key={run.id}
+                  to="/history/$runId"
+                  params={{ runId: String(run.id) }}
+                  className={`flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-muted/50 ${
+                    i < latestRuns.length - 1 ? 'border-b border-border' : ''
+                  }`}
+                >
+                  <span className="font-mono text-xs text-muted-foreground w-[46px] shrink-0">
+                    {new Date(run.started_at).toLocaleTimeString('nl-NL', { timeStyle: 'short' })}
+                  </span>
+                  <StatusBadge status={run.status} />
+                  <span className="font-medium">{run.group_name}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {run.success_count != null && run.failure_count != null
+                      ? `${run.success_count} ok${run.failure_count > 0 ? ` · ${run.failure_count} failed` : ''}`
+                      : '—'}
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">#{run.id}</span>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
+}
+
+// ── Helper components ─────────────────────────────────────────────────────────
+
+function KpiTile({
+  label,
+  value,
+  valueClass = '',
+}: {
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card px-4 py-3">
+      <p className="mb-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
+        {label}
+      </p>
+      <p className={`font-mono text-2xl font-semibold tabular-nums ${valueClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function buildHeroText(
+  groupCount: number,
+  totalUrls: number,
+  avgUptime: number | null,
+  totalFailing: number,
+): string {
+  const parts: string[] = [];
+  if (totalUrls > 0)
+    parts.push(
+      `${totalUrls} URL${totalUrls !== 1 ? 's' : ''} across ${groupCount} ${groupCount === 1 ? 'project' : 'projects'}`,
+    );
+  if (avgUptime != null) parts.push(`${avgUptime.toFixed(1)}% uptime`);
+  const base = parts.join(' · ');
+  const health =
+    totalFailing === 0
+      ? 'All origins healthy.'
+      : `${totalFailing} URL${totalFailing !== 1 ? 's' : ''} currently failing.`;
+  return base ? `${base}. ${health}` : health;
+}
+
+const NUMBER_WORDS = [
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+];
+
+function numberWord(n: number): string {
+  return n < NUMBER_WORDS.length ? NUMBER_WORDS[n] : String(n);
 }

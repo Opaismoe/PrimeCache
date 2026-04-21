@@ -23,6 +23,7 @@ export const queryKeys = {
     lighthouse: (name: string, formFactor: 'mobile' | 'desktop' = 'desktop') =>
       ['groups', name, 'lighthouse', formFactor] as const,
     crawledUrls: (name: string) => ['groups', name, 'crawled-urls'] as const,
+    webhooks: (name: string) => ['groups', name, 'webhooks'] as const,
   },
   publicStatus: {
     all: () => ['public-status'] as const,
