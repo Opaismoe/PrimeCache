@@ -3,7 +3,7 @@
 **Wave:** A (independent)
 **Model:** `claude-sonnet-4-6` — CSP shape needs thought; wrong directives will break the SPA (screenshots use `data:` image URIs, charts inject inline styles).
 **Findings:** F10 (Low)
-**Status:** todo
+**Status:** done
 
 ## Goal
 

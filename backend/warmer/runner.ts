@@ -98,13 +98,26 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
       });
 
       // Persist Phase 2 + Phase 3 data — each wrapped so one failure doesn't abort the run
-      if (result.seo) await insertVisitSeo(db, visitId, result.seo).catch(() => {});
-      if (result.headers) await insertVisitHeaders(db, visitId, result.headers).catch(() => {});
-      if (result.cwv) await insertVisitCwv(db, visitId, result.cwv).catch(() => {});
+      if (result.seo)
+        await insertVisitSeo(db, visitId, result.seo).catch((err) => {
+          log.warn({ err, visitId, url }, 'seo insert failed');
+        });
+      if (result.headers)
+        await insertVisitHeaders(db, visitId, result.headers).catch((err) => {
+          log.warn({ err, visitId, url }, 'headers insert failed');
+        });
+      if (result.cwv)
+        await insertVisitCwv(db, visitId, result.cwv).catch((err) => {
+          log.warn({ err, visitId, url }, 'cwv insert failed');
+        });
       if (result.screenshotBase64)
-        await insertVisitScreenshot(db, visitId, result.screenshotBase64).catch(() => {});
+        await insertVisitScreenshot(db, visitId, result.screenshotBase64).catch((err) => {
+          log.warn({ err, visitId, url }, 'screenshot insert failed');
+        });
       if (result.brokenLinks?.length > 0)
-        await insertVisitBrokenLinks(db, visitId, result.brokenLinks).catch(() => {});
+        await insertVisitBrokenLinks(db, visitId, result.brokenLinks).catch((err) => {
+          log.warn({ err, visitId, url }, 'broken links insert failed');
+        });
       if (result.accessibility)
         await insertVisitAccessibility(db, visitId, {
           violationCount: result.accessibility.violationCount,
@@ -112,7 +125,9 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
           seriousCount: result.accessibility.seriousCount,
           violations: result.accessibility.violations,
           collectedAt: new Date(),
-        }).catch(() => {});
+        }).catch((err) => {
+          log.warn({ err, visitId, url }, 'accessibility insert failed');
+        });
 
       if (result.extractedCookies.length > 0) cookiesByUrl.set(url, result.extractedCookies);
 
@@ -127,7 +142,9 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
 
       // Persist crawled (depth > 0) URLs so they can be reused in Lighthouse audits
       if (group.options.crawl && depth > 0 && result.error === null) {
-        await upsertCrawledUrl(db, group.name, url).catch(() => {});
+        await upsertCrawledUrl(db, group.name, url).catch((err) => {
+          log.warn({ err, visitId, url }, 'crawled url insert failed');
+        });
       }
 
       if (queue.length > 0 && !signal.aborted) {
@@ -165,8 +182,8 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
             cookiesByUrl.get(visitedUrl),
           );
           await insertLighthouseReport(db, group.name, 'schedule', result);
-        } catch {
-          // fire-and-forget, never crash the runner
+        } catch (err) {
+          log.warn({ err, runId, url: visitedUrl }, 'scheduled lighthouse audit failed');
         }
       }
     })();

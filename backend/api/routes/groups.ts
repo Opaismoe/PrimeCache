@@ -12,6 +12,7 @@ import { getGroupLighthouse, insertLighthouseReport } from '../../db/queries/lig
 import { getGroupAccessibility } from '../../db/queries/visitAccessibility';
 import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks';
 import { runLighthouseAudit } from '../../services/lighthouseAudit';
+import { logger } from '../../utils/logger';
 
 export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsync {
   return async (app) => {
@@ -98,8 +99,8 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
             try {
               const result = await runLighthouseAudit(url, ff);
               await insertLighthouseReport(db, name, 'manual', result);
-            } catch {
-              // fire-and-forget — a single URL failure must not stop the rest
+            } catch (err) {
+              logger.warn({ err, url, name }, 'manual lighthouse audit failed');
             }
           }
         })();

@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
+import helmet from '@fastify/helmet';
 import fastifyStatic from '@fastify/static';
 import Fastify, {
   type FastifyError,
@@ -37,6 +38,26 @@ interface ServerDeps {
 export async function buildServer({ db, getConfig }: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
 
+  // ── Security headers ──────────────────────────────────────────────────────
+  await app.register(helmet, {
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", 'data:'],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        objectSrc: ["'none'"],
+      },
+    },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    strictTransportSecurity: { maxAge: 15552000, includeSubDomains: true },
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+  });
+
   // ── Static files (React SPA) ──────────────────────────────────────────────
   await app.register(fastifyStatic, {
     // ts-node:  __dirname = backend/api/      → ../../frontend/dist
@@ -49,7 +70,10 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
   // ── Global error logging ──────────────────────────────────────────────────
   app.setErrorHandler((error: FastifyError, _request: FastifyRequest, reply: FastifyReply) => {
-    logger.error({ err: error, url: _request.url }, 'unhandled route error');
+    // Redact the webhook trigger token from the URL before logging — the token
+    // appears in /webhook/trigger/:token and must not reach log aggregators.
+    const safeUrl = _request.url.replace(/(\/webhook\/trigger\/)[^/?#]+/, '$1[REDACTED]');
+    logger.error({ err: error, url: safeUrl }, 'unhandled route error');
     reply.code(error.statusCode ?? 500).send({ error: error.message });
   });
 

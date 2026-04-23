@@ -30,6 +30,12 @@ COPY --from=builder /app/backend/dist ./backend/dist
 RUN mkdir -p ./backend/dist/db/migrations
 COPY --from=builder /app/backend/db/migrations/ ./backend/dist/db/migrations/
 COPY --from=builder /app/frontend/dist ./frontend/dist
+
+RUN addgroup -S app && adduser -S app -G app \
+    && mkdir -p /app/data /app/config \
+    && chown -R app:app /app
+USER app
+
 VOLUME ["/app/data", "/app/config"]
 EXPOSE 3000
 ENTRYPOINT ["dumb-init", "--"]

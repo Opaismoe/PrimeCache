@@ -3,6 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Db } from '../db/client';
 import type { RunRow } from '../db/queries/runs';
 
+// Shared mock logger so we can spy on it across resets
+const mockLogger = {
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+  trace: vi.fn(),
+  child: vi.fn().mockReturnThis(),
+};
+vi.mock('../utils/logger', () => ({ logger: mockLogger }));
+
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token');
 vi.stubEnv('API_KEY', 'supersecretapikey1234');
@@ -620,5 +631,33 @@ describe('DELETE /runs', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(typeof res.json().deleted).toBe('number');
+  });
+});
+
+// ── POST /webhook/trigger/:token — URL redaction in error logs ────────────────
+
+describe('POST /webhook/trigger/:token — error log URL redaction', () => {
+  it('logs a redacted URL (not the raw token) when the route handler throws', async () => {
+    const { findWebhookToken } = await import('../db/queries/webhookTokens');
+    // Force the DB lookup to throw so setErrorHandler fires
+    vi.mocked(findWebhookToken).mockRejectedValueOnce(new Error('db exploded'));
+
+    mockLogger.error.mockClear();
+
+    await app.inject({
+      method: 'POST',
+      url: '/webhook/trigger/my-super-secret-token',
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(mockLogger.error).toHaveBeenCalled();
+    const [logPayload] = mockLogger.error.mock.calls[0] as [Record<string, unknown>, ...unknown[]];
+
+    // The raw token must not appear in the logged URL
+    expect(JSON.stringify(logPayload)).not.toContain('my-super-secret-token');
+
+    // The URL should be redacted
+    const loggedUrl = logPayload.url as string;
+    expect(loggedUrl).toContain('/webhook/trigger/[REDACTED]');
   });
 });
