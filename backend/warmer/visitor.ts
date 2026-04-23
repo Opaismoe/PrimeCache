@@ -116,6 +116,7 @@ export async function visitUrl(
   // Close the browser context immediately when the run is cancelled so all
   // in-flight Playwright calls (page.goto, evaluate, …) throw right away.
   const onAbort = () => {
+    // Intentional: best-effort context cleanup during abort — do not log
     context?.close().catch(() => {});
   };
   signal?.addEventListener('abort', onAbort, { once: true });
@@ -256,6 +257,7 @@ export async function visitUrl(
     }
 
     if (options.waitForSelector) {
+      // Intentional: selector timeout is graceful degradation, visit continues
       await page.waitForSelector(options.waitForSelector, { timeout: 5_000 }).catch(() => {});
     }
 
@@ -315,6 +317,7 @@ export async function visitUrl(
           document.querySelector('meta[name="viewport"]')?.getAttribute('content') ?? null,
         lang: document.documentElement.getAttribute('lang') ?? null,
       }))
+      // Intentional: evaluate failure returns null, visit continues with partial SEO data
       .catch(() => null);
 
     const consentResult = await dismissCookieConsent(page);
@@ -328,6 +331,7 @@ export async function visitUrl(
         const w = window as unknown as WindowWithCwv;
         return w.__cwv ?? null;
       })
+      // Intentional: evaluate failure returns null, visit continues with no CWV data
       .catch(() => null);
     const cwv: CwvSnapshot | null = cwvRaw
       ? {
@@ -365,6 +369,7 @@ export async function visitUrl(
     // Capture screenshot (opt-in)
     let screenshotBase64: string | null = null;
     if (options.screenshot) {
+      // Intentional: screenshot failure returns null, visit continues without screenshot
       const buf = await page.screenshot({ type: 'jpeg', quality: 60 }).catch(() => null);
       if (buf) screenshotBase64 = buf.toString('base64');
     }
@@ -419,6 +424,7 @@ export async function visitUrl(
     const extractedCookies = await context
       .cookies()
       .then((cs) => cs.map(({ name, value, domain, path }) => ({ name, value, domain, path })))
+      // Intentional: cookies extraction failure returns empty array, visit continues
       .catch(() => []);
 
     return {

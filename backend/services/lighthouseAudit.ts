@@ -49,7 +49,10 @@ export async function runLighthouseAudit(
   cookies?: Array<{ name: string; value: string; domain: string; path: string }>,
 ): Promise<LighthouseResult> {
   const base = lighthouseBaseUrl();
-  const endpoint = `${base}/chromium/performance?token=${env.BROWSERLESS_TOKEN}&timeout=120000`;
+  const path = '/chromium/performance';
+  const endpointUrl = new URL(path, base);
+  endpointUrl.searchParams.set('token', env.BROWSERLESS_TOKEN);
+  endpointUrl.searchParams.set('timeout', '120000');
   logger.debug(
     { url, base, formFactor, cookieCount: cookies?.length ?? 0 },
     'running lighthouse audit',
@@ -67,7 +70,7 @@ export async function runLighthouseAudit(
   if (cookieHeader) extraHeaders.Cookie = cookieHeader;
 
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch(endpointUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -107,6 +110,7 @@ export async function runLighthouseAudit(
     });
 
     if (!res.ok) {
+      // Intentional: response body read failure falls back to empty string for error message
       const text = await res.text().catch(() => '');
       throw new Error(`Browserless /chromium/performance returned ${res.status}: ${text}`);
     }
@@ -154,7 +158,7 @@ export async function runLighthouseAudit(
       : err instanceof Error
         ? err.message
         : String(err);
-    logger.error({ url, endpoint, error }, 'lighthouse audit failed');
+    logger.error({ url, base, path, error }, 'lighthouse audit failed');
     return {
       url,
       formFactor,

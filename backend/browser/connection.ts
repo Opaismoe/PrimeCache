@@ -49,6 +49,7 @@ export async function resetBrowser(): Promise<void> {
     if (b) {
       try {
         await b.close();
+        // Intentional: best-effort cleanup during shutdown — do not log or throw
       } catch {}
     }
   }
