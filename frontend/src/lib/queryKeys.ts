@@ -4,6 +4,7 @@ export const queryKeys = {
     list: (page: number, group: string) => ['runs', 'list', page, group] as const,
     latest: () => ['runs', 'latest'] as const,
     detail: (id: number) => ['runs', id] as const,
+    screenshots: (id: number) => ['runs', id, 'screenshots'] as const,
   },
   config: {
     all: () => ['config'] as const,

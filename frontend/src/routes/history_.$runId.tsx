@@ -1,15 +1,16 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink } from '../components/ExternalLink';
 import { Spinner } from '../components/Spinner';
 import { StatusBadge } from '../components/StatusBadge';
-import { cancelRun, getApiKey, getRunById } from '../lib/api';
+import { cancelRun, getApiKey, getRunById, getRunScreenshots } from '../lib/api';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
-import type { Visit } from '../lib/types';
+import type { RunScreenshot, Visit } from '../lib/types';
 
 export const Route = createFileRoute('/history_/$runId')({
   loader: ({ context: { queryClient }, params }) => {
@@ -58,6 +59,12 @@ function RunDetailPage() {
   const cancel = useMutation({
     mutationFn: () => cancelRun(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.runs.detail(id) }),
+  });
+
+  const { data: screenshots = [] } = useQuery({
+    queryKey: queryKeys.runs.screenshots(id),
+    queryFn: () => getRunScreenshots(id),
+    enabled: run?.status !== 'running',
   });
 
   if (!run) return <p className="text-muted-foreground">Run not found.</p>;
@@ -197,6 +204,9 @@ function RunDetailPage() {
         </Card>
       )}
 
+      {/* Screenshots */}
+      {screenshots.length > 0 && <ScreenshotGallery screenshots={screenshots} />}
+
       {/* Visit table */}
       {visits.length === 0 ? (
         <div className="flex items-center gap-2 text-muted-foreground">
@@ -303,6 +313,82 @@ function WaterfallRow({ visit, maxLoad }: { visit: Visit; maxLoad: number }) {
         )}
       </div>
     </div>
+  );
+}
+
+function ScreenshotGallery({ screenshots }: { screenshots: RunScreenshot[] }) {
+  const [lightbox, setLightbox] = useState<RunScreenshot | null>(null);
+
+  return (
+    <>
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <h2 className="text-sm font-medium">Screenshots</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {screenshots.length} URL{screenshots.length !== 1 ? 's' : ''} captured
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {screenshots.map((s) => (
+              <button
+                key={s.visitId}
+                type="button"
+                className="group overflow-hidden rounded-md border border-border bg-muted/30 text-left transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => setLightbox(s)}
+              >
+                <div className="aspect-video overflow-hidden bg-muted">
+                  <img
+                    src={`data:image/jpeg;base64,${s.imageData}`}
+                    alt={s.url}
+                    className="h-full w-full object-cover object-top transition-transform group-hover:scale-105"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="px-2 py-1.5">
+                  <span className="block truncate font-mono text-[10px] text-muted-foreground">
+                    {s.url}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {lightbox && (
+        <button
+          type="button"
+          className="fixed inset-0 z-50 flex cursor-default items-center justify-center bg-black/80 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLightbox(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setLightbox(null);
+          }}
+        >
+          <div className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-lg shadow-2xl">
+            <div className="flex items-center justify-between bg-card px-4 py-2">
+              <span className="max-w-[calc(90vw-80px)] truncate font-mono text-xs text-muted-foreground">
+                {lightbox.url}
+              </span>
+              <button
+                type="button"
+                className="ml-3 shrink-0 rounded-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setLightbox(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <img
+              src={`data:image/jpeg;base64,${lightbox.imageData}`}
+              alt={lightbox.url}
+              className="max-h-[calc(90vh-44px)] w-full object-contain"
+            />
+          </div>
+        </button>
+      )}
+    </>
   );
 }
 

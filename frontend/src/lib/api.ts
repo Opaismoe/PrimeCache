@@ -13,6 +13,7 @@ import type {
   LighthouseUrlSummary,
   Run,
   RunDetail,
+  RunScreenshot,
   Stats,
   WebhookToken,
   WebhookTokenCreated,
@@ -97,6 +98,9 @@ export const getRuns = (params: { limit?: number; offset?: number; group?: strin
 export const getLatestRuns = () => request<Run[]>('GET', '/api/runs/latest');
 
 export const getRunById = (id: number) => request<RunDetail>('GET', `/api/runs/${id}`);
+
+export const getRunScreenshots = (id: number) =>
+  request<RunScreenshot[]>('GET', `/api/runs/${id}/screenshots`);
 
 export const deleteRuns = (group?: string) =>
   request<{ deleted: number }>('DELETE', '/api/runs', group ? { group } : undefined);
