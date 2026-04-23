@@ -19,6 +19,17 @@ export interface LighthouseResult {
   error: string | null;
 }
 
+const FORBIDDEN_COOKIE_CHARS = /[;\r\n]/;
+
+export function safeCookieHeader(
+  cookies: Array<{ name: string; value: string }>,
+): string | undefined {
+  const parts = cookies
+    .filter((c) => !FORBIDDEN_COOKIE_CHARS.test(c.name) && !FORBIDDEN_COOKIE_CHARS.test(c.value))
+    .map((c) => `${c.name}=${encodeURIComponent(c.value)}`);
+  return parts.length ? parts.join('; ') : undefined;
+}
+
 function wsToHttp(wsUrl: string): string {
   return wsUrl
     .replace(/^wss:\/\//, 'https://')
@@ -60,9 +71,7 @@ export async function runLighthouseAudit(
 
   // Forward cookies from the Playwright warm visit so CF clearance (cf_clearance) transfers.
   // Also add realistic browser headers to reduce bot detection signal.
-  const cookieHeader = cookies?.length
-    ? cookies.map((c) => `${c.name}=${c.value}`).join('; ')
-    : undefined;
+  const cookieHeader = safeCookieHeader(cookies ?? []);
   const extraHeaders: Record<string, string> = {
     'Accept-Language': 'en-US,en;q=0.9,nl;q=0.8',
     Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',

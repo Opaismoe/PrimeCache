@@ -12,6 +12,11 @@ import {
 import { logger } from '../../utils/logger';
 import { startRunGroup } from '../../warmer/runner';
 
+function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 // ── Protected management routes: /api/groups/:name/webhooks ──────────────────
 
 export function webhookManagementRoutes(db: Db, getConfig: () => Config): FastifyPluginAsync {
@@ -52,7 +57,8 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
         request: FastifyRequest<{ Params: { name: string; id: string } }>,
         reply: FastifyReply,
       ) => {
-        const id = Number(request.params.id);
+        const id = parseId(request.params.id);
+        if (!id) return reply.code(400).send({ error: 'Invalid id' });
         const deleted = await deleteWebhookToken(db, id);
         if (!deleted) return reply.code(404).send({ error: 'Webhook token not found' });
         return { deleted: true };
@@ -69,7 +75,8 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
         }>,
         reply: FastifyReply,
       ) => {
-        const id = Number(request.params.id);
+        const id = parseId(request.params.id);
+        if (!id) return reply.code(400).send({ error: 'Invalid id' });
         const { active } = request.body ?? {};
         if (typeof active !== 'boolean')
           return reply.code(400).send({ error: '"active" must be a boolean' });

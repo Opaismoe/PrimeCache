@@ -102,8 +102,12 @@ export const getRunById = (id: number) => request<RunDetail>('GET', `/api/runs/$
 export const getRunScreenshots = (id: number) =>
   request<RunScreenshot[]>('GET', `/api/runs/${id}/screenshots`);
 
-export const deleteRuns = (group?: string) =>
-  request<{ deleted: number }>('DELETE', '/api/runs', group ? { group } : undefined);
+export const deleteRuns = (group?: string) => {
+  const qs = new URLSearchParams();
+  if (group) qs.set('group', group);
+  else qs.set('confirm', 'true');
+  return request<{ deleted: number }>('DELETE', `/api/runs?${qs}`);
+};
 
 export const triggerAsync = (group: string) =>
   request<{ runId: number }>('POST', '/api/trigger/async', { group });

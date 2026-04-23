@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { logger } from '../utils/logger';
+import { safeCookieHeader } from './lighthouseAudit';
 
 // Stub required env vars before any module under test imports them
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
@@ -53,5 +54,54 @@ describe('runLighthouseAudit — error log redaction', () => {
     expect(logPayload).toHaveProperty('url', 'https://example.com');
     expect(logPayload).toHaveProperty('base', 'http://browserless:3000');
     expect(logPayload).toHaveProperty('path', '/chromium/performance');
+  });
+});
+
+// ── safeCookieHeader unit tests (W11) ────────────────────────────────────────
+
+describe('safeCookieHeader (W11)', () => {
+  it('returns undefined for empty cookie array', () => {
+    expect(safeCookieHeader([])).toBeUndefined();
+  });
+
+  it('drops cookies whose value contains a semicolon', () => {
+    const result = safeCookieHeader([{ name: 'x', value: 'a; Set-Cookie: evil=1' }]);
+    expect(result).toBeUndefined();
+  });
+
+  it('drops cookies whose name contains a semicolon', () => {
+    const result = safeCookieHeader([{ name: 'bad;name', value: 'ok' }]);
+    expect(result).toBeUndefined();
+  });
+
+  it('drops cookies whose value contains \\r', () => {
+    const result = safeCookieHeader([{ name: 'x', value: 'val\rinjection' }]);
+    expect(result).toBeUndefined();
+  });
+
+  it('drops cookies whose value contains \\n', () => {
+    const result = safeCookieHeader([{ name: 'x', value: 'val\ninjection' }]);
+    expect(result).toBeUndefined();
+  });
+
+  it('URL-encodes values containing = characters', () => {
+    const result = safeCookieHeader([{ name: 'token', value: 'abc=def' }]);
+    expect(result).toBe('token=abc%3Ddef');
+  });
+
+  it('includes only safe cookies when mixed with unsafe ones', () => {
+    const result = safeCookieHeader([
+      { name: 'safe', value: 'ok' },
+      { name: 'bad', value: 'evil; inject' },
+    ]);
+    expect(result).toBe('safe=ok');
+  });
+
+  it('joins multiple safe cookies with "; "', () => {
+    const result = safeCookieHeader([
+      { name: 'a', value: '1' },
+      { name: 'b', value: '2' },
+    ]);
+    expect(result).toBe('a=1; b=2');
   });
 });

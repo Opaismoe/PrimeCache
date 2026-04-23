@@ -613,17 +613,27 @@ describe('DELETE /runs', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('deletes all runs and returns count', async () => {
+  it('returns 400 when no group filter and confirm=true is absent (W9)', async () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/api/runs',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/confirm=true/);
+  });
+
+  it('deletes all runs when confirm=true is provided (W9)', async () => {
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/runs?confirm=true',
       headers: { 'x-api-key': 'supersecretapikey1234' },
     });
     expect(res.statusCode).toBe(200);
     expect(typeof res.json().deleted).toBe('number');
   });
 
-  it('deletes runs for a specific group with ?group= param', async () => {
+  it('deletes runs for a specific group with ?group= param (no confirm needed)', async () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/api/runs?group=homepage',
@@ -631,6 +641,83 @@ describe('DELETE /runs', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(typeof res.json().deleted).toBe('number');
+  });
+});
+
+// ── GET /runs/:id — invalid id validation (W3) ────────────────────────────────
+
+describe('GET /runs/:id input validation (W3)', () => {
+  it('returns 400 for non-numeric id', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/abc',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('Invalid id');
+  });
+
+  it('returns 400 for id=0', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/0',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('Invalid id');
+  });
+
+  it('returns 400 for id=-1', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/-1',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('Invalid id');
+  });
+});
+
+describe('GET /runs/:id/screenshots input validation (W3)', () => {
+  it('returns 400 for non-numeric id', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/abc/screenshots',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('Invalid id');
+  });
+});
+
+describe('POST /runs/:id/cancel input validation (W3)', () => {
+  it('returns 400 for non-numeric id', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/runs/abc/cancel',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe('Invalid id');
+  });
+});
+
+// ── Error handler hardening (W3) — 5xx returns generic message ───────────────
+
+describe('Error handler hardening (W3)', () => {
+  it('returns generic body for 500 errors (does not leak internal message)', async () => {
+    const { getRunById } = await import('../db/queries/runs');
+    vi.mocked(getRunById).mockRejectedValueOnce(new Error('DB_PASSWORD=secret internal details'));
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/1',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(res.json().error).toBe('Internal Server Error');
+    expect(res.json().error).not.toContain('secret');
   });
 });
 
