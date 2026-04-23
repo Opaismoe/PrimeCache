@@ -18,6 +18,7 @@ import {
   getRuns,
 } from '../db/queries/runs';
 import { getStats } from '../db/queries/stats';
+import { getScreenshotsByRunId } from '../db/queries/visitScreenshot';
 import { getVisitsByRunId } from '../db/queries/visits';
 import { logger } from '../utils/logger';
 import { cancelRun } from '../warmer/registry';
@@ -121,6 +122,16 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
         const visits = await getVisitsByRunId(db, run.id);
         return { ...run, visits };
       });
+
+      // GET /runs/:id/screenshots
+      protected_.get<{ Params: { id: string } }>(
+        '/runs/:id/screenshots',
+        async (request, reply) => {
+          const run = await getRunById(db, Number(request.params.id));
+          if (!run) return reply.code(404).send({ error: 'Run not found' });
+          return getScreenshotsByRunId(db, run.id);
+        },
+      );
 
       // POST /trigger (synchronous — waits for completion)
       protected_.post<{ Body: { group: string } }>('/trigger', async (request, reply) => {

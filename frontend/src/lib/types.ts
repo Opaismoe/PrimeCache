@@ -31,6 +31,13 @@ export interface RunDetail extends Run {
   visits: Visit[];
 }
 
+export interface RunScreenshot {
+  visitId: number;
+  url: string;
+  imageData: string;
+  capturedAt: string;
+}
+
 export interface Cookie {
   name: string;
   value: string;

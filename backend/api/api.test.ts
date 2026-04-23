@@ -42,6 +42,10 @@ vi.mock('../warmer/registry', () => ({
 vi.mock('../db/queries/visits', () => ({
   getVisitsByRunId: vi.fn().mockResolvedValue([]),
 }));
+vi.mock('../db/queries/visitScreenshot', () => ({
+  getScreenshotsByRunId: vi.fn().mockResolvedValue([]),
+  insertVisitScreenshot: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('../db/queries/stats', () => ({
   getStats: vi.fn().mockResolvedValue({
     statusCounts: { completed: 5, partial_failure: 2, failed: 1, cancelled: 0 },
@@ -516,6 +520,77 @@ describe('POST /api/auth/login', () => {
       body: JSON.stringify({ username: 'admin', password: 'password123' }),
     });
     expect(res.statusCode).not.toBe(401);
+  });
+});
+
+// ── GET /runs/:id/screenshots ─────────────────────────────────────────────────
+
+describe('GET /runs/:id/screenshots', () => {
+  it('returns 401 without API key', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/runs/1/screenshots' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 404 for unknown run', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/99999/screenshots',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('returns empty array when run has no screenshots', async () => {
+    const { getRunById } = await import('../db/queries/runs');
+    vi.mocked(getRunById).mockResolvedValueOnce({
+      id: 1,
+      group_name: 'homepage',
+      started_at: '',
+      ended_at: '',
+      status: 'completed',
+      total_urls: 1,
+      success_count: 1,
+      failure_count: 0,
+    } as RunRow);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/1/screenshots',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.json())).toBe(true);
+    expect(res.json()).toHaveLength(0);
+  });
+
+  it('returns screenshot rows with expected shape', async () => {
+    const { getRunById } = await import('../db/queries/runs');
+    const { getScreenshotsByRunId } = await import('../db/queries/visitScreenshot');
+    vi.mocked(getRunById).mockResolvedValueOnce({
+      id: 1,
+      group_name: 'homepage',
+      started_at: '',
+      ended_at: '',
+      status: 'completed',
+      total_urls: 1,
+      success_count: 1,
+      failure_count: 0,
+    } as RunRow);
+    vi.mocked(getScreenshotsByRunId).mockResolvedValueOnce([
+      { visitId: 10, url: 'https://example.com/', imageData: 'base64==', capturedAt: new Date() },
+    ]);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/runs/1/screenshots',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body[0]).toMatchObject({
+      visitId: 10,
+      url: 'https://example.com/',
+      imageData: 'base64==',
+    });
   });
 });
 
