@@ -6,7 +6,7 @@ import { env } from './config/env';
 import { resolveConfigSecrets } from './config/secrets';
 import { loadConfig, watchConfig } from './config/urls';
 import { db, destroyDb } from './db/client';
-import { registerJobs } from './scheduler/index';
+import { registerJobs, registerSessionSweep } from './scheduler/index';
 import { logger } from './utils/logger';
 
 async function main() {
@@ -38,6 +38,7 @@ async function main() {
 
   // 4. Register cron jobs
   registerJobs(config.groups, db);
+  registerSessionSweep(db);
 
   // 5. Watch config for live changes
   const stopWatcher = watchConfig(env.CONFIG_PATH, async (newConfig) => {

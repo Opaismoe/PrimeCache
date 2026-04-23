@@ -146,6 +146,14 @@ export const webhook_tokens = pgTable('webhook_tokens', {
   last_used_at: timestamp('last_used_at'),
 });
 
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey(),
+  csrf_token: text('csrf_token').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  last_used_at: timestamp('last_used_at').notNull().defaultNow(),
+  expires_at: timestamp('expires_at').notNull(),
+});
+
 export const lighthouse_reports = pgTable('lighthouse_reports', {
   id: serial('id').primaryKey(),
   group_name: varchar('group_name', { length: 255 }).notNull(),

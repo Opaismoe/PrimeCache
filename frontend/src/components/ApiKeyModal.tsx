@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { login, saveApiKey } from '../lib/api';
+import { login } from '../lib/api';
 
 interface Props {
   onSave: () => void;
@@ -26,8 +26,7 @@ export function ApiKeyModal({ onSave }: Props) {
     setError(null);
     setLoading(true);
     try {
-      const { token } = await login(username.trim(), password.trim());
-      saveApiKey(token);
+      await login(username.trim(), password.trim());
       onSave();
     } catch {
       setError('Invalid username or password');

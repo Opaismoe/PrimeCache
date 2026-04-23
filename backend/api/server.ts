@@ -1,5 +1,5 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
+import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import fastifyStatic from '@fastify/static';
 import Fastify, {
@@ -18,23 +18,20 @@ import {
   getRunById,
   getRuns,
 } from '../db/queries/runs';
+import { findActiveSession, touchSession } from '../db/queries/sessions';
 import { getStats } from '../db/queries/stats';
 import { getScreenshotsByRunId } from '../db/queries/visitScreenshot';
 import { getVisitsByRunId } from '../db/queries/visits';
+import { safeEqual } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { cancelRun } from '../warmer/registry';
 import { runGroup, startRunGroup } from '../warmer/runner';
+import { authRoutes } from './routes/auth';
 import { putConfigRoute } from './routes/config';
 import { groupRoutes } from './routes/groups';
 import { getGroupUptime as getPublicStatus } from './routes/publicStatus';
 import { secretsRoutes } from './routes/secrets';
 import { webhookManagementRoutes, webhookTriggerRoute } from './routes/webhooks';
-
-function safeEqual(a: string, b: string): boolean {
-  const ha = createHash('sha256').update(a).digest();
-  const hb = createHash('sha256').update(b).digest();
-  return timingSafeEqual(ha, hb);
-}
 
 function parseId(raw: string): number | null {
   const n = Number(raw);
@@ -48,6 +45,9 @@ interface ServerDeps {
 
 export async function buildServer({ db, getConfig }: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+
+  // ── Cookie support ────────────────────────────────────────────────────────
+  await app.register(cookie);
 
   // ── Security headers ──────────────────────────────────────────────────────
   await app.register(helmet, {
@@ -98,31 +98,46 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   // ── Public status (no auth) ───────────────────────────────────────────────
   app.get('/api/public/status', async () => getPublicStatus(db));
 
-  // ── POST /api/auth/login (public) ─────────────────────────────────────────
-  app.post<{ Body: { username?: string; password?: string } }>(
-    '/api/auth/login',
-    async (request, reply) => {
-      const { username, password } = request.body ?? {};
-      if (!username || !password)
-        return reply.code(400).send({ error: 'username and password required' });
-      const userOk = safeEqual(username, env.ADMIN_USERNAME);
-      const passOk = safeEqual(password, env.ADMIN_PASSWORD);
-      if (!(userOk && passOk)) return reply.code(401).send({ error: 'Unauthorized' });
-      return { token: env.API_KEY };
-    },
-  );
+  // ── Auth routes: login + logout (no requireAuth, handle their own creds) ──
+  app.register(authRoutes(db), { prefix: '/api' });
 
-  // ── Auth preHandler for all protected routes ──────────────────────────────
-  async function requireApiKey(request: FastifyRequest, reply: FastifyReply) {
+  // ── requireAuth: accepts session cookie OR X-API-Key (machine path) ───────
+  async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
     const key = request.headers['x-api-key'] as string | undefined;
-    if (!key) return reply.code(401).send({ error: 'Unauthorized' });
-    if (!safeEqual(key, env.API_KEY)) return reply.code(401).send({ error: 'Unauthorized' });
+
+    // Machine path: X-API-Key header — no CSRF needed (can't be forged cross-origin)
+    if (key) {
+      if (!safeEqual(key, env.API_KEY)) return reply.code(401).send({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Session cookie path
+    const sessionId = request.cookies?.pc_session;
+    if (!sessionId) return reply.code(401).send({ error: 'Unauthorized' });
+
+    const session = await findActiveSession(db, sessionId);
+    if (!session) return reply.code(401).send({ error: 'Unauthorized' });
+
+    // CSRF double-submit check for mutating methods
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      const csrfCookie = request.cookies?.pc_csrf;
+      const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
+      if (!csrfCookie || !csrfHeader || !safeEqual(csrfCookie, csrfHeader)) {
+        return reply.code(403).send({ error: 'CSRF token mismatch' });
+      }
+    }
+
+    // Bump last_used_at non-blocking
+    touchSession(db, sessionId).catch((err) => logger.warn({ err }, 'failed to touch session'));
   }
 
   // ── Protected routes (/api/*) ─────────────────────────────────────────────
   app.register(
     async (protected_) => {
-      protected_.addHook('preHandler', requireApiKey);
+      protected_.addHook('preHandler', requireAuth);
+
+      // GET /auth/me — session validity probe
+      protected_.get('/auth/me', async () => ({ ok: true }));
 
       // GET /runs
       protected_.get<{ Querystring: { limit?: string; offset?: string; group?: string } }>(

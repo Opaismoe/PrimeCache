@@ -2,6 +2,7 @@ import cron, { type ScheduledTask } from 'node-cron';
 import { env } from '../config/env';
 import type { WarmGroup } from '../config/urls';
 import type { Db } from '../db/client';
+import { deleteExpiredSessions } from '../db/queries/sessions';
 import { logger } from '../utils/logger';
 import { runGroup } from '../warmer/runner';
 
@@ -26,4 +27,13 @@ export function registerJobs(groups: WarmGroup[], db: Db): void {
     jobs.push(task);
     logger.info({ group: group.name, schedule: group.schedule }, 'cron job registered');
   }
+}
+
+export function registerSessionSweep(db: Db): void {
+  cron.schedule('0 * * * *', () => {
+    deleteExpiredSessions(db)
+      .then((n) => n > 0 && logger.info({ deleted: n }, 'expired sessions swept'))
+      .catch((err) => logger.warn({ err }, 'session sweep failed'));
+  });
+  logger.info('session sweep job registered');
 }

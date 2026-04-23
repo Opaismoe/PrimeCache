@@ -28,6 +28,11 @@ const EnvSchema = z.object({
     .regex(/^[0-9a-f]{64}$/i, 'SECRET_ENCRYPTION_KEY must be a 64-character hex string (32 bytes)'),
   ADMIN_USERNAME: z.string().min(1, 'ADMIN_USERNAME is required'),
   ADMIN_PASSWORD: z.string().min(8, 'ADMIN_PASSWORD must be at least 8 characters'),
+  // Set COOKIE_SECURE=false for local HTTP dev; defaults to true (production)
+  COOKIE_SECURE: z.preprocess((val) => {
+    if (val === '' || val === undefined) return true;
+    return val !== 'false' && val !== '0';
+  }, z.boolean().default(true)),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

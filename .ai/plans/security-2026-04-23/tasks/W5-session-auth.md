@@ -3,7 +3,7 @@
 **Wave:** C (architectural; serialize — do not run parallel to W1/W3 which also touch `server.ts`)
 **Model:** `claude-opus-4-7` — cross-cutting design choice (token shape, cookie vs header, revocation model, migration path for existing clients). Requires backend + frontend + DB coordination.
 **Findings:** F8 (Medium), F9 (Low)
-**Status:** todo
+**Status:** done
 
 ## Goal
 

@@ -20,6 +20,7 @@ vi.stubEnv('API_KEY', 'supersecretapikey1234');
 vi.stubEnv('CONFIG_PATH', '/tmp/test-config.yaml');
 vi.stubEnv('ADMIN_USERNAME', 'admin');
 vi.stubEnv('ADMIN_PASSWORD', 'password123');
+vi.stubEnv('COOKIE_SECURE', 'false');
 
 vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
@@ -29,7 +30,14 @@ vi.mock('../warmer/runner', () => ({
   runGroup: vi.fn().mockResolvedValue(42),
   startRunGroup: vi.fn().mockResolvedValue({ runId: 42, promise: Promise.resolve() }),
 }));
-vi.mock('../scheduler/index', () => ({ registerJobs: vi.fn() }));
+vi.mock('../scheduler/index', () => ({ registerJobs: vi.fn(), registerSessionSweep: vi.fn() }));
+vi.mock('../db/queries/sessions', () => ({
+  createSession: vi.fn().mockResolvedValue(undefined),
+  findActiveSession: vi.fn().mockResolvedValue(null),
+  deleteSession: vi.fn().mockResolvedValue(undefined),
+  touchSession: vi.fn().mockResolvedValue(undefined),
+  deleteExpiredSessions: vi.fn().mockResolvedValue(0),
+}));
 vi.mock('../db/queries/runs', () => ({
   getRuns: vi.fn().mockResolvedValue([]),
   getRunById: vi.fn().mockResolvedValue(null),
@@ -482,7 +490,7 @@ describe('POST /trigger/async', () => {
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
 
 describe('POST /api/auth/login', () => {
-  it('returns 200 and token for valid credentials', async () => {
+  it('returns 200 and { ok: true } for valid credentials (no API_KEY in response)', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
@@ -490,7 +498,9 @@ describe('POST /api/auth/login', () => {
       body: JSON.stringify({ username: 'admin', password: 'password123' }),
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().token).toBe('supersecretapikey1234');
+    expect(res.json().ok).toBe(true);
+    expect(res.json()).not.toHaveProperty('token');
+    expect(JSON.stringify(res.json())).not.toContain('supersecretapikey1234');
   });
 
   it('returns 401 for wrong password', async () => {
