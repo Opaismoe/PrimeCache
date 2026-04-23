@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { sql } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { buildServer } from './api/server';
 import { disconnect } from './browser/connection';
@@ -26,6 +27,36 @@ async function main() {
 
   await migrate(db, { migrationsFolder: migrationsPath });
   logger.info('migrations complete');
+
+  // Safety net: ensure critical tables exist regardless of migration tracker state.
+  // The drizzle_migrations table can record migrations as applied even when the
+  // actual SQL never ran (e.g. due to Coolify volume/deployment quirks), which
+  // causes the migrator to silently skip them on subsequent boots.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS webhook_tokens (
+      id serial PRIMARY KEY,
+      group_name varchar(255) NOT NULL,
+      token varchar(64) NOT NULL,
+      description text,
+      active boolean NOT NULL DEFAULT true,
+      created_at timestamp NOT NULL DEFAULT now(),
+      last_used_at timestamp,
+      CONSTRAINT webhook_tokens_token_unique UNIQUE (token)
+    )
+  `);
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id text PRIMARY KEY,
+      csrf_token text NOT NULL,
+      created_at timestamp NOT NULL DEFAULT now(),
+      last_used_at timestamp NOT NULL DEFAULT now(),
+      expires_at timestamp NOT NULL
+    )
+  `);
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions (expires_at)
+  `);
+  logger.info('critical tables verified');
 
   // 2. Load and validate config, then resolve secret: references
   let config = await resolveConfigSecrets(loadConfig(env.CONFIG_PATH), db);
