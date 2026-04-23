@@ -21,6 +21,11 @@ import type {
 
 const API_KEY_STORAGE = 'primecache-api-key';
 
+function getCsrfToken(): string | undefined {
+  const match = document.cookie.match(/(?:^|;\s*)pc_csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
 export function getApiKey(): string | null {
   return localStorage.getItem(API_KEY_STORAGE);
 }
@@ -49,11 +54,15 @@ export class UnauthorizedError extends ApiError {
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const apiKey = getApiKey();
+  const isMutating = method !== 'GET' && method !== 'HEAD';
+  const csrfToken = isMutating && !apiKey ? getCsrfToken() : undefined;
   const res = await fetch(path, {
     method,
+    credentials: 'same-origin',
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(apiKey ? { 'X-API-Key': apiKey } : {}),
+      ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
@@ -72,9 +81,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return res.json();
 }
 
-export async function login(username: string, password: string): Promise<{ token: string }> {
+export async function login(username: string, password: string): Promise<{ ok: boolean }> {
   const res = await fetch('/api/auth/login', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
@@ -83,6 +93,21 @@ export async function login(username: string, password: string): Promise<{ token
     const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
     throw new ApiError(res.status, data.error ?? `HTTP ${res.status}`);
   }
+  return res.json();
+}
+
+export async function logout(): Promise<void> {
+  const csrfToken = getCsrfToken();
+  await fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}) },
+  }).catch(() => {});
+}
+
+export async function me(): Promise<{ ok: boolean }> {
+  const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+  if (!res.ok) throw new UnauthorizedError();
   return res.json();
 }
 

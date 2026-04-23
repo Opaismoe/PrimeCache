@@ -24,7 +24,10 @@ vi.mock('./api/server', () => ({
 }));
 
 const mockRegisterJobs = vi.fn();
-vi.mock('./scheduler/index', () => ({ registerJobs: mockRegisterJobs }));
+vi.mock('./scheduler/index', () => ({
+  registerJobs: mockRegisterJobs,
+  registerSessionSweep: vi.fn(),
+}));
 vi.mock('./browser/connection', () => ({ disconnect: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('./config/urls', () => ({
   loadConfig: vi.fn().mockReturnValue({ groups: [] }),

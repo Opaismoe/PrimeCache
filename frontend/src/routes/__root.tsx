@@ -23,7 +23,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import logo from '../assets/logo.png';
 import { ApiKeyModal } from '../components/ApiKeyModal';
-import { getApiKey } from '../lib/api';
+import { me } from '../lib/api';
 import { authEvents } from '../lib/events';
 
 interface RouterContext {
@@ -53,10 +53,17 @@ function RootLayout() {
   const router = useRouter();
   const routerState = useRouterState();
   const isPublicRoute = routerState.location.pathname === '/status';
-  const [loggedIn, setLoggedIn] = useState(() => !!getApiKey());
+  // null = loading (checking session), true = logged in, false = not logged in
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const [forceShowLogin, setForceShowLogin] = useState(false);
-  const shouldShowModal = (!isPublicRoute && !loggedIn) || forceShowLogin;
+  const shouldShowModal = (!isPublicRoute && loggedIn === false) || forceShowLogin;
   const { dark, toggle } = useTheme();
+
+  useEffect(() => {
+    me()
+      .then(() => setLoggedIn(true))
+      .catch(() => setLoggedIn(false));
+  }, []);
 
   useEffect(() => {
     return authEvents.onUnauthorized(() => setLoggedIn(false));
@@ -74,7 +81,7 @@ function RootLayout() {
       <Toaster />
       <div className="flex min-h-screen bg-background text-foreground">
         <Sidebar
-          loggedIn={loggedIn}
+          loggedIn={loggedIn === true}
           isPublicRoute={isPublicRoute}
           dark={dark}
           toggleTheme={toggle}
