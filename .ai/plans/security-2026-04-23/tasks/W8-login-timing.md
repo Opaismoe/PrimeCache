@@ -3,7 +3,7 @@
 **Wave:** B (touches `server.ts`)
 **Model:** `claude-haiku-4-5-20251001` — small, well-scoped change.
 **Findings:** F13 (Info)
-**Status:** todo
+**Status:** done
 
 ## Goal
 

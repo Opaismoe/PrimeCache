@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import helmet from '@fastify/helmet';
 import fastifyStatic from '@fastify/static';
@@ -29,6 +29,17 @@ import { groupRoutes } from './routes/groups';
 import { getGroupUptime as getPublicStatus } from './routes/publicStatus';
 import { secretsRoutes } from './routes/secrets';
 import { webhookManagementRoutes, webhookTriggerRoute } from './routes/webhooks';
+
+function safeEqual(a: string, b: string): boolean {
+  const ha = createHash('sha256').update(a).digest();
+  const hb = createHash('sha256').update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
+
+function parseId(raw: string): number | null {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
 
 interface ServerDeps {
   db: Db;
@@ -70,11 +81,15 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
   // ── Global error logging ──────────────────────────────────────────────────
   app.setErrorHandler((error: FastifyError, _request: FastifyRequest, reply: FastifyReply) => {
+    const status = error.statusCode ?? 500;
     // Redact the webhook trigger token from the URL before logging — the token
     // appears in /webhook/trigger/:token and must not reach log aggregators.
     const safeUrl = _request.url.replace(/(\/webhook\/trigger\/)[^/?#]+/, '$1[REDACTED]');
-    logger.error({ err: error, url: safeUrl }, 'unhandled route error');
-    reply.code(error.statusCode ?? 500).send({ error: error.message });
+    logger.error({ err: error, url: safeUrl, status }, 'unhandled route error');
+    if (status >= 500) {
+      return reply.code(status).send({ error: 'Internal Server Error' });
+    }
+    return reply.code(status).send({ error: error.message });
   });
 
   // ── Health (no auth) ──────────────────────────────────────────────────────
@@ -90,20 +105,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       const { username, password } = request.body ?? {};
       if (!username || !password)
         return reply.code(400).send({ error: 'username and password required' });
-      try {
-        const usernameMatch = timingSafeEqual(
-          Buffer.from(username),
-          Buffer.from(env.ADMIN_USERNAME),
-        );
-        const passwordMatch = timingSafeEqual(
-          Buffer.from(password),
-          Buffer.from(env.ADMIN_PASSWORD),
-        );
-        if (!usernameMatch || !passwordMatch)
-          return reply.code(401).send({ error: 'Unauthorized' });
-      } catch {
-        return reply.code(401).send({ error: 'Unauthorized' });
-      }
+      const userOk = safeEqual(username, env.ADMIN_USERNAME);
+      const passOk = safeEqual(password, env.ADMIN_PASSWORD);
+      if (!(userOk && passOk)) return reply.code(401).send({ error: 'Unauthorized' });
       return { token: env.API_KEY };
     },
   );
@@ -112,12 +116,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   async function requireApiKey(request: FastifyRequest, reply: FastifyReply) {
     const key = request.headers['x-api-key'] as string | undefined;
     if (!key) return reply.code(401).send({ error: 'Unauthorized' });
-    try {
-      const valid = timingSafeEqual(Buffer.from(key), Buffer.from(env.API_KEY));
-      if (!valid) return reply.code(401).send({ error: 'Unauthorized' });
-    } catch {
-      return reply.code(401).send({ error: 'Unauthorized' });
-    }
+    if (!safeEqual(key, env.API_KEY)) return reply.code(401).send({ error: 'Unauthorized' });
   }
 
   // ── Protected routes (/api/*) ─────────────────────────────────────────────
@@ -141,7 +140,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
       // GET /runs/:id
       protected_.get<{ Params: { id: string } }>('/runs/:id', async (request, reply) => {
-        const run = await getRunById(db, Number(request.params.id));
+        const id = parseId(request.params.id);
+        if (!id) return reply.code(400).send({ error: 'Invalid id' });
+        const run = await getRunById(db, id);
         if (!run) return reply.code(404).send({ error: 'Run not found' });
         const visits = await getVisitsByRunId(db, run.id);
         return { ...run, visits };
@@ -151,7 +152,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       protected_.get<{ Params: { id: string } }>(
         '/runs/:id/screenshots',
         async (request, reply) => {
-          const run = await getRunById(db, Number(request.params.id));
+          const id = parseId(request.params.id);
+          if (!id) return reply.code(400).send({ error: 'Invalid id' });
+          const run = await getRunById(db, id);
           if (!run) return reply.code(404).send({ error: 'Run not found' });
           return getScreenshotsByRunId(db, run.id);
         },
@@ -202,7 +205,8 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
       // POST /runs/:id/cancel — must be before /runs/:id
       protected_.post<{ Params: { id: string } }>('/runs/:id/cancel', async (request, reply) => {
-        const id = Number(request.params.id);
+        const id = parseId(request.params.id);
+        if (!id) return reply.code(400).send({ error: 'Invalid id' });
         const run = await getRunById(db, id);
         if (!run) return reply.code(404).send({ error: 'Run not found' });
         if (run.status !== 'running')
@@ -216,12 +220,20 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
         return { ok: true };
       });
 
-      // DELETE /runs — clears history (optional ?group= filter)
-      protected_.delete<{ Querystring: { group?: string } }>('/runs', async (request) => {
-        const group = request.query.group;
-        const deleted = await deleteRuns(db, group ? { group } : undefined);
-        return { deleted };
-      });
+      // DELETE /runs — clears history; unqualified delete requires ?confirm=true
+      protected_.delete<{ Querystring: { group?: string; confirm?: string } }>(
+        '/runs',
+        async (request, reply) => {
+          const { group, confirm } = request.query;
+          if (!group && confirm !== 'true') {
+            return reply.code(400).send({
+              error: 'Refusing to delete all runs without confirm=true or a group filter',
+            });
+          }
+          const deleted = await deleteRuns(db, group ? { group } : undefined);
+          return { deleted };
+        },
+      );
 
       // GET /stats
       protected_.get('/stats', async () => getStats(db));

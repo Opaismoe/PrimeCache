@@ -3,7 +3,7 @@
 **Wave:** B (must land after W1 if sequenced; otherwise independent)
 **Model:** `claude-sonnet-4-6` — single file but requires careful handling of three separate concerns (formula injection, quote doubling, header filename).
 **Findings:** F5 (Medium), F6 (Low), F7 (Low)
-**Status:** todo
+**Status:** done
 
 ## Goal
 

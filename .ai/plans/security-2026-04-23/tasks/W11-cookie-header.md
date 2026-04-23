@@ -3,7 +3,7 @@
 **Wave:** B (independent of others; touches `lighthouseAudit.ts` which W1 also edits — sequence after W1)
 **Model:** `claude-sonnet-4-6` — reasoning about which cookies are safe to forward and cookie-header quoting.
 **Findings:** F17 (Info)
-**Status:** todo
+**Status:** done
 
 ## Goal
 

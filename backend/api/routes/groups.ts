@@ -14,6 +14,14 @@ import { getGroupBrokenLinks } from '../../db/queries/visitBrokenLinks';
 import { runLighthouseAudit } from '../../services/lighthouseAudit';
 import { logger } from '../../utils/logger';
 
+export function csvCell(v: unknown): string {
+  if (v == null) return '""';
+  const s = String(v);
+  const escaped = s.replace(/"/g, '""');
+  const needsGuard = /^[=+\-@\t\r]/.test(s);
+  return `"${needsGuard ? `'${escaped}` : escaped}"`;
+}
+
 export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsync {
   return async (app) => {
     app.get('/groups-health', async () => {
@@ -134,7 +142,6 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
         const tab = request.query.tab ?? 'performance';
 
         let csv = '';
-        const filename = `${name}-${tab}.csv`;
 
         if (tab === 'performance') {
           const data = await getGroupPerformance(db, name);
@@ -142,13 +149,13 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
           csv += data.urls
             .map((u) =>
               [
-                u.url,
-                u.p50LoadTimeMs,
-                u.p95LoadTimeMs,
-                u.p50TtfbMs ?? '',
-                u.p95TtfbMs ?? '',
-                u.isSlow,
-                u.sampleCount,
+                csvCell(u.url),
+                csvCell(u.p50LoadTimeMs),
+                csvCell(u.p95LoadTimeMs),
+                csvCell(u.p50TtfbMs),
+                csvCell(u.p95TtfbMs),
+                csvCell(u.isSlow),
+                csvCell(u.sampleCount),
               ].join(','),
             )
             .join('\n');
@@ -157,9 +164,14 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
           csv = 'url,uptime_pct,total_checks,down_count,last_status,last_checked_at\n';
           csv += data.urls
             .map((u) =>
-              [u.url, u.uptimePct, u.totalChecks, u.downCount, u.lastStatus, u.lastCheckedAt].join(
-                ',',
-              ),
+              [
+                csvCell(u.url),
+                csvCell(u.uptimePct),
+                csvCell(u.totalChecks),
+                csvCell(u.downCount),
+                csvCell(u.lastStatus),
+                csvCell(u.lastCheckedAt),
+              ].join(','),
             )
             .join('\n');
         } else if (tab === 'seo') {
@@ -169,13 +181,13 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
             .map((u) => {
               const seo = u.latestSeo;
               return [
-                `"${u.url}"`,
-                u.score,
-                `"${u.issues.join('; ')}"`,
-                `"${seo?.title ?? ''}"`,
-                `"${seo?.metaDescription ?? ''}"`,
-                `"${seo?.h1 ?? ''}"`,
-                `"${seo?.canonicalUrl ?? ''}"`,
+                csvCell(u.url),
+                csvCell(u.score),
+                csvCell(u.issues.join('; ')),
+                csvCell(seo?.title),
+                csvCell(seo?.metaDescription),
+                csvCell(seo?.h1),
+                csvCell(seo?.canonicalUrl),
               ].join(',');
             })
             .join('\n');
@@ -185,19 +197,24 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
           csv += data
             .map((l) =>
               [
-                `"${l.url}"`,
-                l.statusCode ?? '',
-                `"${l.error ?? ''}"`,
-                l.occurrences,
-                l.lastSeenAt,
+                csvCell(l.url),
+                csvCell(l.statusCode),
+                csvCell(l.error),
+                csvCell(l.occurrences),
+                csvCell(l.lastSeenAt),
               ].join(','),
             )
             .join('\n');
         }
 
+        const safeName = name.replace(/[^\w.-]/g, '_');
+        const asciiFilename = `${safeName}-${tab}.csv`;
         reply
           .header('Content-Type', 'text/csv; charset=utf-8')
-          .header('Content-Disposition', `attachment; filename="${filename}"`)
+          .header(
+            'Content-Disposition',
+            `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodeURIComponent(`${name}-${tab}.csv`)}`,
+          )
           .send(csv);
       },
     );

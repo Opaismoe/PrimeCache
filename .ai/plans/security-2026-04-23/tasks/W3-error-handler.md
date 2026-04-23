@@ -3,7 +3,7 @@
 **Wave:** B (parallel; touches `server.ts` — avoid overlapping with W1/W5/W8/W9 by sequencing)
 **Model:** `claude-sonnet-4-6` — small reasoning around which errors are client-safe vs internal.
 **Findings:** F3 (Medium), F18 (Info)
-**Status:** todo
+**Status:** done
 
 ## Goal
 
