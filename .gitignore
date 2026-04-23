@@ -27,7 +27,7 @@ logs/
 config.yaml
 
 # Planning notes
-.ai/
+# .ai/
 
 # Docs
 deploy_coolify.md
