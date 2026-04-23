@@ -3,7 +3,7 @@
 **Wave:** A (independent)
 **Model:** `claude-sonnet-4-6` — multi-file change with cross-cutting logging concerns; Haiku is too narrow, Opus is unnecessary.
 **Findings:** F1 (High), F2 (High)
-**Status:** todo
+**Status:** done
 
 ## Goal
 

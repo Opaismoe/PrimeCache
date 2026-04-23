@@ -3,7 +3,7 @@
 **Wave:** A (independent)
 **Model:** `claude-haiku-4-5-20251001` — purely mechanical edits.
 **Findings:** F19 (Info)
-**Status:** todo
+**Status:** done
 
 ## Goal
 
