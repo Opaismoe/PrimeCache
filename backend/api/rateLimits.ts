@@ -29,9 +29,11 @@ export class RateLimitTracker {
     category: RateLimitCategory,
     headers: { limit: number; remaining: number; resetTimestamp: number },
   ): void {
-    const used = Math.min(headers.limit - headers.remaining, headers.limit);
+    if (headers.limit <= 0) return;
+    const remaining = Math.max(0, Math.min(headers.remaining, headers.limit));
+    const used = headers.limit - remaining;
     this.state[category] = {
-      used: Math.max(0, used),
+      used,
       max: headers.limit,
       resetTimestamp: headers.resetTimestamp,
     };
