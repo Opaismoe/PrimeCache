@@ -29,7 +29,7 @@ function makeColumns(trendByUrl: Map<string, number[]>) {
     columnHelper.accessor('url', {
       header: 'URL',
       cell: (info) => (
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 max-w-xs items-center gap-2">
           {info.row.original.isSlow && (
             <Badge variant="destructive" className="shrink-0 text-xs">
               Slow
