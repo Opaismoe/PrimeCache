@@ -166,12 +166,7 @@ function GroupDetailPage() {
 
         {/* Health — overview + per-URL sparklines */}
         <TabsContent value="health">
-          <OverviewTab
-            groupName={groupName}
-            overview={overview}
-            performance={performance}
-            uptime={uptime}
-          />
+          <OverviewTab overview={overview} performance={performance} uptime={uptime} />
         </TabsContent>
 
         {/* Quality — SEO / Links / Accessibility / Lighthouse sub-tabs */}
