@@ -23,6 +23,7 @@ export function authRoutes(db: Db): FastifyPluginAsync {
     // POST /api/auth/login — verify admin creds, issue session + CSRF cookies
     app.post<{ Body: { username?: string; password?: string } }>(
       '/auth/login',
+      { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
       async (request, reply) => {
         const { username, password } = request.body ?? {};
         if (!username || !password)

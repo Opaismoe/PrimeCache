@@ -68,9 +68,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   });
 
   app.addHook('onSend', async (_request, reply) => {
-    const category = (
-      _request.routeOptions?.config as { rateLimitCategory?: RateLimitCategory } | undefined
-    )?.rateLimitCategory;
+    const category = _request.routeOptions?.config?.rateLimitCategory;
     if (!category) return;
     const limit     = Number(reply.getHeader('x-ratelimit-limit'));
     const remaining = Number(reply.getHeader('x-ratelimit-remaining'));
@@ -175,14 +173,14 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // GET /auth/me — session validity probe
       protected_.get(
         '/auth/me',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async () => ({ ok: true }),
       );
 
       // GET /runs
       protected_.get<{ Querystring: { limit?: string; offset?: string; group?: string } }>(
         '/runs',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async (request) => {
           const limit = Number(request.query.limit ?? 20);
           const offset = Number(request.query.offset ?? 0);
@@ -194,14 +192,14 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // GET /runs/latest  — must be registered before /runs/:id
       protected_.get(
         '/runs/latest',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async () => getLatestPerGroup(db),
       );
 
       // GET /runs/:id
       protected_.get<{ Params: { id: string } }>(
         '/runs/:id',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async (request, reply) => {
           const id = parseId(request.params.id);
           if (!id) return reply.code(400).send({ error: 'Invalid id' });
@@ -215,7 +213,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // GET /runs/:id/screenshots
       protected_.get<{ Params: { id: string } }>(
         '/runs/:id/screenshots',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async (request, reply) => {
           const id = parseId(request.params.id);
           if (!id) return reply.code(400).send({ error: 'Invalid id' });
@@ -228,7 +226,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // POST /trigger (synchronous — waits for completion)
       protected_.post<{ Body: { group: string } }>(
         '/trigger',
-        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' as const } },
+        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' } },
         async (request, reply) => {
           const { group: groupName } = request.body;
           const group = getConfig().groups.find((g) => g.name === groupName);
@@ -241,7 +239,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // POST /trigger/async — returns runId immediately, runs in background
       protected_.post<{ Body: { group: string } }>(
         '/trigger/async',
-        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' as const } },
+        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' } },
         async (request, reply) => {
           const { group: groupName } = request.body;
           const group = getConfig().groups.find((g) => g.name === groupName);
@@ -259,7 +257,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // POST /webhook/warm
       protected_.post<{ Body: { group: string } }>(
         '/webhook/warm',
-        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' as const } },
+        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' } },
         async (request, reply) => {
           const { group: groupName } = request.body;
           const groups = getConfig().groups;
@@ -283,7 +281,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // POST /runs/:id/cancel — must be before /runs/:id
       protected_.post<{ Params: { id: string } }>(
         '/runs/:id/cancel',
-        { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' as const } },
+        { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
         async (request, reply) => {
           const id = parseId(request.params.id);
           if (!id) return reply.code(400).send({ error: 'Invalid id' });
@@ -304,7 +302,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // DELETE /runs — clears history; unqualified delete requires ?confirm=true
       protected_.delete<{ Querystring: { group?: string; confirm?: string } }>(
         '/runs',
-        { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' as const } },
+        { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
         async (request, reply) => {
           const { group, confirm } = request.query;
           if (!group && confirm !== 'true') {
@@ -320,21 +318,21 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // GET /stats
       protected_.get(
         '/stats',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async () => getStats(db),
       );
 
       // GET /config
       protected_.get(
         '/config',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async () => ({ groups: getConfig().groups }),
       );
 
       // GET /rate-limits — per-category usage stats
       protected_.get(
         '/rate-limits',
-        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async () => rateLimitTracker.getStats(),
       );
 
