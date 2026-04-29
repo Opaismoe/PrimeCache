@@ -12,29 +12,35 @@ const RenameSchema = z.array(z.object({ from: z.string(), to: z.string() })).opt
 
 export function putConfigRoute(db: Db): FastifyPluginAsync {
   return async (app) => {
-    app.put('/config', async (request: FastifyRequest, reply: FastifyReply) => {
-      const body = (request.body ?? {}) as Record<string, unknown>;
-      const { renames: rawRenames, ...rest } = body;
+    app.put(
+      '/config',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        const body = (request.body ?? {}) as Record<string, unknown>;
+        const { renames: rawRenames, ...rest } = body;
 
-      const configResult = ConfigSchema.safeParse(rest);
-      if (!configResult.success) {
-        return reply.code(400).send({ error: 'Invalid config', issues: configResult.error.issues });
-      }
+        const configResult = ConfigSchema.safeParse(rest);
+        if (!configResult.success) {
+          return reply
+            .code(400)
+            .send({ error: 'Invalid config', issues: configResult.error.issues });
+        }
 
-      const renamesResult = RenameSchema.safeParse(rawRenames);
-      if (!renamesResult.success) {
-        return reply
-          .code(400)
-          .send({ error: 'Invalid renames', issues: renamesResult.error.issues });
-      }
+        const renamesResult = RenameSchema.safeParse(rawRenames);
+        if (!renamesResult.success) {
+          return reply
+            .code(400)
+            .send({ error: 'Invalid renames', issues: renamesResult.error.issues });
+        }
 
-      for (const { from, to } of renamesResult.data ?? []) {
-        await Promise.all([renameGroup(db, from, to), renameGroupWebhookTokens(db, from, to)]);
-      }
+        for (const { from, to } of renamesResult.data ?? []) {
+          await Promise.all([renameGroup(db, from, to), renameGroupWebhookTokens(db, from, to)]);
+        }
 
-      const yamlContent = yaml.dump(configResult.data);
-      writeFileSync(env.CONFIG_PATH, yamlContent, 'utf-8');
-      return { ok: true };
-    });
+        const yamlContent = yaml.dump(configResult.data);
+        writeFileSync(env.CONFIG_PATH, yamlContent, 'utf-8');
+        return { ok: true };
+      },
+    );
   };
 }

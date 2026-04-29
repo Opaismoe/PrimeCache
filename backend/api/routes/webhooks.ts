@@ -24,6 +24,7 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
     // GET /api/groups/:name/webhooks — list tokens (no token values returned)
     app.get<{ Params: { name: string } }>(
       '/groups/:name/webhooks',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
       async (request: FastifyRequest<{ Params: { name: string } }>, reply: FastifyReply) => {
         const { name } = request.params;
         const group = getConfig().groups.find((g) => g.name === name);
@@ -35,6 +36,7 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
     // POST /api/groups/:name/webhooks — create a token (returned once)
     app.post<{ Params: { name: string }; Body: { description?: string } }>(
       '/groups/:name/webhooks',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
       async (
         request: FastifyRequest<{ Params: { name: string }; Body: { description?: string } }>,
         reply: FastifyReply,
@@ -53,6 +55,7 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
     // DELETE /api/groups/:name/webhooks/:id — remove a token
     app.delete<{ Params: { name: string; id: string } }>(
       '/groups/:name/webhooks/:id',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
       async (
         request: FastifyRequest<{ Params: { name: string; id: string } }>,
         reply: FastifyReply,
@@ -68,6 +71,7 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
     // PATCH /api/groups/:name/webhooks/:id — toggle active
     app.patch<{ Params: { name: string; id: string }; Body: { active: boolean } }>(
       '/groups/:name/webhooks/:id',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
       async (
         request: FastifyRequest<{
           Params: { name: string; id: string };

@@ -3,14 +3,21 @@ import { describe, expect, it, vi } from 'vitest';
 vi.stubEnv('BROWSERLESS_WS_URL', 'ws://browserless:3000/chromium/playwright');
 vi.stubEnv('BROWSERLESS_TOKEN', 'test-token');
 vi.stubEnv('API_KEY', 'a-valid-api-key-at-least-16');
+vi.stubEnv('SECRET_ENCRYPTION_KEY', 'a'.repeat(64));
+vi.stubEnv('DATABASE_URL', 'postgres://user:pass@localhost:5432/db');
+vi.stubEnv('POSTGRES_PASSWORD', 'testpassword');
 vi.stubEnv('ADMIN_USERNAME', 'admin');
 vi.stubEnv('ADMIN_PASSWORD', 'password123');
 
 const mockMigrate = vi.fn().mockResolvedValue(undefined);
 vi.mock('drizzle-orm/postgres-js/migrator', () => ({ migrate: mockMigrate }));
 vi.mock('./db/client', () => ({
-  db: {},
+  db: { execute: vi.fn().mockResolvedValue(undefined) },
   destroyDb: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('./config/secrets', () => ({
+  resolveConfigSecrets: vi.fn().mockImplementation((config) => Promise.resolve(config)),
 }));
 
 const mockListen = vi.fn().mockResolvedValue(undefined);

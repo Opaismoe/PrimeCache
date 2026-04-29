@@ -1,6 +1,7 @@
 import path from 'node:path';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import fastifyStatic from '@fastify/static';
 import Fastify, {
   type FastifyError,
@@ -26,6 +27,7 @@ import { safeEqual } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { cancelRun } from '../warmer/registry';
 import { runGroup, startRunGroup } from '../warmer/runner';
+import { rateLimitTracker } from './rateLimits';
 import { authRoutes } from './routes/auth';
 import { putConfigRoute } from './routes/config';
 import { groupRoutes } from './routes/groups';
@@ -48,6 +50,36 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
 
   // ── Cookie support ────────────────────────────────────────────────────────
   await app.register(cookie);
+
+  // ── Rate limiting ─────────────────────────────────────────────────────────
+  await app.register(rateLimit, {
+    global: false,
+    keyGenerator: (request) => {
+      const key = request.headers['x-api-key'];
+      return typeof key === 'string' ? key : (request.ip ?? 'unknown');
+    },
+    errorResponseBuilder: (_request, context) => {
+      const retryAfter = Math.ceil(context.ttl / 1000);
+      const err = new Error(`Rate limit exceeded. Try again in ${retryAfter}s.`) as Error & {
+        statusCode: number;
+        retryAfter: number;
+      };
+      err.statusCode = context.statusCode;
+      err.retryAfter = retryAfter;
+      return err;
+    },
+  });
+
+  app.addHook('onSend', async (_request, reply) => {
+    const category = _request.routeOptions?.config?.rateLimitCategory;
+    if (!category) return;
+    const limit = Number(reply.getHeader('x-ratelimit-limit'));
+    const remaining = Number(reply.getHeader('x-ratelimit-remaining'));
+    const reset = Number(reply.getHeader('x-ratelimit-reset')); // epoch seconds
+    if (!Number.isNaN(limit) && !Number.isNaN(remaining) && !Number.isNaN(reset)) {
+      rateLimitTracker.update(category, { limit, remaining, resetTimestamp: reset * 1000 });
+    }
+  });
 
   // ── Security headers ──────────────────────────────────────────────────────
   await app.register(helmet, {
@@ -85,6 +117,11 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
     // Redact the webhook trigger token from the URL before logging — the token
     // appears in /webhook/trigger/:token and must not reach log aggregators.
     const safeUrl = _request.url.replace(/(\/webhook\/trigger\/)[^/?#]+/, '$1[REDACTED]');
+    // Rate-limit rejections are expected — log at warn, not error
+    if (status === 429) {
+      logger.warn({ url: safeUrl, status }, 'rate limit exceeded');
+      return reply.code(429).send({ error: error.message });
+    }
     logger.error({ err: error, url: safeUrl, status }, 'unhandled route error');
     if (status >= 500) {
       return reply.code(status).send({ error: 'Internal Server Error' });
@@ -137,11 +174,16 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       protected_.addHook('preHandler', requireAuth);
 
       // GET /auth/me — session validity probe
-      protected_.get('/auth/me', async () => ({ ok: true }));
+      protected_.get(
+        '/auth/me',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
+        async () => ({ ok: true }),
+      );
 
       // GET /runs
       protected_.get<{ Querystring: { limit?: string; offset?: string; group?: string } }>(
         '/runs',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async (request) => {
           const limit = Number(request.query.limit ?? 20);
           const offset = Number(request.query.offset ?? 0);
@@ -151,21 +193,30 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       );
 
       // GET /runs/latest  — must be registered before /runs/:id
-      protected_.get('/runs/latest', async () => getLatestPerGroup(db));
+      protected_.get(
+        '/runs/latest',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
+        async () => getLatestPerGroup(db),
+      );
 
       // GET /runs/:id
-      protected_.get<{ Params: { id: string } }>('/runs/:id', async (request, reply) => {
-        const id = parseId(request.params.id);
-        if (!id) return reply.code(400).send({ error: 'Invalid id' });
-        const run = await getRunById(db, id);
-        if (!run) return reply.code(404).send({ error: 'Run not found' });
-        const visits = await getVisitsByRunId(db, run.id);
-        return { ...run, visits };
-      });
+      protected_.get<{ Params: { id: string } }>(
+        '/runs/:id',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
+        async (request, reply) => {
+          const id = parseId(request.params.id);
+          if (!id) return reply.code(400).send({ error: 'Invalid id' });
+          const run = await getRunById(db, id);
+          if (!run) return reply.code(404).send({ error: 'Run not found' });
+          const visits = await getVisitsByRunId(db, run.id);
+          return { ...run, visits };
+        },
+      );
 
       // GET /runs/:id/screenshots
       protected_.get<{ Params: { id: string } }>(
         '/runs/:id/screenshots',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
         async (request, reply) => {
           const id = parseId(request.params.id);
           if (!id) return reply.code(400).send({ error: 'Invalid id' });
@@ -176,68 +227,92 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       );
 
       // POST /trigger (synchronous — waits for completion)
-      protected_.post<{ Body: { group: string } }>('/trigger', async (request, reply) => {
-        const { group: groupName } = request.body;
-        const group = getConfig().groups.find((g) => g.name === groupName);
-        if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
-        const runId = await runGroup(db, group);
-        return { runId };
-      });
+      protected_.post<{ Body: { group: string } }>(
+        '/trigger',
+        {
+          config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' },
+        },
+        async (request, reply) => {
+          const { group: groupName } = request.body;
+          const group = getConfig().groups.find((g) => g.name === groupName);
+          if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
+          const runId = await runGroup(db, group);
+          return { runId };
+        },
+      );
 
       // POST /trigger/async — returns runId immediately, runs in background
-      protected_.post<{ Body: { group: string } }>('/trigger/async', async (request, reply) => {
-        const { group: groupName } = request.body;
-        const group = getConfig().groups.find((g) => g.name === groupName);
-        if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
-        const { runId, promise } = await startRunGroup(db, group);
-        promise
-          .then(() => logger.info({ group: groupName, runId }, 'async trigger run complete'))
-          .catch((err) =>
-            logger.error({ group: groupName, runId, err }, 'async trigger run failed'),
-          );
-        return { runId };
-      });
+      protected_.post<{ Body: { group: string } }>(
+        '/trigger/async',
+        {
+          config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' },
+        },
+        async (request, reply) => {
+          const { group: groupName } = request.body;
+          const group = getConfig().groups.find((g) => g.name === groupName);
+          if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
+          const { runId, promise } = await startRunGroup(db, group);
+          promise
+            .then(() => logger.info({ group: groupName, runId }, 'async trigger run complete'))
+            .catch((err) =>
+              logger.error({ group: groupName, runId, err }, 'async trigger run failed'),
+            );
+          return { runId };
+        },
+      );
 
       // POST /webhook/warm
-      protected_.post<{ Body: { group: string } }>('/webhook/warm', async (request, reply) => {
-        const { group: groupName } = request.body;
-        const groups = getConfig().groups;
-        const targets = groupName === 'all' ? groups : groups.filter((g) => g.name === groupName);
+      protected_.post<{ Body: { group: string } }>(
+        '/webhook/warm',
+        {
+          config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' },
+        },
+        async (request, reply) => {
+          const { group: groupName } = request.body;
+          const groups = getConfig().groups;
+          const targets = groupName === 'all' ? groups : groups.filter((g) => g.name === groupName);
 
-        if (!targets.length) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
+          if (!targets.length)
+            return reply.code(400).send({ error: `Unknown group "${groupName}"` });
 
-        // Fire async — respond immediately
-        const runIds: number[] = [];
-        for (const group of targets) {
-          runGroup(db, group)
-            .then((id) => logger.info({ group: group.name, runId: id }, 'webhook run complete'))
-            .catch((err) => logger.error({ group: group.name, err }, 'webhook run failed'));
-          runIds.push(-1); // placeholder; real id resolves async
-        }
+          // Fire async — respond immediately
+          const runIds: number[] = [];
+          for (const group of targets) {
+            runGroup(db, group)
+              .then((id) => logger.info({ group: group.name, runId: id }, 'webhook run complete'))
+              .catch((err) => logger.error({ group: group.name, err }, 'webhook run failed'));
+            runIds.push(-1); // placeholder; real id resolves async
+          }
 
-        return { queued: true, runIds };
-      });
+          return { queued: true, runIds };
+        },
+      );
 
       // POST /runs/:id/cancel — must be before /runs/:id
-      protected_.post<{ Params: { id: string } }>('/runs/:id/cancel', async (request, reply) => {
-        const id = parseId(request.params.id);
-        if (!id) return reply.code(400).send({ error: 'Invalid id' });
-        const run = await getRunById(db, id);
-        if (!run) return reply.code(404).send({ error: 'Run not found' });
-        if (run.status !== 'running')
-          return reply.code(400).send({ error: 'Run is not in running state' });
-        cancelRun(id);
-        await finalizeRun(db, id, {
-          status: 'cancelled',
-          successCount: run.success_count ?? 0,
-          failureCount: run.failure_count ?? 0,
-        });
-        return { ok: true };
-      });
+      protected_.post<{ Params: { id: string } }>(
+        '/runs/:id/cancel',
+        { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
+        async (request, reply) => {
+          const id = parseId(request.params.id);
+          if (!id) return reply.code(400).send({ error: 'Invalid id' });
+          const run = await getRunById(db, id);
+          if (!run) return reply.code(404).send({ error: 'Run not found' });
+          if (run.status !== 'running')
+            return reply.code(400).send({ error: 'Run is not in running state' });
+          cancelRun(id);
+          await finalizeRun(db, id, {
+            status: 'cancelled',
+            successCount: run.success_count ?? 0,
+            failureCount: run.failure_count ?? 0,
+          });
+          return { ok: true };
+        },
+      );
 
       // DELETE /runs — clears history; unqualified delete requires ?confirm=true
       protected_.delete<{ Querystring: { group?: string; confirm?: string } }>(
         '/runs',
+        { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
         async (request, reply) => {
           const { group, confirm } = request.query;
           if (!group && confirm !== 'true') {
@@ -251,10 +326,25 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       );
 
       // GET /stats
-      protected_.get('/stats', async () => getStats(db));
+      protected_.get(
+        '/stats',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
+        async () => getStats(db),
+      );
 
       // GET /config
-      protected_.get('/config', async () => ({ groups: getConfig().groups }));
+      protected_.get(
+        '/config',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
+        async () => ({ groups: getConfig().groups }),
+      );
+
+      // GET /rate-limits — per-category usage stats
+      protected_.get(
+        '/rate-limits',
+        { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' } },
+        async () => rateLimitTracker.getStats(),
+      );
 
       // PUT /config
       protected_.register(putConfigRoute(db));

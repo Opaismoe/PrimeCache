@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Check, Copy, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import {
   getApiKey,
   getConfig,
   getLatestRuns,
+  getRateLimits,
   getWebhookTokens,
   putConfig,
   setWebhookTokenActive,
@@ -511,55 +512,177 @@ function WebhooksSection({ groups }: { groups: Group[] }) {
 
 // ── API section ───────────────────────────────────────────────────────────────
 
-const API_ENDPOINTS: [string, string, string][] = [
-  ['GET', '/health', 'Liveness check — no auth'],
-  ['GET', '/api/public/status', 'Per-group uptime · no auth'],
-  ['POST', '/api/auth/login', 'Exchange credentials for token'],
-  ['GET', '/api/runs', 'Paginated run history'],
-  ['GET', '/api/runs/latest', 'Latest run per group'],
-  ['GET', '/api/runs/:id', 'Run detail with visits'],
-  ['POST', '/api/trigger', 'Sync trigger — blocks until done'],
-  ['POST', '/api/trigger/async', 'Async trigger — returns runId immediately'],
-  ['POST', '/api/runs/:id/cancel', 'Cancel a running execution'],
-  ['DELETE', '/api/runs', 'Clear run history (?group=name)'],
-  ['GET', '/api/config', 'Current loaded config'],
-  ['PUT', '/api/config', 'Update config and rename groups'],
-  ['GET', '/api/groups/:name/overview', 'Summary stats and trend series'],
-  ['GET', '/api/groups/:name/performance', 'P50/P95 load time & TTFB per URL'],
-  ['GET', '/api/groups/:name/uptime', 'Uptime % per URL over last 30 days'],
-  ['GET', '/api/groups/:name/seo', 'SEO scores and metadata per URL'],
-  ['GET', '/api/groups/:name/cwv', 'Core Web Vitals at P75 per URL'],
-  ['GET', '/api/groups/:name/broken-links', 'Broken links discovered during visits'],
-  ['GET', '/api/groups/:name/export', 'CSV export (?tab=performance|uptime|seo|links)'],
-  ['GET', '/api/stats', 'Global stats: run status breakdown, visits per day'],
-  ['GET', '/api/secrets', 'List secret names (values never returned)'],
-  ['POST', '/api/secrets', 'Upsert secret { name, value }'],
-  ['DELETE', '/api/secrets/:name', 'Remove a secret'],
-  ['GET', '/api/groups/:name/webhooks', 'List webhook tokens'],
-  ['POST', '/api/groups/:name/webhooks', 'Create webhook token { description? }'],
-  ['DELETE', '/api/groups/:name/webhooks/:id', 'Delete a webhook token'],
-  ['PATCH', '/api/groups/:name/webhooks/:id', 'Toggle active { active: boolean }'],
-  ['POST', '/webhook/warm', 'Async webhook trigger { group }'],
-  ['POST', '/webhook/trigger/:token', 'Inbound webhook — token in URL, no auth'],
-];
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-const METHOD_COLORS: Record<string, string> = {
-  GET: 'text-sky-500',
-  POST: 'text-green-500',
-  PUT: 'text-amber-500',
-  PATCH: 'text-amber-500',
-  DELETE: 'text-destructive',
+const METHOD_BADGE: Record<HttpMethod, string> = {
+  GET: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+  POST: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20',
+  PUT: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  PATCH: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  DELETE: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
+interface Endpoint {
+  method: HttpMethod;
+  path: string;
+  desc: string;
+  auth?: 'none';
+}
+
+interface EndpointGroup {
+  label: string;
+  endpoints: Endpoint[];
+}
+
+const ENDPOINT_GROUPS: EndpointGroup[] = [
+  {
+    label: 'Health & Status',
+    endpoints: [
+      { method: 'GET', path: '/health', desc: 'Liveness check', auth: 'none' },
+      {
+        method: 'GET',
+        path: '/api/public/status',
+        desc: 'Per-group uptime · no auth',
+        auth: 'none',
+      },
+    ],
+  },
+  {
+    label: 'Authentication',
+    endpoints: [
+      {
+        method: 'POST',
+        path: '/api/auth/login',
+        desc: 'Exchange credentials for session token',
+        auth: 'none',
+      },
+    ],
+  },
+  {
+    label: 'Runs',
+    endpoints: [
+      { method: 'GET', path: '/api/runs', desc: 'Paginated run history (?limit&offset&group)' },
+      { method: 'GET', path: '/api/runs/latest', desc: 'Latest run per group' },
+      { method: 'GET', path: '/api/runs/:id', desc: 'Run detail with visits' },
+      { method: 'POST', path: '/api/trigger', desc: 'Sync trigger — blocks until done' },
+      {
+        method: 'POST',
+        path: '/api/trigger/async',
+        desc: 'Async trigger — returns runId immediately',
+      },
+      { method: 'POST', path: '/api/runs/:id/cancel', desc: 'Cancel a running execution' },
+      { method: 'DELETE', path: '/api/runs', desc: 'Clear run history (?group=name)' },
+    ],
+  },
+  {
+    label: 'Analytics',
+    endpoints: [
+      { method: 'GET', path: '/api/groups/:name/overview', desc: 'Summary stats and trend series' },
+      {
+        method: 'GET',
+        path: '/api/groups/:name/performance',
+        desc: 'P50/P95 load time & TTFB per URL',
+      },
+      {
+        method: 'GET',
+        path: '/api/groups/:name/uptime',
+        desc: 'Uptime % per URL over last 30 days',
+      },
+      { method: 'GET', path: '/api/groups/:name/seo', desc: 'SEO scores and metadata per URL' },
+      { method: 'GET', path: '/api/groups/:name/cwv', desc: 'Core Web Vitals at P75 per URL' },
+      {
+        method: 'GET',
+        path: '/api/groups/:name/broken-links',
+        desc: 'Broken links discovered during visits',
+      },
+      {
+        method: 'GET',
+        path: '/api/groups/:name/export',
+        desc: 'CSV export (?tab=performance|uptime|seo|links)',
+      },
+      {
+        method: 'GET',
+        path: '/api/stats',
+        desc: 'Global stats: run status breakdown, visits per day',
+      },
+      { method: 'GET', path: '/api/rate-limits', desc: 'Live usage per rate limit category' },
+    ],
+  },
+  {
+    label: 'Configuration',
+    endpoints: [
+      { method: 'GET', path: '/api/config', desc: 'Current loaded config' },
+      { method: 'PUT', path: '/api/config', desc: 'Update config and rename groups' },
+    ],
+  },
+  {
+    label: 'Secrets',
+    endpoints: [
+      { method: 'GET', path: '/api/secrets', desc: 'List secret names (values never returned)' },
+      { method: 'POST', path: '/api/secrets', desc: 'Upsert secret { name, value }' },
+      { method: 'DELETE', path: '/api/secrets/:name', desc: 'Remove a secret' },
+    ],
+  },
+  {
+    label: 'Webhooks & Triggers',
+    endpoints: [
+      { method: 'GET', path: '/api/groups/:name/webhooks', desc: 'List webhook tokens' },
+      {
+        method: 'POST',
+        path: '/api/groups/:name/webhooks',
+        desc: 'Create webhook token { description? }',
+      },
+      { method: 'DELETE', path: '/api/groups/:name/webhooks/:id', desc: 'Delete a webhook token' },
+      {
+        method: 'PATCH',
+        path: '/api/groups/:name/webhooks/:id',
+        desc: 'Toggle active { active: boolean }',
+      },
+      { method: 'POST', path: '/webhook/warm', desc: 'Async webhook trigger { group }' },
+      {
+        method: 'POST',
+        path: '/webhook/trigger/:token',
+        desc: 'Inbound webhook — token in URL, no auth',
+        auth: 'none',
+      },
+    ],
+  },
+];
+
 function APISection() {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiKey = getApiKey();
+
+  useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    [],
+  );
+
+  const { data: rateLimits } = useQuery({
+    queryKey: queryKeys.rateLimits.all(),
+    queryFn: getRateLimits,
+    refetchInterval: 30_000,
+    enabled: !!apiKey,
+  });
+
+  const setCopiedFor = (key: string) => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    setCopied(key);
+    copyTimer.current = setTimeout(() => setCopied(null), 1500);
+  };
 
   const copyKey = () => {
     if (!apiKey) return;
     void navigator.clipboard.writeText(apiKey);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setCopiedFor('key');
+  };
+
+  const copyPath = (path: string) => {
+    void navigator.clipboard.writeText(path);
+    setCopiedFor(path);
   };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
@@ -576,33 +699,62 @@ function APISection() {
         description="Programmatic access to runs, groups, analytics, and configuration. All protected routes require X-API-Key."
       />
 
-      <div className="grid gap-6 items-start lg:grid-cols-[1.3fr_1fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[1.3fr_1fr]">
         {/* Endpoint reference */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-medium">Endpoints</h2>
-              <span className="font-mono rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">
+              <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
                 v1
               </span>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-border">
-              {API_ENDPOINTS.map(([method, path, desc]) => (
-                <div key={`${method}${path}`} className="flex items-start gap-3 px-4 py-2.5">
-                  <span
-                    className={`w-12 shrink-0 font-mono text-[11px] font-semibold ${METHOD_COLORS[method] ?? ''}`}
-                  >
-                    {method}
+            {ENDPOINT_GROUPS.map((group) => (
+              <div key={group.label}>
+                <div className="border-t border-border bg-muted/40 px-4 py-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                    {group.label}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[11px]">{path}</div>
-                    <div className="text-[11px] text-muted-foreground">{desc}</div>
-                  </div>
                 </div>
-              ))}
-            </div>
+                {group.endpoints.map((ep) => (
+                  <div
+                    key={`${ep.method}${ep.path}`}
+                    className="group/row flex items-start gap-3 px-4 py-2 hover:bg-muted/30"
+                  >
+                    <span
+                      className={`mt-0.5 inline-flex w-14 shrink-0 items-center justify-center rounded border px-1 py-0.5 font-mono text-[10px] font-semibold ${METHOD_BADGE[ep.method]}`}
+                    >
+                      {ep.method}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[11px]">{ep.path}</span>
+                        {ep.auth === 'none' && (
+                          <span className="rounded border border-border bg-muted px-1 py-px text-[9px] text-muted-foreground">
+                            public
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-muted-foreground">{ep.desc}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover/row:opacity-100"
+                      onClick={() => copyPath(ep.path)}
+                      title="Copy path"
+                    >
+                      {copied === ep.path ? (
+                        <Check className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
           </CardContent>
         </Card>
 
@@ -612,7 +764,7 @@ function APISection() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium">Quick example</h2>
-                <span className="font-mono rounded border border-border bg-muted px-1.5 py-0.5 text-[10px]">
+                <span className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
                   curl
                 </span>
               </div>
@@ -621,6 +773,33 @@ function APISection() {
               <pre className="overflow-x-auto rounded-md border border-border bg-muted p-3 font-mono text-[11px] leading-relaxed">
                 {curlExample}
               </pre>
+            </CardContent>
+          </Card>
+
+          {/* Rate limits */}
+          <Card>
+            <CardHeader className="pb-2">
+              <h2 className="text-sm font-medium">Rate limits</h2>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <LimitRow
+                label="Read endpoints"
+                used={rateLimits?.read.used ?? 0}
+                max={rateLimits?.read.max ?? 120}
+              />
+              <LimitRow
+                label="Write endpoints"
+                used={rateLimits?.write.used ?? 0}
+                max={rateLimits?.write.max ?? 30}
+              />
+              <LimitRow
+                label="Trigger endpoints"
+                used={rateLimits?.trigger.used ?? 0}
+                max={rateLimits?.trigger.max ?? 10}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Resets every 60 seconds per API key.
+              </p>
             </CardContent>
           </Card>
 
@@ -641,7 +820,7 @@ function APISection() {
                     : '—'}
                 </div>
                 <Button size="sm" variant="outline" onClick={copyKey} disabled={!apiKey}>
-                  {copied ? (
+                  {copied === 'key' ? (
                     <Check className="h-3.5 w-3.5 text-green-500" />
                   ) : (
                     <Copy className="h-3.5 w-3.5" />
@@ -772,6 +951,27 @@ function KpiCard({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="font-mono text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function LimitRow({ label, used, max }: { label: string; used: number; max: number }) {
+  const pct = max > 0 ? (used / max) * 100 : 0;
+  const barColor = pct > 80 ? 'bg-destructive' : pct > 60 ? 'bg-amber-500' : 'bg-primary';
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-mono text-muted-foreground">
+          {used} / {max}
+        </span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all ${barColor}`}
+          style={{ width: `${Math.min(100, pct)}%` }}
+        />
+      </div>
     </div>
   );
 }

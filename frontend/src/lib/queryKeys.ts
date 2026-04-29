@@ -12,6 +12,9 @@ export const queryKeys = {
   stats: {
     all: () => ['stats'] as const,
   },
+  rateLimits: {
+    all: () => ['rate-limits'] as const,
+  },
   groups: {
     health: () => ['groups', 'health'] as const,
     overview: (name: string) => ['groups', name, 'overview'] as const,

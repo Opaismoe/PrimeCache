@@ -143,6 +143,16 @@ export const getConfig = () => request<Config>('GET', '/api/config');
 
 export const getStats = () => request<Stats>('GET', '/api/stats');
 
+export interface RateLimitStats {
+  read: { used: number; max: number; resetInMs: number };
+  write: { used: number; max: number; resetInMs: number };
+  trigger: { used: number; max: number; resetInMs: number };
+}
+
+export async function getRateLimits(): Promise<RateLimitStats> {
+  return request<RateLimitStats>('GET', '/api/rate-limits');
+}
+
 export const putConfig = (config: Config, renames?: { from: string; to: string }[]) =>
   request<{ ok: boolean }>('PUT', '/api/config', renames?.length ? { ...config, renames } : config);
 
