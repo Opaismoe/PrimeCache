@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { Check, Copy, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -571,6 +571,7 @@ const ENDPOINT_GROUPS: EndpointGroup[] = [
       { method: 'GET', path: '/api/groups/:name/broken-links', desc: 'Broken links discovered during visits' },
       { method: 'GET', path: '/api/groups/:name/export',       desc: 'CSV export (?tab=performance|uptime|seo|links)' },
       { method: 'GET', path: '/api/stats',                     desc: 'Global stats: run status breakdown, visits per day' },
+      { method: 'GET', path: '/api/rate-limits',               desc: 'Live usage per rate limit category' },
     ],
   },
   {
@@ -603,7 +604,10 @@ const ENDPOINT_GROUPS: EndpointGroup[] = [
 
 function APISection() {
   const [copied, setCopied] = useState<string | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const apiKey = getApiKey();
+
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
 
   const { data: rateLimits } = useQuery({
     queryKey: queryKeys.rateLimits.all(),
@@ -612,17 +616,21 @@ function APISection() {
     enabled: !!apiKey,
   });
 
+  const setCopiedFor = (key: string) => {
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    setCopied(key);
+    copyTimer.current = setTimeout(() => setCopied(null), 1500);
+  };
+
   const copyKey = () => {
     if (!apiKey) return;
     void navigator.clipboard.writeText(apiKey);
-    setCopied('key');
-    setTimeout(() => setCopied(null), 1500);
+    setCopiedFor('key');
   };
 
   const copyPath = (path: string) => {
     void navigator.clipboard.writeText(path);
-    setCopied(path);
-    setTimeout(() => setCopied(null), 1500);
+    setCopiedFor(path);
   };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
