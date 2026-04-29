@@ -6,10 +6,13 @@ declare module 'fastify' {
   }
 }
 
-export const RATE_LIMIT_CATEGORIES: Record<RateLimitCategory, { max: number; timeWindowMs: number }> = {
-  read:    { max: 120, timeWindowMs: 60_000 },
-  write:   { max: 30,  timeWindowMs: 60_000 },
-  trigger: { max: 10,  timeWindowMs: 60_000 },
+export const RATE_LIMIT_CATEGORIES: Record<
+  RateLimitCategory,
+  { max: number; timeWindowMs: number }
+> = {
+  read: { max: 120, timeWindowMs: 60_000 },
+  write: { max: 30, timeWindowMs: 60_000 },
+  trigger: { max: 10, timeWindowMs: 60_000 },
 };
 
 interface CategoryState {
@@ -19,15 +22,15 @@ interface CategoryState {
 }
 
 export interface RateLimitStats {
-  read:    { used: number; max: number; resetInMs: number };
-  write:   { used: number; max: number; resetInMs: number };
+  read: { used: number; max: number; resetInMs: number };
+  write: { used: number; max: number; resetInMs: number };
   trigger: { used: number; max: number; resetInMs: number };
 }
 
 export class RateLimitTracker {
   private state: Record<RateLimitCategory, CategoryState> = {
-    read:    { used: 0, max: RATE_LIMIT_CATEGORIES.read.max,    resetTimestamp: 0 },
-    write:   { used: 0, max: RATE_LIMIT_CATEGORIES.write.max,   resetTimestamp: 0 },
+    read: { used: 0, max: RATE_LIMIT_CATEGORIES.read.max, resetTimestamp: 0 },
+    write: { used: 0, max: RATE_LIMIT_CATEGORIES.write.max, resetTimestamp: 0 },
     trigger: { used: 0, max: RATE_LIMIT_CATEGORIES.trigger.max, resetTimestamp: 0 },
   };
 

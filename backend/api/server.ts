@@ -10,7 +10,6 @@ import Fastify, {
   type FastifyRequest,
 } from 'fastify';
 import { env } from '../config/env';
-import { type RateLimitCategory, rateLimitTracker } from './rateLimits';
 import type { Config } from '../config/urls';
 import type { Db } from '../db/client';
 import {
@@ -28,6 +27,7 @@ import { safeEqual } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { cancelRun } from '../warmer/registry';
 import { runGroup, startRunGroup } from '../warmer/runner';
+import { rateLimitTracker } from './rateLimits';
 import { authRoutes } from './routes/auth';
 import { putConfigRoute } from './routes/config';
 import { groupRoutes } from './routes/groups';
@@ -60,7 +60,10 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
     },
     errorResponseBuilder: (_request, context) => {
       const retryAfter = Math.ceil(context.ttl / 1000);
-      const err = new Error(`Rate limit exceeded. Try again in ${retryAfter}s.`) as Error & { statusCode: number; retryAfter: number };
+      const err = new Error(`Rate limit exceeded. Try again in ${retryAfter}s.`) as Error & {
+        statusCode: number;
+        retryAfter: number;
+      };
       err.statusCode = context.statusCode;
       err.retryAfter = retryAfter;
       return err;
@@ -70,9 +73,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   app.addHook('onSend', async (_request, reply) => {
     const category = _request.routeOptions?.config?.rateLimitCategory;
     if (!category) return;
-    const limit     = Number(reply.getHeader('x-ratelimit-limit'));
+    const limit = Number(reply.getHeader('x-ratelimit-limit'));
     const remaining = Number(reply.getHeader('x-ratelimit-remaining'));
-    const reset     = Number(reply.getHeader('x-ratelimit-reset')); // epoch seconds
+    const reset = Number(reply.getHeader('x-ratelimit-reset')); // epoch seconds
     if (!Number.isNaN(limit) && !Number.isNaN(remaining) && !Number.isNaN(reset)) {
       rateLimitTracker.update(category, { limit, remaining, resetTimestamp: reset * 1000 });
     }
@@ -226,7 +229,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // POST /trigger (synchronous — waits for completion)
       protected_.post<{ Body: { group: string } }>(
         '/trigger',
-        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' } },
+        {
+          config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' },
+        },
         async (request, reply) => {
           const { group: groupName } = request.body;
           const group = getConfig().groups.find((g) => g.name === groupName);
@@ -239,7 +244,9 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // POST /trigger/async — returns runId immediately, runs in background
       protected_.post<{ Body: { group: string } }>(
         '/trigger/async',
-        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' } },
+        {
+          config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' },
+        },
         async (request, reply) => {
           const { group: groupName } = request.body;
           const group = getConfig().groups.find((g) => g.name === groupName);
@@ -257,13 +264,16 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       // POST /webhook/warm
       protected_.post<{ Body: { group: string } }>(
         '/webhook/warm',
-        { config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' } },
+        {
+          config: { rateLimit: { max: 10, timeWindow: '1 minute' }, rateLimitCategory: 'trigger' },
+        },
         async (request, reply) => {
           const { group: groupName } = request.body;
           const groups = getConfig().groups;
           const targets = groupName === 'all' ? groups : groups.filter((g) => g.name === groupName);
 
-          if (!targets.length) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
+          if (!targets.length)
+            return reply.code(400).send({ error: `Unknown group "${groupName}"` });
 
           // Fire async — respond immediately
           const runIds: number[] = [];

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { RateLimitTracker, RATE_LIMIT_CATEGORIES } from './rateLimits';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { RATE_LIMIT_CATEGORIES, RateLimitTracker } from './rateLimits';
 
 describe('RateLimitTracker', () => {
   let tracker: RateLimitTracker;

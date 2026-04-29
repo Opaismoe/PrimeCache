@@ -14,14 +14,16 @@ export function putConfigRoute(db: Db): FastifyPluginAsync {
   return async (app) => {
     app.put(
       '/config',
-      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' as const } },
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' } },
       async (request: FastifyRequest, reply: FastifyReply) => {
         const body = (request.body ?? {}) as Record<string, unknown>;
         const { renames: rawRenames, ...rest } = body;
 
         const configResult = ConfigSchema.safeParse(rest);
         if (!configResult.success) {
-          return reply.code(400).send({ error: 'Invalid config', issues: configResult.error.issues });
+          return reply
+            .code(400)
+            .send({ error: 'Invalid config', issues: configResult.error.issues });
         }
 
         const renamesResult = RenameSchema.safeParse(rawRenames);

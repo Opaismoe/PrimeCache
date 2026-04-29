@@ -54,15 +54,19 @@ export function authRoutes(db: Db): FastifyPluginAsync {
     );
 
     // POST /api/auth/logout — delete session, clear cookies
-    app.post('/auth/logout', async (request, reply) => {
-      const sessionId = (request.cookies as Record<string, string | undefined>).pc_session;
-      if (sessionId) {
-        await deleteSession(db, sessionId).catch(() => {});
-      }
-      reply
-        .clearCookie('pc_session', { path: '/' })
-        .clearCookie('pc_csrf', { path: '/' })
-        .send({ ok: true });
-    });
+    app.post(
+      '/auth/logout',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
+      async (request, reply) => {
+        const sessionId = (request.cookies as Record<string, string | undefined>).pc_session;
+        if (sessionId) {
+          await deleteSession(db, sessionId).catch(() => {});
+        }
+        reply
+          .clearCookie('pc_session', { path: '/' })
+          .clearCookie('pc_csrf', { path: '/' })
+          .send({ ok: true });
+      },
+    );
   };
 }

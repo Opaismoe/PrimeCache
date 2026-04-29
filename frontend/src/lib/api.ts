@@ -144,8 +144,8 @@ export const getConfig = () => request<Config>('GET', '/api/config');
 export const getStats = () => request<Stats>('GET', '/api/stats');
 
 export interface RateLimitStats {
-  read:    { used: number; max: number; resetInMs: number };
-  write:   { used: number; max: number; resetInMs: number };
+  read: { used: number; max: number; resetInMs: number };
+  write: { used: number; max: number; resetInMs: number };
   trigger: { used: number; max: number; resetInMs: number };
 }
 
