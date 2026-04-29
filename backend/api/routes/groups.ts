@@ -24,17 +24,26 @@ export function csvCell(v: unknown): string {
 
 export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsync {
   return async (app) => {
-    app.get('/groups-health', async () => {
-      return getGroupsHealth(db);
-    });
+    app.get(
+      '/groups-health',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async () => {
+        return getGroupsHealth(db);
+      },
+    );
 
-    app.get<{ Params: { name: string } }>('/groups/:name/overview', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupOverview(db, name);
-    });
+    app.get<{ Params: { name: string } }>(
+      '/groups/:name/overview',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        return getGroupOverview(db, name);
+      },
+    );
 
     app.get<{ Params: { name: string }; Querystring: { threshold?: string } }>(
       '/groups/:name/performance',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
       async (request) => {
         const name = decodeURIComponent(request.params.name);
         const threshold = Number(request.query.threshold ?? 3000);
@@ -42,34 +51,55 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
       },
     );
 
-    app.get<{ Params: { name: string } }>('/groups/:name/uptime', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupUptime(db, name);
-    });
+    app.get<{ Params: { name: string } }>(
+      '/groups/:name/uptime',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        return getGroupUptime(db, name);
+      },
+    );
 
-    app.get<{ Params: { name: string } }>('/groups/:name/seo', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupSeo(db, name);
-    });
+    app.get<{ Params: { name: string } }>(
+      '/groups/:name/seo',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        return getGroupSeo(db, name);
+      },
+    );
 
-    app.get<{ Params: { name: string } }>('/groups/:name/cwv', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupCwv(db, name);
-    });
+    app.get<{ Params: { name: string } }>(
+      '/groups/:name/cwv',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        return getGroupCwv(db, name);
+      },
+    );
 
-    app.get<{ Params: { name: string } }>('/groups/:name/broken-links', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupBrokenLinks(db, name);
-    });
+    app.get<{ Params: { name: string } }>(
+      '/groups/:name/broken-links',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        return getGroupBrokenLinks(db, name);
+      },
+    );
 
-    app.get<{ Params: { name: string } }>('/groups/:name/accessibility', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupAccessibility(db, name);
-    });
+    app.get<{ Params: { name: string } }>(
+      '/groups/:name/accessibility',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        return getGroupAccessibility(db, name);
+      },
+    );
 
     // GET /groups/:name/lighthouse?formFactor=desktop|mobile
     app.get<{ Params: { name: string }; Querystring: { formFactor?: string } }>(
       '/groups/:name/lighthouse',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
       async (request) => {
         const name = decodeURIComponent(request.params.name);
         const ff = request.query.formFactor === 'mobile' ? 'mobile' : 'desktop';
@@ -80,6 +110,7 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
     // POST /groups/:name/lighthouse/trigger  body: { formFactor?: 'desktop'|'mobile', url?: string }
     app.post<{ Params: { name: string }; Body: { formFactor?: string; url?: string } }>(
       '/groups/:name/lighthouse/trigger',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' as const } },
       async (request, reply) => {
         const name = decodeURIComponent(request.params.name);
         const config = getConfig ? getConfig() : null;
@@ -117,14 +148,19 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
     );
 
     // GET /groups/:name/crawled-urls
-    app.get<{ Params: { name: string } }>('/groups/:name/crawled-urls', async (request) => {
-      const name = decodeURIComponent(request.params.name);
-      return getGroupCrawledUrls(db, name);
-    });
+    app.get<{ Params: { name: string } }>(
+      '/groups/:name/crawled-urls',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async (request) => {
+        const name = decodeURIComponent(request.params.name);
+        return getGroupCrawledUrls(db, name);
+      },
+    );
 
     // DELETE /groups/:name/crawled-urls  body: { url: string }
     app.delete<{ Params: { name: string }; Body: { url: string } }>(
       '/groups/:name/crawled-urls',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' as const } },
       async (request, reply) => {
         const name = decodeURIComponent(request.params.name);
         const { url } = request.body ?? {};
@@ -137,6 +173,7 @@ export function groupRoutes(db: Db, getConfig?: () => Config): FastifyPluginAsyn
     // CSV export — ?tab=performance|uptime|seo|links
     app.get<{ Params: { name: string }; Querystring: { tab?: string } }>(
       '/groups/:name/export',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
       async (request, reply: FastifyReply) => {
         const name = decodeURIComponent(request.params.name);
         const tab = request.query.tab ?? 'performance';

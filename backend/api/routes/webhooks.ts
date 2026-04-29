@@ -24,6 +24,7 @@ export function webhookManagementRoutes(db: Db, getConfig: () => Config): Fastif
     // GET /api/groups/:name/webhooks — list tokens (no token values returned)
     app.get<{ Params: { name: string } }>(
       '/groups/:name/webhooks',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
       async (request: FastifyRequest<{ Params: { name: string } }>, reply: FastifyReply) => {
         const { name } = request.params;
         const group = getConfig().groups.find((g) => g.name === name);

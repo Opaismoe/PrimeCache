@@ -7,7 +7,11 @@ import { encrypt } from '../../secrets/crypto';
 export function secretsRoutes(db: Db): FastifyPluginAsync {
   return async (app) => {
     // GET /api/secrets — list names and timestamps, never values
-    app.get('/secrets', async () => listSecrets(db));
+    app.get(
+      '/secrets',
+      { config: { rateLimit: { max: 120, timeWindow: '1 minute' }, rateLimitCategory: 'read' as const } },
+      async () => listSecrets(db),
+    );
 
     // POST /api/secrets — upsert { name, value }
     app.post<{ Body: { name: string; value: string } }>(
