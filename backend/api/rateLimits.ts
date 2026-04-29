@@ -1,5 +1,11 @@
 export type RateLimitCategory = 'read' | 'write' | 'trigger';
 
+declare module 'fastify' {
+  interface FastifyContextConfig {
+    rateLimitCategory?: RateLimitCategory;
+  }
+}
+
 export const RATE_LIMIT_CATEGORIES: Record<RateLimitCategory, { max: number; timeWindowMs: number }> = {
   read:    { max: 120, timeWindowMs: 60_000 },
   write:   { max: 30,  timeWindowMs: 60_000 },

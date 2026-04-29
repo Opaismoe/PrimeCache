@@ -12,6 +12,7 @@ export function secretsRoutes(db: Db): FastifyPluginAsync {
     // POST /api/secrets — upsert { name, value }
     app.post<{ Body: { name: string; value: string } }>(
       '/secrets',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' as const } },
       async (
         request: FastifyRequest<{ Body: { name: string; value: string } }>,
         reply: FastifyReply,
@@ -27,6 +28,7 @@ export function secretsRoutes(db: Db): FastifyPluginAsync {
     // DELETE /api/secrets/:name
     app.delete<{ Params: { name: string } }>(
       '/secrets/:name',
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' }, rateLimitCategory: 'write' as const } },
       async (request: FastifyRequest<{ Params: { name: string } }>) => {
         const deleted = await deleteSecret(db, request.params.name);
         return { deleted };
