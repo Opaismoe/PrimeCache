@@ -1,6 +1,6 @@
-import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link } from '@tanstack/react-router';
-import { ChevronRight, Clock, RefreshCw } from 'lucide-react';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -17,15 +17,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkline } from '../components/Sparkline';
+import { ProjectCard } from '../components/ProjectCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { UptimeSegBars } from '../components/UptimeSegBars';
-import { getApiKey, getConfig, getGroupOverview, getLatestRuns, getPublicStatus, getStats } from '../lib/api';
+import { getApiKey, getConfig, getGroupOverview, getLatestRuns, getPublicStatus, getStats, triggerAsync } from '../lib/api';
 import { CHART_TOOLTIP_STYLE, getColor, STATUS_COLORS, STATUS_LABELS } from '../lib/chartStyles';
-import { describeCron } from '../lib/cronUtils';
 import { formatChartDate } from '../lib/formatChartDate';
 import { queryKeys } from '../lib/queryKeys';
-import type { Group, GroupStatus, Run, Stats } from '../lib/types';
+import type { GroupStatus, Run, Stats } from '../lib/types';
 
 const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
 const latestRunsQueryOptions = queryOptions({
@@ -40,13 +39,21 @@ const publicStatusQueryOptions = queryOptions({
 });
 
 export const Route = createFileRoute('/')({
-  loader: ({ context: { queryClient } }) => {
+  loader: async ({ context: { queryClient } }) => {
     if (!getApiKey()) return;
-    return Promise.all([
+    const [config] = await Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(latestRunsQueryOptions),
       queryClient.ensureQueryData(statsQueryOptions),
     ]);
+    // Warm group overview cache so sparklines render immediately — don't block
+    for (const group of config?.groups ?? []) {
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.groups.overview(group.name),
+        queryFn: () => getGroupOverview(group.name),
+        staleTime: 5 * 60 * 1000,
+      });
+    }
   },
   pendingComponent: DashboardSkeleton,
   pendingMs: 200,
@@ -129,11 +136,20 @@ function DashboardSkeleton() {
 
 function DashboardPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: config } = useQuery(configQueryOptions);
   const { data: latestRuns } = useQuery(latestRunsQueryOptions);
   const { data: stats } = useQuery(statsQueryOptions);
   const { data: publicStatus } = useQuery(publicStatusQueryOptions);
+
+  const trigger = useMutation({
+    mutationFn: triggerAsync,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() });
+      navigate({ to: '/history/$runId', params: { runId: String(data.runId) } });
+    },
+  });
 
   const syncAll = () => queryClient.invalidateQueries();
 
@@ -242,6 +258,8 @@ function DashboardPage() {
                 group={group}
                 latestRun={latestByGroup.get(group.name)}
                 publicStatus={statusByGroup.get(group.name)}
+                onRunNow={() => trigger.mutate(group.name)}
+                isTriggering={trigger.isPending && trigger.variables === group.name}
               />
             ))}
           </div>
@@ -506,161 +524,6 @@ function DashboardPage() {
 }
 
 // ── Helper components ─────────────────────────────────────────────────────────
-
-function ProjectCard({
-  group,
-  latestRun,
-  publicStatus,
-}: {
-  group: Group;
-  latestRun: Run | undefined;
-  publicStatus: GroupStatus | undefined;
-}) {
-  const { data: overview } = useQuery({
-    queryKey: queryKeys.groups.overview(group.name),
-    queryFn: () => getGroupOverview(group.name),
-    staleTime: 5 * 60 * 1000,
-    enabled: !!getApiKey(),
-  });
-
-  const host = (() => {
-    try {
-      return new URL(group.urls[0]).host;
-    } catch {
-      return group.urls[0] ?? '';
-    }
-  })();
-  const sparkData = (overview?.series ?? []).slice(-20).map((s) => s.avgLoadTimeMs);
-  const avgLoad = overview?.stats.avgLoadTimeMs ?? null;
-  const totalRuns = overview?.stats.totalRuns ?? null;
-  const uptime = publicStatus?.uptimePct ?? null;
-
-  const isWarn = latestRun?.status === 'partial_failure' || latestRun?.status === 'failed';
-  const sparkColor = isWarn ? 'var(--pc-warn)' : 'var(--pc-accent)';
-  const uptimeColor =
-    uptime === null
-      ? 'var(--foreground)'
-      : uptime >= 99
-        ? 'var(--pc-ok)'
-        : uptime >= 95
-          ? 'var(--pc-warn)'
-          : 'var(--pc-bad)';
-
-  return (
-    <Link
-      to="/groups/$groupName"
-      params={{ groupName: group.name }}
-      search={{ tab: 'health', qtab: 'seo' }}
-      style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
-    >
-      <div
-        style={{
-          background: 'var(--card)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: 18,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          height: '100%',
-          transition: 'border-color 0.15s, box-shadow 0.15s',
-        }}
-        className="hover:border-amber-500/40 hover:shadow-sm"
-      >
-        {/* Title row */}
-        <div
-          style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}
-        >
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                fontSize: 15,
-                fontWeight: 500,
-                letterSpacing: '-0.01em',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {group.name}
-            </div>
-            <div
-              className="font-mono"
-              style={{
-                fontSize: 12,
-                color: 'var(--muted-foreground)',
-                marginTop: 2,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {host}
-            </div>
-          </div>
-          {latestRun && <StatusBadge status={latestRun.status} />}
-        </div>
-
-        {/* Sparkline */}
-        <div style={{ height: 36 }}>
-          {sparkData.length >= 2 ? (
-            <Sparkline data={sparkData} color={sparkColor} height={36} />
-          ) : (
-            <div
-              style={{ height: 36, background: 'var(--muted)', borderRadius: 6, opacity: 0.4 }}
-            />
-          )}
-        </div>
-
-        {/* Schedule + URL count */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            fontSize: 12,
-            color: 'var(--muted-foreground)',
-          }}
-        >
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Clock style={{ width: 12, height: 12, flexShrink: 0 }} />
-            {describeCron(group.schedule)}
-          </span>
-          <span className="font-mono" style={{ flexShrink: 0 }}>
-            {group.urls.length} URLs
-          </span>
-        </div>
-
-        {/* Footer */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: 11.5,
-            color: 'var(--muted-foreground)',
-            paddingTop: 10,
-            borderTop: '1px solid var(--border)',
-            marginTop: 'auto',
-          }}
-        >
-          <span>
-            Uptime{' '}
-            <span className="font-mono" style={{ color: uptimeColor }}>
-              {uptime !== null ? `${uptime.toFixed(1)}%` : '—'}
-            </span>
-          </span>
-          <span>
-            Avg{' '}
-            <span className="font-mono" style={{ color: 'var(--foreground)' }}>
-              {avgLoad !== null ? `${Math.round(avgLoad)}ms` : '—'}
-            </span>
-          </span>
-          {totalRuns !== null && <span>{totalRuns} runs</span>}
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 function KpiTile({
   label,
