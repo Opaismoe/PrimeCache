@@ -20,7 +20,7 @@ RUN cd frontend && pnpm build
 
 FROM node:22-alpine
 WORKDIR /app
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init su-exec
 RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/
@@ -34,9 +34,11 @@ COPY --from=builder /app/frontend/dist ./frontend/dist
 RUN addgroup -S app && adduser -S app -G app \
     && mkdir -p /app/data /app/config \
     && chown -R app:app /app
-USER app
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 VOLUME ["/app/data", "/app/config"]
 EXPOSE 3000
-ENTRYPOINT ["dumb-init", "--"]
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "backend/dist/index.js"]
