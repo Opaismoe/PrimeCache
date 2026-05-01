@@ -46,14 +46,16 @@ export const Route = createFileRoute('/')({
       queryClient.ensureQueryData(latestRunsQueryOptions),
       queryClient.ensureQueryData(statsQueryOptions),
     ]);
-    // Warm group overview cache so sparklines render immediately — don't block
-    for (const group of config?.groups ?? []) {
-      queryClient.prefetchQuery({
-        queryKey: queryKeys.groups.overview(group.name),
-        queryFn: () => getGroupOverview(group.name),
-        staleTime: 5 * 60 * 1000,
-      });
-    }
+    // Await all group overviews so sparklines are in cache before the page renders
+    await Promise.all(
+      (config?.groups ?? []).map((group) =>
+        queryClient.ensureQueryData({
+          queryKey: queryKeys.groups.overview(group.name),
+          queryFn: () => getGroupOverview(group.name),
+          staleTime: 5 * 60 * 1000,
+        }),
+      ),
+    );
   },
   pendingComponent: DashboardSkeleton,
   pendingMs: 200,
