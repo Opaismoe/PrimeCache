@@ -21,7 +21,6 @@ import { ProjectCard } from '../components/ProjectCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { UptimeSegBars } from '../components/UptimeSegBars';
 import {
-  getApiKey,
   getConfig,
   getGroupOverview,
   getLatestRuns,
@@ -48,16 +47,16 @@ const publicStatusQueryOptions = queryOptions({
 
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
-    if (!getApiKey()) return;
     const [config] = await Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(latestRunsQueryOptions),
       queryClient.ensureQueryData(statsQueryOptions),
     ]);
-    // Await all group overviews so sparklines are in cache before the page renders
+    // Prefetch all group overviews so sparklines render on first paint.
+    // prefetchQuery never throws, so a failing group won't abort the others.
     await Promise.all(
       (config?.groups ?? []).map((group) =>
-        queryClient.ensureQueryData({
+        queryClient.prefetchQuery({
           queryKey: queryKeys.groups.overview(group.name),
           queryFn: () => getGroupOverview(group.name),
           staleTime: 5 * 60 * 1000,
