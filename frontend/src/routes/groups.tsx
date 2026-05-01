@@ -1,11 +1,13 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { Clock, History, Play, Settings } from 'lucide-react';
+import { ChevronRight, Clock, History, LayoutGrid, List, Play, Search, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { Sparkline } from '../components/Sparkline';
 import { StatusBadge } from '../components/StatusBadge';
-import { UptimeSegBars } from '../components/UptimeSegBars';
 import {
   getApiKey,
   getConfig,
+  getGroupOverview,
   getGroupsHealth,
   getLatestRuns,
   getPublicStatus,
@@ -13,7 +15,7 @@ import {
 } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
 import { queryKeys } from '../lib/queryKeys';
-import type { GroupHealthSummary, GroupStatus, Run } from '../lib/types';
+import type { Group, GroupHealthSummary, GroupStatus, Run, RunStatus } from '../lib/types';
 
 const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
 const latestRunsQueryOptions = queryOptions({
@@ -45,26 +47,54 @@ function hostFromUrls(urls: string[]): string {
   }
 }
 
-function GroupCard({
+function runStatusToFilter(status: RunStatus | undefined): 'ok' | 'running' | 'partial' {
+  if (status === 'running') return 'running';
+  if (status === 'partial_failure' || status === 'failed' || status === 'cancelled')
+    return 'partial';
+  return 'ok';
+}
+
+// ── Project card (grid view) ──────────────────────────────────────────────────
+
+function ProjectCard({
   group,
   latestRun,
-  health,
   publicStatus,
+  health,
   onRunNow,
   isTriggering,
 }: {
-  group: { name: string; schedule: string; urls: string[] };
+  group: Group;
   latestRun: Run | undefined;
-  health: GroupHealthSummary | undefined;
   publicStatus: GroupStatus | undefined;
+  health: GroupHealthSummary | undefined;
   onRunNow: () => void;
   isTriggering: boolean;
 }) {
-  const host = hostFromUrls(group.urls);
-  const urlCount = group.urls.length;
-  const uptimePct = publicStatus?.uptimePct ?? null;
+  const { data: overview } = useQuery({
+    queryKey: queryKeys.groups.overview(group.name),
+    queryFn: () => getGroupOverview(group.name),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!getApiKey(),
+  });
 
+  const host = hostFromUrls(group.urls);
+  const sparkData = (overview?.series ?? []).slice(-20).map((s) => s.avgLoadTimeMs);
+  const avgLoad = overview?.stats.avgLoadTimeMs ?? null;
+  const totalRuns = overview?.stats.totalRuns ?? null;
+  const uptime = publicStatus?.uptimePct ?? null;
   const hasIssues = health && Object.values(health.tabs).some(Boolean);
+
+  const isWarn = latestRun?.status === 'partial_failure' || latestRun?.status === 'failed';
+  const sparkColor = isWarn ? 'var(--pc-warn)' : 'var(--pc-accent)';
+  const uptimeColor =
+    uptime === null
+      ? 'var(--foreground)'
+      : uptime >= 99
+        ? 'var(--pc-ok)'
+        : uptime >= 95
+          ? 'var(--pc-warn)'
+          : 'var(--pc-bad)';
 
   return (
     <div
@@ -76,97 +106,60 @@ function GroupCard({
         display: 'flex',
         flexDirection: 'column',
         gap: 14,
-        position: 'relative',
-        overflow: 'hidden',
         transition: 'border-color 0.15s, box-shadow 0.15s',
+        position: 'relative',
       }}
-      className="hover:shadow-sm"
+      className="hover:border-amber-500/40 hover:shadow-sm"
     >
       {/* Title row */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 10,
-        }}
+      <Link
+        to="/groups/$groupName"
+        params={{ groupName: group.name }}
+        search={{ tab: 'health', qtab: 'seo' }}
+        style={{ textDecoration: 'none', color: 'inherit' }}
       >
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <Link
-            to="/groups/$groupName"
-            params={{ groupName: group.name }}
-            search={{ tab: 'health', qtab: 'seo' }}
-            style={{
-              fontSize: 15,
-              fontWeight: 500,
-              letterSpacing: '-0.01em',
-              color: 'var(--foreground)',
-              textDecoration: 'none',
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-            className="hover:underline"
-          >
-            {group.name}
-          </Link>
-          <div
-            className="font-mono"
-            style={{
-              fontSize: 12,
-              color: 'var(--muted-foreground)',
-              marginTop: 2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {host}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 500,
+                letterSpacing: '-0.01em',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {group.name}
+            </div>
+            <div
+              className="font-mono"
+              style={{
+                fontSize: 12,
+                color: 'var(--muted-foreground)',
+                marginTop: 2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {host}
+            </div>
           </div>
+          {latestRun && <StatusBadge status={latestRun.status} />}
         </div>
-        {latestRun && <StatusBadge status={latestRun.status} />}
+      </Link>
+
+      {/* Sparkline */}
+      <div style={{ height: 36 }}>
+        {sparkData.length >= 2 ? (
+          <Sparkline data={sparkData} color={sparkColor} height={36} />
+        ) : (
+          <div style={{ height: 36, background: 'var(--muted)', borderRadius: 6, opacity: 0.4 }} />
+        )}
       </div>
 
-      {/* Uptime bars (if data) */}
-      {uptimePct !== null && (
-        <UptimeSegBars uptimePct={uptimePct} groupName={group.name} count={40} />
-      )}
-
-      {/* Metrics row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 12,
-        }}
-      >
-        <MetricCell label="URLs" value={String(urlCount)} />
-        <MetricCell
-          label="Success"
-          value={
-            latestRun?.success_count != null && latestRun.total_urls != null
-              ? `${latestRun.success_count}/${latestRun.total_urls}`
-              : '—'
-          }
-          color={latestRun?.failure_count ? 'var(--pc-warn)' : undefined}
-        />
-        <MetricCell
-          label="Uptime"
-          value={uptimePct !== null ? `${uptimePct.toFixed(1)}%` : '—'}
-          color={
-            uptimePct === null
-              ? undefined
-              : uptimePct >= 99
-                ? 'var(--pc-ok)'
-                : uptimePct >= 95
-                  ? 'var(--pc-warn)'
-                  : 'var(--pc-bad)'
-          }
-        />
-      </div>
-
-      {/* Cron + issues */}
+      {/* Schedule + URL count */}
       <div
         style={{
           display: 'flex',
@@ -177,32 +170,60 @@ function GroupCard({
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Clock style={{ width: 12, height: 12 }} />
+          <Clock style={{ width: 12, height: 12, flexShrink: 0 }} />
           {describeCron(group.schedule)}
         </span>
-        {hasIssues && (
-          <span
-            style={{
-              background: 'var(--pc-warn-soft)',
-              color: 'var(--pc-warn)',
-              fontSize: 11,
-              padding: '2px 8px',
-              borderRadius: 999,
-            }}
-          >
-            Needs work
+        <span className="font-mono" style={{ flexShrink: 0 }}>
+          {group.urls.length} URLs
+        </span>
+      </div>
+
+      {/* Footer */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: 11.5,
+          color: 'var(--muted-foreground)',
+          paddingTop: 10,
+          borderTop: '1px solid var(--border)',
+        }}
+      >
+        <span>
+          Uptime{' '}
+          <span className="font-mono" style={{ color: uptimeColor }}>
+            {uptime !== null ? `${uptime.toFixed(1)}%` : '—'}
           </span>
-        )}
+        </span>
+        <span>
+          Avg{' '}
+          <span className="font-mono" style={{ color: 'var(--foreground)' }}>
+            {avgLoad !== null ? `${Math.round(avgLoad)}ms` : '—'}
+          </span>
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {hasIssues && (
+            <span
+              style={{
+                background: 'var(--pc-warn-soft)',
+                color: 'var(--pc-warn)',
+                fontSize: 10,
+                padding: '1px 7px',
+                borderRadius: 999,
+              }}
+            >
+              Needs work
+            </span>
+          )}
+          {totalRuns !== null && <span>{totalRuns} runs</span>}
+        </span>
       </div>
 
       {/* Action buttons */}
-      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+      <div style={{ display: 'flex', gap: 6 }}>
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRunNow();
-          }}
+          onClick={onRunNow}
           disabled={isTriggering}
           style={{
             flex: 1,
@@ -229,7 +250,6 @@ function GroupCard({
           to="/groups/$groupName"
           params={{ groupName: group.name }}
           search={{ tab: 'history', qtab: 'seo' }}
-          onClick={(e) => e.stopPropagation()}
           style={{
             flex: 1,
             height: 30,
@@ -254,7 +274,6 @@ function GroupCard({
           to="/groups/$groupName"
           params={{ groupName: group.name }}
           search={{ tab: 'settings', qtab: 'seo' }}
-          onClick={(e) => e.stopPropagation()}
           style={{
             width: 30,
             height: 30,
@@ -277,37 +296,15 @@ function GroupCard({
   );
 }
 
-function MetricCell({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 10.5,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: 'var(--muted-foreground)',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        className="font-mono"
-        style={{
-          fontSize: 14,
-          fontWeight: 500,
-          color: color ?? 'var(--foreground)',
-          marginTop: 2,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
+// ── Projects page ─────────────────────────────────────────────────────────────
 
 function ProjectsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<'all' | 'ok' | 'running' | 'partial'>('all');
 
   const { data: config } = useQuery(configQueryOptions);
   const { data: latestRuns } = useQuery(latestRunsQueryOptions);
@@ -334,41 +331,31 @@ function ProjectsPage() {
     (publicStatusData ?? []).map((s) => [s.groupName, s]),
   );
 
-  const groupCount = config?.groups.length ?? 0;
-  const totalUrls = config?.groups.reduce((s, g) => s + g.urls.length, 0) ?? 0;
+  const groups = config?.groups ?? [];
+  const groupCount = groups.length;
+
+  const filtered = groups.filter((g) => {
+    if (
+      q &&
+      !g.name.toLowerCase().includes(q.toLowerCase()) &&
+      !hostFromUrls(g.urls).toLowerCase().includes(q.toLowerCase())
+    )
+      return false;
+    if (filter === 'all') return true;
+    return runStatusToFilter(latestByGroup.get(g.name)?.status) === filter;
+  });
+
+  const counts = {
+    all: groupCount,
+    ok: groups.filter((g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'ok').length,
+    running: groups.filter((g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'running').length,
+    partial: groups.filter((g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'partial').length,
+  };
 
   return (
     <div>
-      {/* Header callout */}
-      <div
-        style={{
-          marginBottom: 28,
-          padding: '22px 24px',
-          background: 'var(--card)',
-          border: '1px solid var(--border)',
-          borderRadius: 14,
-          display: 'grid',
-          gridTemplateColumns: '1fr auto',
-          alignItems: 'center',
-          gap: 16,
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Glow */}
-        <div
-          style={{
-            position: 'absolute',
-            right: -40,
-            top: -40,
-            width: 220,
-            height: 220,
-            borderRadius: '50%',
-            background:
-              'radial-gradient(circle at center, var(--pc-accent-soft) 0%, transparent 60%)',
-            pointerEvents: 'none',
-          }}
-        />
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <p
             style={{
@@ -379,7 +366,7 @@ function ProjectsPage() {
               marginBottom: 8,
             }}
           >
-            Projects · cache-warming jobs
+            Workspace · {groupCount} {groupCount === 1 ? 'project' : 'projects'}
           </p>
           <h1
             style={{
@@ -390,35 +377,19 @@ function ProjectsPage() {
               lineHeight: 1.2,
             }}
           >
-            {groupCount}{' '}
-            <span
-              style={{ fontStyle: 'italic', fontWeight: 400, color: 'var(--muted-foreground)' }}
-            >
-              {groupCount === 1 ? 'project' : 'projects'}
-            </span>
-            {totalUrls > 0 && (
-              <>
-                {', '}
-                <span
-                  style={{ fontStyle: 'italic', fontWeight: 400, color: 'var(--muted-foreground)' }}
-                >
-                  {totalUrls} URLs
-                </span>
-              </>
-            )}
-            <span style={{ color: 'var(--pc-accent)' }}>.</span>
+            Projects<span style={{ color: 'var(--pc-accent)' }}>.</span>
           </h1>
           <p
             style={{
-              fontSize: 12.5,
+              fontSize: 13,
               color: 'var(--muted-foreground)',
-              marginTop: 4,
+              marginTop: 8,
               maxWidth: 560,
-              lineHeight: 1.5,
+              lineHeight: 1.55,
             }}
           >
-            Scheduled cache-warming jobs — click any project to inspect performance, uptime, SEO,
-            and Core Web Vitals.
+            Every site this instance is keeping warm. Pick one to inspect runs, URL performance, and
+            quality.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -446,7 +417,125 @@ function ProjectsPage() {
         </div>
       </div>
 
-      {!config?.groups.length ? (
+      {/* Toolbar */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        {/* Filter chips */}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(
+            [
+              ['all', 'All'],
+              ['ok', 'Healthy'],
+              ['running', 'Running'],
+              ['partial', 'Issues'],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setFilter(k)}
+              style={{
+                height: 28,
+                padding: '0 12px',
+                borderRadius: 999,
+                fontSize: 12.5,
+                fontWeight: 500,
+                border: '1px solid',
+                cursor: 'pointer',
+                transition: 'all 0.12s',
+                background: filter === k ? 'var(--pc-accent-soft)' : 'transparent',
+                color: filter === k ? 'var(--pc-accent)' : 'var(--muted-foreground)',
+                borderColor:
+                  filter === k
+                    ? 'color-mix(in oklab, var(--pc-accent) 35%, transparent)'
+                    : 'var(--border)',
+              }}
+            >
+              {label}{' '}
+              <span style={{ opacity: 0.65, marginLeft: 2 }}>{counts[k]}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Search + view toggle */}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'var(--muted)',
+              border: '1px solid var(--border)',
+              borderRadius: 7,
+              padding: '0 10px',
+              height: 32,
+              width: 220,
+              gap: 8,
+            }}
+          >
+            <Search style={{ width: 13, height: 13, color: 'var(--muted-foreground)', flexShrink: 0 }} />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search projects…"
+              style={{
+                background: 'none',
+                border: 0,
+                outline: 'none',
+                flex: 1,
+                fontSize: 13,
+                color: 'var(--foreground)',
+              }}
+            />
+          </div>
+
+          {/* Grid/List toggle */}
+          <div
+            style={{
+              display: 'flex',
+              background: 'var(--muted)',
+              border: '1px solid var(--border)',
+              borderRadius: 7,
+              padding: 3,
+              gap: 2,
+            }}
+          >
+            {([['grid', LayoutGrid], ['list', List]] as const).map(([v, Icon]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 5,
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.12s',
+                  background: view === v ? 'var(--card)' : 'transparent',
+                  color: view === v ? 'var(--foreground)' : 'var(--muted-foreground)',
+                  boxShadow: view === v ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                }}
+              >
+                <Icon style={{ width: 13, height: 13 }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {!groupCount ? (
         <p style={{ color: 'var(--muted-foreground)' }}>
           No groups configured yet.{' '}
           <Link
@@ -458,7 +547,20 @@ function ProjectsPage() {
           </Link>
           .
         </p>
-      ) : (
+      ) : filtered.length === 0 ? (
+        <div
+          style={{
+            padding: 60,
+            textAlign: 'center',
+            color: 'var(--muted-foreground)',
+            border: '1px dashed var(--border)',
+            borderRadius: 12,
+            fontSize: 13,
+          }}
+        >
+          No projects match your filter.
+        </div>
+      ) : view === 'grid' ? (
         <div
           style={{
             display: 'grid',
@@ -466,17 +568,137 @@ function ProjectsPage() {
             gap: 16,
           }}
         >
-          {config.groups.map((group) => (
-            <GroupCard
+          {filtered.map((group) => (
+            <ProjectCard
               key={group.name}
               group={group}
               latestRun={latestByGroup.get(group.name)}
-              health={healthByGroup.get(group.name)}
               publicStatus={statusByGroup.get(group.name)}
+              health={healthByGroup.get(group.name)}
               onRunNow={() => trigger.mutate(group.name)}
               isTriggering={trigger.isPending && trigger.variables === group.name}
             />
           ))}
+        </div>
+      ) : (
+        /* List view */
+        <div
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            overflow: 'hidden',
+          }}
+        >
+          {/* Table header */}
+          <div
+            className="font-mono"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1.5fr 1.5fr 60px 80px 90px 90px 18px',
+              padding: '10px 18px',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: 'var(--muted-foreground)',
+              borderBottom: '1px solid var(--border)',
+            }}
+          >
+            <div>Project</div>
+            <div>Host</div>
+            <div>Schedule</div>
+            <div style={{ textAlign: 'right' }}>URLs</div>
+            <div style={{ textAlign: 'right' }}>Uptime</div>
+            <div style={{ textAlign: 'right' }}>Avg load</div>
+            <div>Status</div>
+            <div />
+          </div>
+
+          {filtered.map((group, idx) => {
+            const run = latestByGroup.get(group.name);
+            const ps = statusByGroup.get(group.name);
+            return (
+              <Link
+                key={group.name}
+                to="/groups/$groupName"
+                params={{ groupName: group.name }}
+                search={{ tab: 'health', qtab: 'seo' }}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 1.5fr 1.5fr 60px 80px 90px 90px 18px',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '13px 18px',
+                  borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  transition: 'background 0.12s',
+                }}
+                className="hover:bg-muted/50"
+              >
+                <div
+                  style={{
+                    fontWeight: 500,
+                    fontSize: 13.5,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {group.name}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--muted-foreground)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {hostFromUrls(group.urls)}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 12, color: 'var(--muted-foreground)' }}
+                >
+                  {describeCron(group.schedule)}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 13, textAlign: 'right' }}
+                >
+                  {group.urls.length}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{
+                    fontSize: 13,
+                    textAlign: 'right',
+                    color:
+                      ps == null
+                        ? 'var(--foreground)'
+                        : ps.uptimePct >= 99
+                          ? 'var(--pc-ok)'
+                          : ps.uptimePct >= 95
+                            ? 'var(--pc-warn)'
+                            : 'var(--pc-bad)',
+                  }}
+                >
+                  {ps != null ? `${ps.uptimePct.toFixed(1)}%` : '—'}
+                </div>
+                <div
+                  className="font-mono"
+                  style={{ fontSize: 13, textAlign: 'right', color: 'var(--muted-foreground)' }}
+                >
+                  —
+                </div>
+                <div>{run && <StatusBadge status={run.status} />}</div>
+                <ChevronRight style={{ width: 14, height: 14, color: 'var(--muted-foreground)' }} />
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
