@@ -1,6 +1,6 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight, RefreshCw } from 'lucide-react';
+import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { ChevronRight, Clock, RefreshCw } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -17,23 +17,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RunResults } from '../components/RunResults';
+import { Sparkline } from '../components/Sparkline';
 import { StatusBadge } from '../components/StatusBadge';
 import { UptimeSegBars } from '../components/UptimeSegBars';
-import {
-  getApiKey,
-  getConfig,
-  getLatestRuns,
-  getPublicStatus,
-  getStats,
-  triggerAsync,
-} from '../lib/api';
+import { getApiKey, getConfig, getGroupOverview, getLatestRuns, getPublicStatus, getStats } from '../lib/api';
 import { CHART_TOOLTIP_STYLE, getColor, STATUS_COLORS, STATUS_LABELS } from '../lib/chartStyles';
 import { describeCron } from '../lib/cronUtils';
 import { formatChartDate } from '../lib/formatChartDate';
-import { formatDate } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
-import type { Run, Stats } from '../lib/types';
+import type { Group, GroupStatus, Run, Stats } from '../lib/types';
 
 const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
 const latestRunsQueryOptions = queryOptions({
@@ -97,21 +89,38 @@ function DashboardSkeleton() {
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
-          <Card key={i} className="flex flex-col gap-3">
-            <CardHeader className="pb-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-col gap-1.5">
-                  <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-3 w-40" />
-                </div>
-                <Skeleton className="h-5 w-16 rounded-full" />
+          <div
+            key={i}
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 18,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+            }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-44" />
               </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-0">
-              <Skeleton className="h-3 w-36" />
-              <Skeleton className="h-9 w-full" />
-            </CardContent>
-          </Card>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-9 w-full rounded-md" />
+            <div className="flex justify-between">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-10" />
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -120,24 +129,18 @@ function DashboardSkeleton() {
 
 function DashboardPage() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const { data: config } = useQuery(configQueryOptions);
   const { data: latestRuns } = useQuery(latestRunsQueryOptions);
   const { data: stats } = useQuery(statsQueryOptions);
   const { data: publicStatus } = useQuery(publicStatusQueryOptions);
 
-  const trigger = useMutation({
-    mutationFn: triggerAsync,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.runs.all() });
-      navigate({ to: '/history/$runId', params: { runId: String(data.runId) } });
-    },
-  });
-
   const syncAll = () => queryClient.invalidateQueries();
 
   const latestByGroup = new Map<string, Run>((latestRuns ?? []).map((r) => [r.group_name, r]));
+  const statusByGroup = new Map<string, GroupStatus>(
+    (publicStatus ?? []).map((s) => [s.groupName, s]),
+  );
 
   // KPI derivations
   const groupCount = config?.groups.length ?? 0;
@@ -233,52 +236,14 @@ function DashboardPage() {
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {config.groups.map((group) => {
-              const latest = latestByGroup.get(group.name);
-              const isTriggering = trigger.isPending && trigger.variables === group.name;
-              return (
-                <Card key={group.name} className="flex flex-col gap-3">
-                  <CardHeader className="pb-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <Link
-                          to="/groups/$groupName"
-                          params={{ groupName: group.name }}
-                          search={{ tab: 'health', qtab: 'seo' }}
-                          className="font-medium hover:text-primary hover:underline"
-                        >
-                          {group.name}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">
-                          {describeCron(group.schedule)}
-                        </p>
-                      </div>
-                      {latest && <StatusBadge status={latest.status} />}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-3 pt-0">
-                    {latest ? (
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span>Last run: {formatDate(latest.started_at)}</span>
-                        <RunResults
-                          successCount={latest.success_count}
-                          failureCount={latest.failure_count}
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No runs yet</p>
-                    )}
-                    <Button
-                      onClick={() => trigger.mutate(group.name)}
-                      disabled={trigger.isPending}
-                      className="mt-auto"
-                    >
-                      {isTriggering ? 'Starting…' : 'Run now'}
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {config.groups.map((group) => (
+              <ProjectCard
+                key={group.name}
+                group={group}
+                latestRun={latestByGroup.get(group.name)}
+                publicStatus={statusByGroup.get(group.name)}
+              />
+            ))}
           </div>
         </>
       )}
@@ -541,6 +506,161 @@ function DashboardPage() {
 }
 
 // ── Helper components ─────────────────────────────────────────────────────────
+
+function ProjectCard({
+  group,
+  latestRun,
+  publicStatus,
+}: {
+  group: Group;
+  latestRun: Run | undefined;
+  publicStatus: GroupStatus | undefined;
+}) {
+  const { data: overview } = useQuery({
+    queryKey: queryKeys.groups.overview(group.name),
+    queryFn: () => getGroupOverview(group.name),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!getApiKey(),
+  });
+
+  const host = (() => {
+    try {
+      return new URL(group.urls[0]).host;
+    } catch {
+      return group.urls[0] ?? '';
+    }
+  })();
+  const sparkData = (overview?.series ?? []).slice(-20).map((s) => s.avgLoadTimeMs);
+  const avgLoad = overview?.stats.avgLoadTimeMs ?? null;
+  const totalRuns = overview?.stats.totalRuns ?? null;
+  const uptime = publicStatus?.uptimePct ?? null;
+
+  const isWarn = latestRun?.status === 'partial_failure' || latestRun?.status === 'failed';
+  const sparkColor = isWarn ? 'var(--pc-warn)' : 'var(--pc-accent)';
+  const uptimeColor =
+    uptime === null
+      ? 'var(--foreground)'
+      : uptime >= 99
+        ? 'var(--pc-ok)'
+        : uptime >= 95
+          ? 'var(--pc-warn)'
+          : 'var(--pc-bad)';
+
+  return (
+    <Link
+      to="/groups/$groupName"
+      params={{ groupName: group.name }}
+      search={{ tab: 'health', qtab: 'seo' }}
+      style={{ textDecoration: 'none', color: 'inherit', display: 'block', height: '100%' }}
+    >
+      <div
+        style={{
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: 18,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          height: '100%',
+          transition: 'border-color 0.15s, box-shadow 0.15s',
+        }}
+        className="hover:border-amber-500/40 hover:shadow-sm"
+      >
+        {/* Title row */}
+        <div
+          style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}
+        >
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                fontSize: 15,
+                fontWeight: 500,
+                letterSpacing: '-0.01em',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {group.name}
+            </div>
+            <div
+              className="font-mono"
+              style={{
+                fontSize: 12,
+                color: 'var(--muted-foreground)',
+                marginTop: 2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {host}
+            </div>
+          </div>
+          {latestRun && <StatusBadge status={latestRun.status} />}
+        </div>
+
+        {/* Sparkline */}
+        <div style={{ height: 36 }}>
+          {sparkData.length >= 2 ? (
+            <Sparkline data={sparkData} color={sparkColor} height={36} />
+          ) : (
+            <div
+              style={{ height: 36, background: 'var(--muted)', borderRadius: 6, opacity: 0.4 }}
+            />
+          )}
+        </div>
+
+        {/* Schedule + URL count */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: 12,
+            color: 'var(--muted-foreground)',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Clock style={{ width: 12, height: 12, flexShrink: 0 }} />
+            {describeCron(group.schedule)}
+          </span>
+          <span className="font-mono" style={{ flexShrink: 0 }}>
+            {group.urls.length} URLs
+          </span>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 11.5,
+            color: 'var(--muted-foreground)',
+            paddingTop: 10,
+            borderTop: '1px solid var(--border)',
+            marginTop: 'auto',
+          }}
+        >
+          <span>
+            Uptime{' '}
+            <span className="font-mono" style={{ color: uptimeColor }}>
+              {uptime !== null ? `${uptime.toFixed(1)}%` : '—'}
+            </span>
+          </span>
+          <span>
+            Avg{' '}
+            <span className="font-mono" style={{ color: 'var(--foreground)' }}>
+              {avgLoad !== null ? `${Math.round(avgLoad)}ms` : '—'}
+            </span>
+          </span>
+          {totalRuns !== null && <span>{totalRuns} runs</span>}
+        </div>
+      </div>
+    </Link>
+  );
+}
 
 function KpiTile({
   label,
