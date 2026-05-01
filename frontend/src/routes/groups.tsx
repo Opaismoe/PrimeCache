@@ -1,4 +1,4 @@
-import { queryOptions, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ChevronRight, LayoutGrid, List, Search, Settings } from 'lucide-react';
 import { useState } from 'react';
@@ -105,14 +105,25 @@ function ProjectsPage() {
   const counts = {
     all: groupCount,
     ok: groups.filter((g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'ok').length,
-    running: groups.filter((g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'running').length,
-    partial: groups.filter((g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'partial').length,
+    running: groups.filter(
+      (g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'running',
+    ).length,
+    partial: groups.filter(
+      (g) => runStatusToFilter(latestByGroup.get(g.name)?.status) === 'partial',
+    ).length,
   };
 
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: 24,
+        }}
+      >
         <div>
           <p
             style={{
@@ -216,8 +227,7 @@ function ProjectsPage() {
                     : 'var(--border)',
               }}
             >
-              {label}{' '}
-              <span style={{ opacity: 0.65, marginLeft: 2 }}>{counts[k]}</span>
+              {label} <span style={{ opacity: 0.65, marginLeft: 2 }}>{counts[k]}</span>
             </button>
           ))}
         </div>
@@ -237,7 +247,9 @@ function ProjectsPage() {
               gap: 8,
             }}
           >
-            <Search style={{ width: 13, height: 13, color: 'var(--muted-foreground)', flexShrink: 0 }} />
+            <Search
+              style={{ width: 13, height: 13, color: 'var(--muted-foreground)', flexShrink: 0 }}
+            />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -264,7 +276,12 @@ function ProjectsPage() {
               gap: 2,
             }}
           >
-            {([['grid', LayoutGrid], ['list', List]] as const).map(([v, Icon]) => (
+            {(
+              [
+                ['grid', LayoutGrid],
+                ['list', List],
+              ] as const
+            ).map(([v, Icon]) => (
               <button
                 key={v}
                 type="button"
@@ -422,10 +439,7 @@ function ProjectsPage() {
                 >
                   {describeCron(group.schedule)}
                 </div>
-                <div
-                  className="font-mono"
-                  style={{ fontSize: 13, textAlign: 'right' }}
-                >
+                <div className="font-mono" style={{ fontSize: 13, textAlign: 'right' }}>
                   {group.urls.length}
                 </div>
                 <div

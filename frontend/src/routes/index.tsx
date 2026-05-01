@@ -20,7 +20,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectCard } from '../components/ProjectCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { UptimeSegBars } from '../components/UptimeSegBars';
-import { getApiKey, getConfig, getGroupOverview, getLatestRuns, getPublicStatus, getStats, triggerAsync } from '../lib/api';
+import {
+  getApiKey,
+  getConfig,
+  getGroupOverview,
+  getLatestRuns,
+  getPublicStatus,
+  getStats,
+  triggerAsync,
+} from '../lib/api';
 import { CHART_TOOLTIP_STYLE, getColor, STATUS_COLORS, STATUS_LABELS } from '../lib/chartStyles';
 import { formatChartDate } from '../lib/formatChartDate';
 import { queryKeys } from '../lib/queryKeys';
