@@ -45,8 +45,15 @@ export function ProjectCard({
   const uptime = publicStatus?.uptimePct ?? null;
   const hasIssues = health && Object.values(health.tabs).some(Boolean);
 
-  const isWarn = latestRun?.status === 'partial_failure' || latestRun?.status === 'failed';
-  const sparkColor = isWarn ? 'var(--pc-warn)' : 'var(--pc-accent)';
+  const sparkGlowing = avgLoad !== null && avgLoad >= 10000;
+  const sparkColor =
+    avgLoad === null
+      ? 'var(--pc-accent)'
+      : avgLoad < 500
+        ? 'var(--pc-ok)'
+        : avgLoad < 1000
+          ? 'var(--pc-warn)'
+          : 'var(--pc-bad)';
   const uptimeColor =
     uptime === null
       ? 'var(--foreground)'
@@ -119,7 +126,7 @@ export function ProjectCard({
       {/* Sparkline */}
       <div style={{ height: 36 }}>
         {sparkData.length >= 2 ? (
-          <Sparkline data={sparkData} color={sparkColor} height={36} />
+          <Sparkline data={sparkData} color={sparkColor} height={36} glowing={sparkGlowing} />
         ) : (
           <div style={{ height: 36, background: 'var(--muted)', borderRadius: 6, opacity: 0.4 }} />
         )}

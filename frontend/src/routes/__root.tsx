@@ -150,17 +150,20 @@ function Sidebar({
               exactActive
             />
             <SideLink
-              href="/admin?section=webhooks"
+              to="/admin"
+              search={{ section: 'webhooks' }}
               icon={<Webhook className="h-3.5 w-3.5" />}
               label="Webhooks"
             />
             <SideLink
-              href="/admin?section=api"
+              to="/admin"
+              search={{ section: 'api' }}
               icon={<Terminal className="h-3.5 w-3.5" />}
               label="API"
             />
             <SideLink
-              href="/admin?section=settings"
+              to="/admin"
+              search={{ section: 'settings' }}
               icon={<Settings className="h-3.5 w-3.5" />}
               label="Settings"
             />
@@ -198,13 +201,13 @@ function Sidebar({
 
 function SideLink({
   to,
-  href,
+  search,
   icon,
   label,
   exactActive,
 }: {
   to?: string;
-  href?: string;
+  search?: Record<string, unknown>;
   icon: React.ReactNode;
   label: string;
   exactActive?: boolean;
@@ -214,9 +217,10 @@ function SideLink({
   const rawSearch = typeof window !== 'undefined' ? window.location.search : '';
 
   let isActive: boolean;
-  if (href) {
-    const [hrefPath, hrefQuery = ''] = href.split('?');
-    isActive = currentPath === hrefPath && (hrefQuery === '' || rawSearch.includes(hrefQuery));
+  if (search) {
+    const searchParams = new URLSearchParams(rawSearch);
+    const searchSection = searchParams.get('section');
+    isActive = currentPath === to && searchSection === search.section;
   } else if (exactActive) {
     isActive = currentPath === to && !rawSearch.includes('section=');
   } else {
@@ -236,18 +240,10 @@ function SideLink({
     </>
   );
 
-  if (href) {
-    return (
-      <a href={href} className={cls}>
-        {inner}
-      </a>
-    );
-  }
-
   if (!to) return null;
 
   return (
-    <Link to={to} className={cls}>
+    <Link to={to} search={search} className={cls}>
       {inner}
     </Link>
   );
