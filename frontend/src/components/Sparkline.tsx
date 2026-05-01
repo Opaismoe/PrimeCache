@@ -5,6 +5,8 @@ interface SparklineProps {
   strokeWidth?: number;
   fill?: boolean;
   className?: string;
+  /** When true, stroke uses currentColor so a CSS animation can drive it */
+  glowing?: boolean;
 }
 
 export function Sparkline({
@@ -14,6 +16,7 @@ export function Sparkline({
   strokeWidth = 1.5,
   fill = true,
   className = '',
+  glowing = false,
 }: SparklineProps) {
   if (!data || data.length < 2) return null;
 
@@ -42,10 +45,10 @@ export function Sparkline({
       preserveAspectRatio="none"
       width="100%"
       height={height}
-      className={className}
       style={{ display: 'block' }}
       aria-hidden="true"
       role="presentation"
+      className={`${className} ${glowing ? 'sparkline-fire' : ''}`.trim()}
     >
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
@@ -57,7 +60,7 @@ export function Sparkline({
       <path
         d={path}
         fill="none"
-        stroke={color}
+        stroke={glowing ? 'currentColor' : color}
         strokeWidth={strokeWidth}
         strokeLinejoin="round"
         strokeLinecap="round"

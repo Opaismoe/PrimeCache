@@ -162,4 +162,18 @@
   html {
     @apply font-sans;
   }
+
+  @keyframes sparkline-fire {
+    0%, 100% {
+      color: oklch(68% 0.16 20);
+      filter: drop-shadow(0 0 3px oklch(68% 0.16 20 / 0.8));
+    }
+    50% {
+      color: oklch(68% 0.22 310);
+      filter: drop-shadow(0 0 6px oklch(68% 0.22 310 / 0.9));
+    }
+  }
+  .sparkline-fire {
+    animation: sparkline-fire 1.4s ease-in-out infinite;
+  }
 }
