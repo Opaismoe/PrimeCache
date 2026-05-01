@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Clock, History, Play, Settings } from 'lucide-react';
-import { getApiKey, getGroupOverview } from '../lib/api';
+import { getGroupOverview } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
 import { queryKeys } from '../lib/queryKeys';
 import type { Group, GroupHealthSummary, GroupStatus, Run } from '../lib/types';
@@ -29,7 +29,6 @@ export function ProjectCard({
     queryKey: queryKeys.groups.overview(group.name),
     queryFn: () => getGroupOverview(group.name),
     staleTime: 5 * 60 * 1000,
-    enabled: !!getApiKey(),
   });
 
   const host = (() => {
