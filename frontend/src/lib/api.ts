@@ -34,6 +34,10 @@ export function saveApiKey(key: string): void {
   localStorage.setItem(API_KEY_STORAGE, key);
 }
 
+export function isAuthenticated(): boolean {
+  return !!getApiKey() || !!getCsrfToken();
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
