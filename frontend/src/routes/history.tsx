@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/table';
 import { RunResults } from '../components/RunResults';
 import { StatusBadge } from '../components/StatusBadge';
-import { getApiKey, getConfig, getRuns } from '../lib/api';
+import { getConfig, getRuns, isAuthenticated } from '../lib/api';
 import { formatDate, formatDuration } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
 import type { Run } from '../lib/types';
@@ -49,7 +49,7 @@ export const Route = createFileRoute('/history')({
     group: typeof search.group === 'string' ? search.group : '',
   }),
   loader: ({ context: { queryClient } }) => {
-    if (!getApiKey()) return;
+    if (!isAuthenticated()) return;
     return Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(

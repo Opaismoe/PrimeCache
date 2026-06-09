@@ -5,11 +5,11 @@ import { useState } from 'react';
 import { ProjectCard } from '../components/ProjectCard';
 import { StatusBadge } from '../components/StatusBadge';
 import {
-  getApiKey,
   getConfig,
   getGroupsHealth,
   getLatestRuns,
   getPublicStatus,
+  isAuthenticated,
   triggerAsync,
 } from '../lib/api';
 import { describeCron } from '../lib/cronUtils';
@@ -29,7 +29,7 @@ const publicStatusQueryOptions = queryOptions({
 
 export const Route = createFileRoute('/groups')({
   loader: ({ context: { queryClient } }) => {
-    if (!getApiKey()) return;
+    if (!isAuthenticated()) return;
     return Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(latestRunsQueryOptions),
@@ -69,7 +69,7 @@ function ProjectsPage() {
   const { data: healthData } = useQuery({
     queryKey: queryKeys.groups.health(),
     queryFn: getGroupsHealth,
-    enabled: !!getApiKey(),
+    enabled: isAuthenticated(),
   });
 
   const trigger = useMutation({

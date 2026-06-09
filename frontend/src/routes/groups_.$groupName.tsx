@@ -10,11 +10,11 @@ import { OverviewTab } from '../components/tabs/OverviewTab';
 import { QualityTab } from '../components/tabs/QualityTab';
 import { SettingsTab } from '../components/tabs/SettingsTab';
 import {
-  getApiKey,
   getConfig,
   getGroupOverview,
   getGroupPerformance,
   getGroupUptime,
+  isAuthenticated,
   putConfig,
   triggerAsync,
 } from '../lib/api';
@@ -26,7 +26,7 @@ import type { Config, Group } from '../lib/types';
 export const Route = createFileRoute('/groups_/$groupName')({
   validateSearch: normaliseGroupDetailSearch,
   loader: ({ context: { queryClient }, params }) => {
-    if (!getApiKey()) return;
+    if (!isAuthenticated()) return;
     const name = params.groupName;
     return Promise.all([
       queryClient.ensureQueryData(

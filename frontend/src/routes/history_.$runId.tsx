@@ -7,14 +7,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ExternalLink } from '../components/ExternalLink';
 import { Spinner } from '../components/Spinner';
 import { StatusBadge } from '../components/StatusBadge';
-import { cancelRun, getApiKey, getRunById, getRunScreenshots } from '../lib/api';
+import { cancelRun, getRunById, getRunScreenshots, isAuthenticated } from '../lib/api';
 import { formatDate, formatDuration, formatMs } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
 import type { RunScreenshot, Visit } from '../lib/types';
 
 export const Route = createFileRoute('/history_/$runId')({
   loader: ({ context: { queryClient }, params }) => {
-    if (!getApiKey()) return;
+    if (!isAuthenticated()) return;
     const id = parseInt(params.runId, 10);
     return queryClient.ensureQueryData(
       queryOptions({
