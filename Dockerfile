@@ -1,6 +1,7 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
-RUN npm install -g pnpm
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
 
 # Copy workspace manifests for layer caching
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -21,7 +22,8 @@ RUN cd frontend && pnpm build
 FROM node:22-alpine
 WORKDIR /app
 RUN apk add --no-cache dumb-init su-exec
-RUN npm install -g pnpm
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/
 RUN pnpm install --prod --filter primecache-backend
