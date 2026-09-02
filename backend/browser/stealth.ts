@@ -17,10 +17,13 @@ export async function simulateMouseMovement(page: Page): Promise<void> {
       await randomDelay(50, 200);
     }
 
-    // Click on a neutral spot to generate a PointerEvent/click entry that INP can measure
-    const cx = Math.floor(viewport.width * 0.3 + Math.random() * viewport.width * 0.4);
-    const cy = Math.floor(viewport.height * 0.3 + Math.random() * viewport.height * 0.4);
-    await page.mouse.click(cx, cy);
+    // No click here: page.mouse.click() is a trusted, OS-level click, so it
+    // triggers real default behavior on whatever it lands on (link
+    // navigation, form submission, a JS handler) — including an
+    // undismissed cookie-consent modal sitting over the click zone. That
+    // sent warm runs to unrelated pages instead of warming the intended
+    // URL. Mouse movement alone is enough for basic bot-detection evasion;
+    // it isn't worth the navigation risk just to sample one INP data point.
   } catch {
     // page closed mid-simulation — safe to ignore
   }
