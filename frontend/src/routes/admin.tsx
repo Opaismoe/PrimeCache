@@ -26,6 +26,7 @@ import {
   getLatestRuns,
   getRateLimits,
   getWebhookTokens,
+  isAuthenticated,
   putConfig,
   setWebhookTokenActive,
 } from '../lib/api';
@@ -59,7 +60,7 @@ const latestRunsQueryOptions = queryOptions({
 export const Route = createFileRoute('/admin')({
   validateSearch: validateAdminSearch,
   loader: ({ context: { queryClient } }) => {
-    if (!getApiKey()) return;
+    if (!isAuthenticated()) return;
     return Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(latestRunsQueryOptions),
@@ -338,7 +339,7 @@ function WebhooksSection({ groups }: { groups: Group[] }) {
     queries: groups.map((g) => ({
       queryKey: queryKeys.groups.webhooks(g.name),
       queryFn: () => getWebhookTokens(g.name),
-      enabled: !!getApiKey(),
+      enabled: isAuthenticated(),
     })),
   });
 
@@ -665,7 +666,7 @@ function APISection() {
     queryKey: queryKeys.rateLimits.all(),
     queryFn: getRateLimits,
     refetchInterval: 30_000,
-    enabled: !!apiKey,
+    enabled: isAuthenticated(),
   });
 
   const setCopiedFor = (key: string) => {

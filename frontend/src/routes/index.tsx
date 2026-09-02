@@ -26,6 +26,7 @@ import {
   getLatestRuns,
   getPublicStatus,
   getStats,
+  isAuthenticated,
   triggerAsync,
 } from '../lib/api';
 import { CHART_TOOLTIP_STYLE, getColor, STATUS_COLORS, STATUS_LABELS } from '../lib/chartStyles';
@@ -47,6 +48,7 @@ const publicStatusQueryOptions = queryOptions({
 
 export const Route = createFileRoute('/')({
   loader: async ({ context: { queryClient } }) => {
+    if (!isAuthenticated()) return;
     const [config] = await Promise.all([
       queryClient.ensureQueryData(configQueryOptions),
       queryClient.ensureQueryData(latestRunsQueryOptions),
