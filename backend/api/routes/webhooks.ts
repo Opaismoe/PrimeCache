@@ -99,6 +99,14 @@ export function webhookTriggerRoute(db: Db, getConfig: () => Config): FastifyPlu
     app.post<{ Params: { token: string } }>(
       '/webhook/trigger/:token',
       async (request: FastifyRequest<{ Params: { token: string } }>, reply: FastifyReply) => {
+        // Called cross-origin from the CMS (browser JS on think.ing.com),
+        // with the token itself as the credential — not a cookie or an
+        // API key. Without this header the browser's fetch() promise
+        // rejects on every call (even a successful 200), because no
+        // blanket CORS plugin is registered for the rest of the API
+        // (which is cookie/API-key authenticated and same-origin only).
+        reply.header('Access-Control-Allow-Origin', '*');
+
         const { token } = request.params;
 
         const row = await findWebhookToken(db, token);

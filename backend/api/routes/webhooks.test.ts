@@ -302,4 +302,22 @@ describe('POST /webhook/trigger/:token', () => {
     });
     expect(res.statusCode).toBe(200);
   });
+
+  it('sets Access-Control-Allow-Origin on a successful trigger', async () => {
+    const { findWebhookToken } = await import('../../db/queries/webhookTokens');
+    vi.mocked(findWebhookToken).mockResolvedValueOnce(mockToken);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/webhook/trigger/abc123token',
+    });
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+  });
+
+  it('sets Access-Control-Allow-Origin on an unknown-token 404 too', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/webhook/trigger/unknowntoken',
+    });
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+  });
 });
