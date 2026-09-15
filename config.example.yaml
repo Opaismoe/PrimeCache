@@ -26,6 +26,7 @@ groups:
     options:
       # Navigation
       navigationTimeout: 30000          # ms before navigation times out (default: 30000)
+      visitTimeout: 120000              # hard budget for the whole visit incl. consent/audits (default: 120000)
       waitUntil: networkidle            # networkidle | load | domcontentloaded (default: networkidle)
       waitForSelector: "main"           # wait for CSS selector before measuring (optional)
 

@@ -55,6 +55,8 @@ Copy `.env.example` to `.env` and fill in the required values:
 | `LOG_LEVEL` | no | `info` | Log verbosity: `trace` / `debug` / `info` / `warn` / `error` |
 | `TIMEZONE` | no | `Europe/Amsterdam` | Timezone used for cron schedule evaluation |
 | `BROWSERLESS_HTTP_URL` | no | derived from `BROWSERLESS_WS_URL` | Direct HTTP base URL for Lighthouse audits, e.g. `http://browserless:3000`. Set this when `BROWSERLESS_WS_URL` points to a domain behind Cloudflare (CF passes WS but blocks HTTP) |
+| `TRUST_PROXY` | no | `false` | Set `true` behind a reverse proxy (Coolify, nginx, Cloudflare) so rate limits see the real client IP instead of the proxy's |
+| `COOKIE_SECURE` | no | `true` | Set `false` only for local HTTP development; session cookies carry the `Secure` flag otherwise |
 
 ### 2. Configure URL groups in `config.yaml`
 
@@ -125,7 +127,7 @@ A tabbed view per group with six sections:
 | **SEO** | SEO score (0–100) per URL with detected issues, title / meta description / H1 / canonical, last 5 snapshots, change detection |
 | **Core Web Vitals** | LCP, FCP, CLS, INP at P75 percentile per URL with good/needs-improvement/poor badges and trend charts |
 | **Broken Links** | Broken URLs with HTTP status code, error message, occurrence count, and last-seen timestamp |
-| **Webhooks** | Per-group inbound webhook URLs. Create tokens (with optional description), copy the trigger URL, enable/disable individual tokens, and track last-used timestamp |
+| **Webhooks** | Per-group inbound webhook URLs. Create tokens (with optional description), copy the trigger URL, enable/disable individual tokens, and see runs fired, success rate and last-used timestamp |
 
 Performance, Uptime, SEO, and Broken Links tabs all support CSV export.
 
@@ -156,6 +158,7 @@ All fields in the `options` block are optional unless noted.
 | `cookies` | array | — | Cookies injected into the browser context before page load. Fields: `name`, `value`, and optionally `url`, `domain`, `path`, `httpOnly`, `secure`, `sameSite` (`Strict`/`Lax`/`None`), `expires` |
 | `basicAuth` | object | — | HTTP Basic Auth credentials: `{ username, password }`. Applied via `httpCredentials` on the browser context — covers all requests including sub-resources |
 | `navigationTimeout` | int (ms) | `30000` | Maximum time to wait for page navigation to complete (minimum 5000) |
+| `visitTimeout` | int (ms) | `120000` | Hard budget for one URL visit including consent, behaviour simulation and audits (minimum 10000). On expiry the visit is recorded as failed |
 | `waitUntil` | enum | `networkidle` | Navigation readiness event: `networkidle`, `load`, or `domcontentloaded` |
 | `delayMinMs` | int (ms) | `2000` | Minimum random delay between URL visits |
 | `delayMaxMs` | int (ms) | `5000` | Maximum random delay between URL visits |
@@ -175,18 +178,19 @@ All endpoints except `GET /health`, `GET /api/public/status`, and `POST /api/aut
 |---|---|---|
 | GET | `/health` | Liveness check — no auth |
 | GET | `/api/public/status` | Per-group uptime status for the last 30 days — no auth |
-| POST | `/api/auth/login` | Exchange `{ username, password }` for `{ token }` — no auth required |
+| POST | `/api/auth/login` | `{ username, password }` → session cookie — no auth required; 10/min per IP |
+| POST | `/api/auth/logout` | End the session |
 | GET | `/api/runs` | Paginated run history (`?limit=20&offset=0&group=<name>`) |
 | GET | `/api/runs/latest` | Latest run per group |
 | GET | `/api/runs/:id` | Run detail with all visit records |
-| POST | `/api/trigger` | **Synchronous** — runs group, blocks until done, returns `{ runId }` |
-| POST | `/api/trigger/async` | **Async** — fires run, returns `{ runId }` immediately |
-| POST | `/webhook/warm` | **Async webhook** — `{ "group": "<name>" }`, use `"all"` for every group |
-| POST | `/webhook/trigger/:token` | **Inbound webhook** — no auth required; token in URL is the credential. Fires an async run for the token's group |
+| POST | `/api/trigger` | **Synchronous** — runs group, blocks until done, returns `{ runId }`. 409 with the active `runId` if the group is already running |
+| POST | `/api/trigger/async` | **Async** — fires run, returns `{ runId }` immediately. 409 if already running |
+| POST | `/api/webhook/warm` | **Async** — `{ "group": "<name>" }`, or `"all"`. Returns `{ runIds, alreadyRunning }` |
+| POST | `/webhook/trigger/:token` | **Inbound webhook** — no auth required; token in URL is the credential; 30/min per IP. Returns `{ queued: false, runId, alreadyRunning: true }` instead of starting a duplicate |
 | POST | `/api/runs/:id/cancel` | Cancel a running execution |
-| DELETE | `/api/runs` | Clear run history (`?group=<name>` to scope to one group) |
-| GET | `/api/config` | Current loaded config |
-| PUT | `/api/config` | Update config and rename groups |
+| DELETE | `/api/runs` | Clear run history (`?group=<name>` to scope to one group; `?confirm=true` to clear everything) |
+| GET | `/api/config` | Current config as written on disk (`secret:` references intact) |
+| PUT | `/api/config` | Update config and rename groups. Rejected if it references a secret that does not exist |
 | GET | `/api/groups/:name/overview` | Summary stats and per-run trend series |
 | GET | `/api/groups/:name/performance` | P50/P95 load time & TTFB per URL + trend |
 | GET | `/api/groups/:name/uptime` | Uptime % per URL over last 30 days |
@@ -197,8 +201,8 @@ All endpoints except `GET /health`, `GET /api/public/status`, and `POST /api/aut
 | GET | `/api/stats` | Global stats: run status breakdown, visits per day per group |
 | GET | `/api/secrets` | List secret names (values never returned) |
 | POST | `/api/secrets` | Create or update a secret — body `{ name, value }`. Encrypted at rest with AES-256-GCM |
-| DELETE | `/api/secrets/:name` | Remove a secret |
-| GET | `/api/groups/:name/webhooks` | List webhook tokens for a group (no token values returned) |
+| DELETE | `/api/secrets/:name` | Remove a secret. Refused (409) while a group still references it |
+| GET | `/api/groups/:name/webhooks` | List webhook tokens for a group with run counts and success rate (no token values returned) |
 | POST | `/api/groups/:name/webhooks` | Create a webhook token — body `{ description? }`. Token value returned once |
 | DELETE | `/api/groups/:name/webhooks/:id` | Delete a webhook token |
 | PATCH | `/api/groups/:name/webhooks/:id` | Enable or disable a token — body `{ active: boolean }` |
