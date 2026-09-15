@@ -65,6 +65,7 @@ function makeMockPage(statusCode = 200, links: string[] = []) {
     goto: vi.fn().mockResolvedValue({
       status: () => statusCode,
       url: () => 'https://example.com/',
+      headers: () => ({}),
       request: () => ({ redirectedFrom: () => null }),
     }),
     url: vi.fn().mockReturnValue('https://example.com/'),
@@ -237,5 +238,53 @@ describe('visitUrl', () => {
     });
     expect(result.accessibility).toBeNull();
     expect(result.error).toBeNull();
+  });
+
+  it('records status and headers from the final navigation response even when the URL redirected', async () => {
+    const { createContext } = await import('../browser/context');
+    const page = makeMockPage();
+    // No "response" event ever matches the requested URL (as happens after a redirect)
+    page.on = vi.fn();
+    page.goto = vi.fn().mockResolvedValue({
+      status: () => 200,
+      url: () => 'https://example.com/final',
+      headers: () => ({
+        'content-type': 'text/html; charset=utf-8',
+        'cache-control': 'max-age=60',
+      }),
+      request: () => ({ redirectedFrom: () => ({ redirectedFrom: () => null }) }),
+    });
+    vi.mocked(createContext).mockResolvedValue(makeMockContext(page));
+
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false });
+    expect(result.statusCode).toBe(200);
+    expect(result.redirectCount).toBe(1);
+    expect(result.headers?.contentType).toBe('text/html');
+    expect(result.headers?.cacheControl).toBe('max-age=60');
+  });
+
+  it('fails the visit and closes the context when it exceeds visitTimeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const { createContext } = await import('../browser/context');
+      const page = makeMockPage();
+      page.goto = vi.fn().mockReturnValue(new Promise(() => {})); // hangs forever
+      const ctx = makeMockContext(page);
+      vi.mocked(createContext).mockResolvedValue(ctx);
+
+      const { visitUrl } = await import('./visitor');
+      const pending = visitUrl('https://example.com/', {
+        scrollToBottom: false,
+        crawl: false,
+        visitTimeout: 10_000,
+      });
+      await vi.advanceTimersByTimeAsync(10_500);
+      const result = await pending;
+      expect(result.error).toMatch(/visit timeout/i);
+      expect(ctx.close).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

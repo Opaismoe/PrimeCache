@@ -113,15 +113,25 @@ export async function visitUrl(
 ): Promise<VisitResult> {
   const start = Date.now();
   let context: Awaited<ReturnType<typeof createContext>> | null = null;
-  // Close the browser context immediately when the run is cancelled so all
-  // in-flight Playwright calls (page.goto, evaluate, …) throw right away.
-  const onAbort = () => {
-    // Intentional: best-effort context cleanup during abort — do not log
+  // Close the browser context immediately when the run is cancelled (or the
+  // per-visit budget is exhausted) so all in-flight Playwright calls
+  // (page.goto, evaluate, …) throw right away instead of hanging.
+  const closeContext = () => {
+    // Intentional: best-effort context cleanup — do not log
     context?.close().catch(() => {});
   };
-  signal?.addEventListener('abort', onAbort, { once: true });
+  signal?.addEventListener('abort', closeContext, { once: true });
 
-  try {
+  let timeoutId: NodeJS.Timeout | undefined;
+  const visitTimeoutMs = options.visitTimeout ?? 120_000;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      closeContext();
+      reject(new Error(`visit timeout: exceeded ${visitTimeoutMs}ms budget`));
+    }, visitTimeoutMs);
+  });
+
+  const doVisit = async (): Promise<VisitResult> => {
     if (signal?.aborted) throw new Error('run cancelled');
 
     const browser = await getBrowser(options.stealth);
@@ -214,37 +224,21 @@ export async function visitUrl(
       }
     });
 
-    // Capture TTFB, status code, and response headers from the first matching response
+    // Wall-clock TTFB fallback from the first response for the requested URL.
+    // Status and headers come from the final navigation response below, so a
+    // redirect chain does not leave them null.
     let ttfbMs: number | null = null;
-    let statusCode: number | null = null;
-    let headers: HeadersSnapshot | null = null;
     page.on('response', (response) => {
-      if (response.url() === url) {
-        if (ttfbMs === null) ttfbMs = Date.now() - start;
-        if (statusCode === null) statusCode = response.status();
-        if (headers === null) {
-          const h = response.headers();
-          const parseAge = (v: string | undefined) => (v ? parseInt(v, 10) || null : null);
-          headers = {
-            cacheControl: h['cache-control'] ?? null,
-            xCache: h['x-cache'] ?? null,
-            cfCacheStatus: h['cf-cache-status'] ?? null,
-            age: parseAge(h.age),
-            etag: h.etag ?? null,
-            contentType: h['content-type']?.split(';')[0]?.trim() ?? null,
-            xFrameOptions: h['x-frame-options'] ?? null,
-            xContentTypeOptions: h['x-content-type-options'] ?? null,
-            strictTransportSecurity: h['strict-transport-security'] ?? null,
-            contentSecurityPolicy: h['content-security-policy'] ?? null,
-          };
-        }
-      }
+      if (response.url() === url && ttfbMs === null) ttfbMs = Date.now() - start;
     });
 
     const response = await page.goto(url, {
       waitUntil: options.waitUntil,
       timeout: options.navigationTimeout,
     });
+
+    const statusCode: number | null = response?.status() ?? null;
+    const headers: HeadersSnapshot | null = response ? snapshotHeaders(response.headers()) : null;
 
     // Count redirect hops by walking the redirectedFrom chain
     let redirectCount = 0;
@@ -447,6 +441,10 @@ export async function visitUrl(
       accessibility,
       extractedCookies,
     };
+  };
+
+  try {
+    return await Promise.race([doVisit(), timeout]);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     logger.error({ url, error }, 'visit failed');
@@ -471,9 +469,27 @@ export async function visitUrl(
       extractedCookies: [],
     };
   } finally {
-    signal?.removeEventListener('abort', onAbort);
-    await context?.close();
+    clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', closeContext);
+    // Intentional: context may already be closed by abort/timeout
+    await (context as Awaited<ReturnType<typeof createContext>> | null)?.close().catch(() => {});
   }
+}
+
+function snapshotHeaders(h: Record<string, string>): HeadersSnapshot {
+  const parseAge = (v: string | undefined) => (v ? parseInt(v, 10) || null : null);
+  return {
+    cacheControl: h['cache-control'] ?? null,
+    xCache: h['x-cache'] ?? null,
+    cfCacheStatus: h['cf-cache-status'] ?? null,
+    age: parseAge(h.age),
+    etag: h.etag ?? null,
+    contentType: h['content-type']?.split(';')[0]?.trim() ?? null,
+    xFrameOptions: h['x-frame-options'] ?? null,
+    xContentTypeOptions: h['x-content-type-options'] ?? null,
+    strictTransportSecurity: h['strict-transport-security'] ?? null,
+    contentSecurityPolicy: h['content-security-policy'] ?? null,
+  };
 }
 
 async function checkBrokenLinks(urls: string[]): Promise<BrokenLink[]> {

@@ -33,6 +33,8 @@ const GroupOptionsSchema = z
       })
       .optional(),
     navigationTimeout: z.number().int().min(5_000).default(30_000),
+    // Hard budget for one URL visit (navigation, consent, simulation, audits).
+    visitTimeout: z.number().int().min(10_000).default(120_000),
     waitUntil: z.enum(['networkidle', 'load', 'domcontentloaded']).default('networkidle'),
     delayMinMs: z.number().int().min(0).optional(),
     delayMaxMs: z.number().int().min(0).optional(),
