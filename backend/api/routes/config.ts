@@ -3,6 +3,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { env } from '../../config/env';
+import { findMissingSecretRefs } from '../../config/secrets';
 import { ConfigSchema } from '../../config/urls';
 import type { Db } from '../../db/client';
 import { renameGroup } from '../../db/queries/runs';
@@ -31,6 +32,16 @@ export function putConfigRoute(db: Db): FastifyPluginAsync {
           return reply
             .code(400)
             .send({ error: 'Invalid renames', issues: renamesResult.error.issues });
+        }
+
+        // Refuse to persist references the store cannot resolve: the hot-reload
+        // would reject the file, and the next process start would crash on it.
+        const missingSecrets = await findMissingSecretRefs(configResult.data, db);
+        if (missingSecrets.length > 0) {
+          return reply.code(400).send({
+            error: `Config references unknown secrets: ${missingSecrets.join(', ')}`,
+            missingSecrets,
+          });
         }
 
         for (const { from, to } of renamesResult.data ?? []) {

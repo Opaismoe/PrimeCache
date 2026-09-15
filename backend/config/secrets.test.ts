@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { upsertSecret } from '../db/queries/secrets';
 import * as schema from '../db/schema';
 import { encrypt } from '../secrets/crypto';
-import { resolveConfigSecrets } from './secrets';
+import { findMissingSecretRefs, resolveConfigSecrets } from './secrets';
 import type { Config } from './urls';
 
 const VALID_KEY = 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
@@ -97,5 +97,32 @@ describe('resolveConfigSecrets', () => {
     const resolved = await resolveConfigSecrets(config, db);
     expect(resolved).not.toBe(config);
     expect(resolved.groups).not.toBe(config.groups);
+  });
+});
+
+describe('findMissingSecretRefs', () => {
+  let db: Db;
+
+  beforeEach(async () => {
+    db = await createTestDb();
+  });
+
+  it('returns the names of secret: references that do not exist, deduplicated', async () => {
+    await upsertSecret(db, 'exists', encrypt('x', VALID_KEY));
+    const config = makeConfig({
+      basicAuth: { username: 'secret:missing-a', password: 'secret:exists' },
+      cookies: [
+        { name: 'c', value: 'secret:missing-b' },
+        { name: 'd', value: 'secret:missing-a' },
+      ],
+      userAgent: 'plain',
+    });
+    expect((await findMissingSecretRefs(config, db)).sort()).toEqual(['missing-a', 'missing-b']);
+  });
+
+  it('returns an empty list when every reference resolves', async () => {
+    await upsertSecret(db, 'pw', encrypt('x', VALID_KEY));
+    const config = makeConfig({ basicAuth: { username: 'u', password: 'secret:pw' } });
+    expect(await findMissingSecretRefs(config, db)).toEqual([]);
   });
 });

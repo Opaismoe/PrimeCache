@@ -359,7 +359,7 @@ export async function buildServer({
       protected_.register(groupRoutes(db, getResolvedConfig));
 
       // Secrets CRUD
-      protected_.register(secretsRoutes(db));
+      protected_.register(secretsRoutes(db, getConfig));
 
       // Webhook token management: GET/POST/DELETE/PATCH /api/groups/:name/webhooks[/:id]
       protected_.register(webhookManagementRoutes(db, getConfig));

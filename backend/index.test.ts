@@ -96,4 +96,42 @@ describe('boot sequence', () => {
       'PLAINTEXT',
     );
   });
+
+  it('applies config reloads in order even when an earlier resolve finishes later', async () => {
+    vi.resetModules();
+    mockRegisterJobs.mockClear();
+    const mk = (name: string) => ({
+      groups: [{ name, schedule: '* * * * *', urls: ['https://example.com/'], options: {} }],
+    });
+    const { loadConfig, watchConfig } = await import('./config/urls');
+    vi.mocked(loadConfig).mockReturnValue(mk('boot') as never);
+    const { resolveConfigSecrets } = await import('./config/secrets');
+    const gates: Record<string, () => void> = {};
+    vi.mocked(resolveConfigSecrets).mockImplementation(
+      (cfg) =>
+        new Promise((resolve) => {
+          const name = cfg.groups[0].name;
+          if (name === 'boot') return resolve(cfg);
+          gates[name] = () => resolve(cfg);
+        }),
+    );
+    const { buildServer } = await import('./api/server');
+
+    await import('./index');
+    await vi.waitFor(() => expect(mockRegisterJobs).toHaveBeenCalled());
+    const onChange = vi.mocked(watchConfig).mock.calls.at(-1)?.[1] as (c: unknown) => void;
+    const serverDeps = vi.mocked(buildServer).mock.calls.at(-1)?.[0] as never as {
+      getConfig: () => { groups: Array<{ name: string }> };
+    };
+
+    onChange(mk('A'));
+    onChange(mk('B'));
+    await vi.waitFor(() => expect(gates.A).toBeDefined());
+    // B must not start resolving until A has settled
+    expect(gates.B).toBeUndefined();
+    gates.A();
+    await vi.waitFor(() => expect(gates.B).toBeDefined());
+    gates.B();
+    await vi.waitFor(() => expect(serverDeps.getConfig().groups[0].name).toBe('B'));
+  });
 });
