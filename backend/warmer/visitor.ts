@@ -94,6 +94,8 @@ export interface VisitResult {
   consentFound: boolean;
   consentStrategy: string | null;
   error: string | null;
+  /** 'connection' when Browserless itself was unreachable — the runner stops retrying. */
+  errorKind: 'connection' | 'visit' | null;
   visitedAt: Date;
   discoveredLinks: string[];
   seo: SeoSnapshot | null;
@@ -104,6 +106,13 @@ export interface VisitResult {
   accessibility: AccessibilitySnapshot | null;
   /** Cookies collected after the visit — used to prime Lighthouse so CF clearance transfers */
   extractedCookies: Array<{ name: string; value: string; domain: string; path: string }>;
+}
+
+class BrowserConnectionError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'BrowserConnectionError';
+  }
 }
 
 export async function visitUrl(
@@ -134,7 +143,12 @@ export async function visitUrl(
   const doVisit = async (): Promise<VisitResult> => {
     if (signal?.aborted) throw new Error('run cancelled');
 
-    const browser = await getBrowser(options.stealth);
+    let browser: Awaited<ReturnType<typeof getBrowser>>;
+    try {
+      browser = await getBrowser(options.stealth);
+    } catch (err) {
+      throw new BrowserConnectionError(err);
+    }
     context = await createContext(browser, options.userAgent, options.basicAuth);
     const page = await context.newPage();
 
@@ -431,6 +445,7 @@ export async function visitUrl(
       consentFound: consentResult.found,
       consentStrategy: consentResult.strategy,
       error: null,
+      errorKind: null,
       visitedAt: new Date(),
       discoveredLinks,
       seo,
@@ -447,7 +462,8 @@ export async function visitUrl(
     return await Promise.race([doVisit(), timeout]);
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
-    logger.error({ url, error }, 'visit failed');
+    const errorKind = err instanceof BrowserConnectionError ? 'connection' : 'visit';
+    logger.error({ url, error, errorKind }, 'visit failed');
     return {
       url,
       finalUrl: null,
@@ -458,6 +474,7 @@ export async function visitUrl(
       consentFound: false,
       consentStrategy: null,
       error,
+      errorKind,
       visitedAt: new Date(),
       discoveredLinks: [],
       seo: null,

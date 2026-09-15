@@ -11,17 +11,38 @@ chromiumExtra.use(stealthPlugin);
 
 let browserStealth: Browser | null = null;
 let browserPlain: Browser | null = null;
+// In-flight connects, so concurrent callers share one WS handshake instead of
+// each opening a browser and leaking all but the last one.
+let connectingStealth: Promise<Browser> | null = null;
+let connectingPlain: Promise<Browser> | null = null;
 
 export async function getBrowser(useStealth = true): Promise<Browser> {
   if (useStealth) {
     if (browserStealth?.isConnected()) return browserStealth;
-    browserStealth = await connectWithRetry(true);
-    return browserStealth;
-  } else {
-    if (browserPlain?.isConnected()) return browserPlain;
-    browserPlain = await connectWithRetry(false);
-    return browserPlain;
+    if (!connectingStealth) {
+      connectingStealth = connectWithRetry(true)
+        .then((b) => {
+          browserStealth = b;
+          return b;
+        })
+        .finally(() => {
+          connectingStealth = null;
+        });
+    }
+    return connectingStealth;
   }
+  if (browserPlain?.isConnected()) return browserPlain;
+  if (!connectingPlain) {
+    connectingPlain = connectWithRetry(false)
+      .then((b) => {
+        browserPlain = b;
+        return b;
+      })
+      .finally(() => {
+        connectingPlain = null;
+      });
+  }
+  return connectingPlain;
 }
 
 async function connectWithRetry(useStealth: boolean, attempt = 0): Promise<Browser> {

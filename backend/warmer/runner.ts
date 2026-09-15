@@ -72,7 +72,10 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
 
       for (
         let attempt = 1;
-        attempt <= group.options.retryCount && result.error !== null && !signal.aborted;
+        attempt <= group.options.retryCount &&
+        result.error !== null &&
+        result.errorKind !== 'connection' &&
+        !signal.aborted;
         attempt++
       ) {
         log.warn(
@@ -133,6 +136,13 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
 
       if (result.error === null) successCount++;
       else failureCount++;
+
+      // Browserless itself is down: every further URL would burn the full
+      // reconnect backoff and fail the same way. Stop here.
+      if (result.errorKind === 'connection') {
+        log.error({ url, error: result.error }, 'browser connection failed — aborting run');
+        break;
+      }
 
       if (group.options.crawl && depth < maxDepth) {
         for (const link of result.discoveredLinks) {

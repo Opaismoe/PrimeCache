@@ -287,4 +287,23 @@ describe('visitUrl', () => {
       vi.useRealTimers();
     }
   });
+
+  it('marks errorKind "connection" when Browserless cannot be reached', async () => {
+    const { getBrowser } = await import('../browser/connection');
+    vi.mocked(getBrowser).mockRejectedValueOnce(new Error('connect ECONNREFUSED'));
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false });
+    expect(result.error).toContain('ECONNREFUSED');
+    expect(result.errorKind).toBe('connection');
+  });
+
+  it('marks errorKind "visit" for ordinary page failures', async () => {
+    const { createContext } = await import('../browser/context');
+    const page = makeMockPage();
+    page.goto = vi.fn().mockRejectedValue(new Error('Navigation timeout'));
+    vi.mocked(createContext).mockResolvedValue(makeMockContext(page));
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false });
+    expect(result.errorKind).toBe('visit');
+  });
 });

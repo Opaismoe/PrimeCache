@@ -488,6 +488,39 @@ describe('runGroup', () => {
     });
   });
 
+  describe('browser connection failure', () => {
+    it('stops the run without retrying when Browserless is unreachable', async () => {
+      const { visitUrl } = await import('./visitor');
+      vi.mocked(visitUrl).mockResolvedValue({
+        url: 'https://example.com/',
+        finalUrl: null,
+        statusCode: null,
+        ttfbMs: null,
+        loadTimeMs: 0,
+        consentFound: false,
+        consentStrategy: null,
+        error: 'connect ECONNREFUSED',
+        errorKind: 'connection',
+        visitedAt: new Date(),
+        discoveredLinks: [],
+        extractedCookies: [],
+      } as never);
+
+      const { runGroup } = await import('./runner');
+      const runId = await runGroup(db, {
+        name: 'g',
+        schedule: '* * * * *',
+        urls: ['https://example.com/a', 'https://example.com/b', 'https://example.com/c'],
+        options: { ...BASE_OPTIONS, retryCount: 3 },
+      });
+
+      expect(visitUrl).toHaveBeenCalledTimes(1);
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId));
+      expect(run.status).toBe('failed');
+      expect(run.failure_count).toBe(1);
+    });
+  });
+
   describe('run timeout', () => {
     it('auto-cancels a run that exceeds the 60-minute timeout', async () => {
       vi.useFakeTimers();

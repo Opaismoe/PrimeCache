@@ -106,4 +106,22 @@ describe('connection', () => {
     await getBrowser();
     await expect(resetBrowser()).resolves.toBeUndefined();
   });
+
+  it('concurrent getBrowser calls share one in-flight connection', async () => {
+    vi.resetModules();
+    const { chromium } = await import('playwright-extra');
+    let resolveConnect: ((b: typeof mockBrowser) => void) | undefined;
+    vi.mocked(chromium.connect).mockReturnValueOnce(
+      new Promise((r) => {
+        resolveConnect = r as (b: typeof mockBrowser) => void;
+      }) as never,
+    );
+    const { getBrowser } = await import('./connection');
+    const a = getBrowser();
+    const b = getBrowser();
+    resolveConnect?.(mockBrowser);
+    const [ba, bb] = await Promise.all([a, b]);
+    expect(chromium.connect).toHaveBeenCalledOnce();
+    expect(ba).toBe(bb);
+  });
 });
