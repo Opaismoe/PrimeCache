@@ -48,3 +48,11 @@ describe('encrypt / decrypt', () => {
     expect(() => encrypt('test', nonHex)).toThrow();
   });
 });
+
+describe('decrypt — stored format validation', () => {
+  it('throws a clear error for a value without the iv:data shape', () => {
+    expect(() => decrypt('not-encrypted', VALID_KEY)).toThrow(/malformed/i);
+    expect(() => decrypt('zz:zz', VALID_KEY)).toThrow(/malformed/i);
+    expect(() => decrypt('', VALID_KEY)).toThrow(/malformed/i);
+  });
+});

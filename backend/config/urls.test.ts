@@ -188,3 +188,24 @@ groups:
     expect(config.groups[0].options.checkAccessibility).toBe(false);
   });
 });
+
+describe('parseConfig — URL scheme allowlist', () => {
+  const withUrl = (url: string) => `
+groups:
+  - name: g
+    schedule: "* * * * *"
+    urls:
+      - "${url}"
+`;
+
+  it('accepts http and https URLs', () => {
+    expect(() => parseConfig(withUrl('http://example.com/'))).not.toThrow();
+    expect(() => parseConfig(withUrl('https://example.com/'))).not.toThrow();
+  });
+
+  it('rejects file:, ftp: and javascript: URLs', () => {
+    expect(() => parseConfig(withUrl('file:///etc/passwd'))).toThrow(/http/);
+    expect(() => parseConfig(withUrl('ftp://example.com/'))).toThrow(/http/);
+    expect(() => parseConfig(withUrl('javascript:alert(1)'))).toThrow();
+  });
+});

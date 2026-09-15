@@ -20,7 +20,17 @@ export function encrypt(plaintext: string, keyHex: string): string {
 
 export function decrypt(stored: string, keyHex: string): string {
   const key = validateKey(keyHex);
-  const [ivHex, dataHex] = stored.split(':');
+  const parts = stored.split(':');
+  const [ivHex, dataHex] = parts;
+  // 12-byte IV + at least the 16-byte GCM tag, all hex
+  if (
+    parts.length !== 2 ||
+    !/^[0-9a-f]{24}$/i.test(ivHex) ||
+    !/^[0-9a-f]{32,}$/i.test(dataHex) ||
+    dataHex.length % 2 !== 0
+  ) {
+    throw new Error('Malformed encrypted value: expected "<iv hex>:<ciphertext+tag hex>"');
+  }
   const iv = Buffer.from(ivHex, 'hex');
   const data = Buffer.from(dataHex, 'hex');
   const tag = data.subarray(data.length - 16);

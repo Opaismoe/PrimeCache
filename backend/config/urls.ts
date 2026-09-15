@@ -53,7 +53,12 @@ const GroupSchema = z.object({
   name: z.string().min(1, 'Group name is required'),
   schedule: z.string().min(1, 'Group schedule is required'),
   urls: z
-    .array(z.string().url('Each URL must be a valid URL'))
+    .array(
+      z
+        .string()
+        .url('Each URL must be a valid URL')
+        .refine((u) => /^https?:\/\//i.test(u), 'Only http:// and https:// URLs are allowed'),
+    )
     .min(1, 'At least one URL is required'),
   // preprocess: missing options block → {} so per-field defaults apply
   options: z.preprocess((v) => v ?? {}, GroupOptionsSchema),
