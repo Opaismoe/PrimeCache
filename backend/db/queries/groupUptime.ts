@@ -31,7 +31,7 @@ export interface GroupUptime {
 }
 
 export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUptime> {
-  // Per-URL uptime stats — "down" is defined as error IS NOT NULL
+  // Per-URL uptime stats over the last 30 days — "down" is defined as error IS NOT NULL
   const uptimeRows = await db.execute(sql`
     SELECT
       v.url,
@@ -44,12 +44,14 @@ export async function getGroupUptime(db: Db, groupName: string): Promise<GroupUp
         FROM visits v2
         INNER JOIN runs r2 ON v2.run_id = r2.id
         WHERE r2.group_name = ${groupName} AND r2.status != 'cancelled' AND v2.url = v.url
+          AND v2.visited_at >= now() - interval '30 days'
         ORDER BY v2.visited_at DESC LIMIT 1
       ) AS last_is_down
     FROM visits v
     INNER JOIN runs r ON v.run_id = r.id
     WHERE r.group_name = ${groupName}
       AND r.status != 'cancelled'
+      AND v.visited_at >= now() - interval '30 days'
     GROUP BY v.url
     ORDER BY uptime_pct ASC
   `);

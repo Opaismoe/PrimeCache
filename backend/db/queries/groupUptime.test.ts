@@ -107,7 +107,7 @@ describe('getGroupUptime — cancelled run exclusion', () => {
       .insert(runs)
       .values({
         group_name: 'uptime-cancel',
-        started_at: new Date('2025-01-01T10:00:00Z'),
+        started_at: new Date(Date.now() - 2 * 86_400_000),
         status: 'completed',
       })
       .returning();
@@ -115,7 +115,7 @@ describe('getGroupUptime — cancelled run exclusion', () => {
       run_id: completed.id,
       url: 'https://b.com/',
       load_time_ms: 300,
-      visited_at: new Date('2025-01-01T10:01:00Z'),
+      visited_at: new Date(Date.now() - 2 * 86_400_000 + 60_000),
       error: null,
     });
 
@@ -123,7 +123,7 @@ describe('getGroupUptime — cancelled run exclusion', () => {
       .insert(runs)
       .values({
         group_name: 'uptime-cancel',
-        started_at: new Date('2025-01-02T10:00:00Z'),
+        started_at: new Date(Date.now() - 86_400_000),
         status: 'cancelled',
       })
       .returning();
@@ -131,12 +131,43 @@ describe('getGroupUptime — cancelled run exclusion', () => {
       run_id: cancelled.id,
       url: 'https://b.com/',
       load_time_ms: 0,
-      visited_at: new Date('2025-01-02T10:01:00Z'),
+      visited_at: new Date(Date.now() - 86_400_000 + 60_000),
       error: 'timeout',
     });
 
     const result = await getGroupUptime(db, 'uptime-cancel');
     expect(result.urls[0].uptimePct).toBe(100);
     expect(result.uptimeTrend).toHaveLength(1);
+  });
+
+  it('computes per-URL uptime over the last 30 days only', async () => {
+    const db = await createTestDb();
+    const { getGroupUptime } = await import('./groupUptime');
+    const DAY = 86_400_000;
+    const [run] = await db
+      .insert(runs)
+      .values({ group_name: 'test', started_at: new Date(), status: 'completed' })
+      .returning();
+    await db.insert(visits).values([
+      // old failure — outside the window, must not count
+      {
+        run_id: run.id,
+        url: 'https://example.com/',
+        load_time_ms: 1,
+        visited_at: new Date(Date.now() - 31 * DAY),
+        error: 'timeout',
+      },
+      {
+        run_id: run.id,
+        url: 'https://example.com/',
+        load_time_ms: 1,
+        visited_at: new Date(Date.now() - DAY),
+        error: null,
+      },
+    ]);
+    const result = await getGroupUptime(db, 'test');
+    expect(result.urls).toHaveLength(1);
+    expect(result.urls[0].totalChecks).toBe(1);
+    expect(result.urls[0].uptimePct).toBe(100);
   });
 });
