@@ -73,6 +73,19 @@ describe('runGroup', () => {
     expect(runId).toBeGreaterThan(0);
   });
 
+  it('hands visitUrl a logger bound to the runId and url', async () => {
+    const { visitUrl } = await import('./visitor');
+    const { runGroup } = await import('./runner');
+    const runId = await runGroup(db, {
+      name: 'homepage',
+      schedule: '* * * * *',
+      urls: ['https://example.com/'],
+      options: BASE_OPTIONS,
+    });
+    const log = vi.mocked(visitUrl).mock.calls[0][3] as { bindings: () => Record<string, unknown> };
+    expect(log.bindings()).toMatchObject({ runId, group: 'homepage', url: 'https://example.com/' });
+  });
+
   it('creates a run record in the DB', async () => {
     const { runGroup } = await import('./runner');
     const runId = await runGroup(db, {

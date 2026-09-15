@@ -38,24 +38,6 @@ export async function insertVisit(db: Db, runId: number, visit: VisitInput): Pro
   return row.id;
 }
 
-export async function insertVisits(db: Db, runId: number, inputs: VisitInput[]): Promise<number> {
-  await db.insert(visits).values(
-    inputs.map((v) => ({
-      run_id: runId,
-      url: v.url,
-      status_code: v.statusCode,
-      final_url: v.finalUrl,
-      ttfb_ms: v.ttfbMs,
-      load_time_ms: v.loadTimeMs,
-      consent_found: v.consentFound,
-      consent_strategy: v.consentStrategy,
-      error: v.error,
-      visited_at: new Date(),
-    })),
-  );
-  return inputs.length;
-}
-
 export async function getVisitsByRunId(db: Db, runId: number): Promise<VisitRow[]> {
   return db.select().from(visits).where(eq(visits.run_id, runId)).orderBy(asc(visits.visited_at));
 }

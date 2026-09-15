@@ -50,19 +50,23 @@ async function main() {
   // 5. Watch config for live changes. Reloads are chained so two quick file
   // events cannot resolve out of order and leave the older config active.
   let reloadChain: Promise<void> = Promise.resolve();
-  const stopWatcher = watchConfig(env.CONFIG_PATH, (newConfig) => {
-    reloadChain = reloadChain.then(async () => {
-      try {
-        const nextResolved = await resolveConfigSecrets(newConfig, db);
-        rawConfig = newConfig;
-        resolvedConfig = nextResolved;
-        logger.info('config reloaded — re-registering cron jobs');
-        registerJobs(resolvedConfig.groups, db);
-      } catch (err) {
-        logger.error({ err }, 'config reload failed — keeping previous config');
-      }
-    });
-  });
+  const stopWatcher = watchConfig(
+    env.CONFIG_PATH,
+    (newConfig) => {
+      reloadChain = reloadChain.then(async () => {
+        try {
+          const nextResolved = await resolveConfigSecrets(newConfig, db);
+          rawConfig = newConfig;
+          resolvedConfig = nextResolved;
+          logger.info('config reloaded — re-registering cron jobs');
+          registerJobs(resolvedConfig.groups, db);
+        } catch (err) {
+          logger.error({ err }, 'config reload failed — keeping previous config');
+        }
+      });
+    },
+    (err) => logger.error({ err }, 'config.yaml is invalid — keeping previous config'),
+  );
 
   // 6. Graceful shutdown
   async function shutdown() {

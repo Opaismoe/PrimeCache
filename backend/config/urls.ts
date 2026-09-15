@@ -83,18 +83,29 @@ export function loadConfig(filePath: string): Config {
   return parseConfig(content);
 }
 
-export function watchConfig(filePath: string, onChange: (config: Config) => void): () => void {
+/** Re-read the file; hand a valid config to onChange, a parse/validation error to onError. */
+export function handleConfigChange(
+  filePath: string,
+  onChange: (config: Config) => void,
+  onError: (err: unknown) => void,
+): void {
+  let config: Config;
+  try {
+    config = loadConfig(filePath);
+  } catch (err) {
+    // Invalid config on disk — caller keeps running with the previous config
+    onError(err);
+    return;
+  }
+  onChange(config);
+}
+
+export function watchConfig(
+  filePath: string,
+  onChange: (config: Config) => void,
+  onError: (err: unknown) => void = () => {},
+): () => void {
   const watcher = chokidar.watch(filePath, { ignoreInitial: true });
-
-  watcher.on('change', () => {
-    try {
-      const config = loadConfig(filePath);
-      onChange(config);
-    } catch (err) {
-      // Invalid config on disk — keep running with the previous config
-      console.error('Failed to reload config.yaml:', err);
-    }
-  });
-
+  watcher.on('change', () => handleConfigChange(filePath, onChange, onError));
   return () => watcher.close();
 }

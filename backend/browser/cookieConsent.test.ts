@@ -52,6 +52,7 @@ describe('dismissCookieConsent', () => {
     expect(result.found).toBe(true);
     expect(result.strategy).toBe('cookiebot');
     expect(locator.click).toHaveBeenCalledOnce();
+    expect(locator.click).toHaveBeenCalledWith({ timeout: 3000 });
   });
 
   it('detects and clicks OneTrust banner', async () => {

@@ -176,53 +176,23 @@ describe('visits queries', () => {
     db = await createTestDb();
   });
 
-  it('insertVisits bulk inserts and returns count', async () => {
-    const { insertRun } = await import('./queries/runs');
-    const { insertVisits } = await import('./queries/visits');
-
-    const runId = await insertRun(db, { groupName: 'homepage', totalUrls: 2 });
-    const count = await insertVisits(db, runId, [
-      {
-        url: 'https://a.com',
-        statusCode: 200,
-        finalUrl: 'https://a.com',
-        ttfbMs: 100,
-        loadTimeMs: 500,
-        consentFound: true,
-        consentStrategy: 'cookiebot',
-        error: null,
-      },
-      {
-        url: 'https://b.com',
-        statusCode: null,
-        finalUrl: null,
-        ttfbMs: null,
-        loadTimeMs: 300,
-        consentFound: false,
-        consentStrategy: null,
-        error: 'Timeout',
-      },
-    ]);
-    expect(count).toBe(2);
-  });
-
   it('getVisitsByRunId returns all visits for a run', async () => {
     const { insertRun } = await import('./queries/runs');
-    const { insertVisits, getVisitsByRunId } = await import('./queries/visits');
+    const { insertVisit, getVisitsByRunId } = await import('./queries/visits');
 
     const runId = await insertRun(db, { groupName: 'homepage', totalUrls: 1 });
-    await insertVisits(db, runId, [
-      {
-        url: 'https://a.com',
-        statusCode: 200,
-        finalUrl: 'https://a.com',
-        ttfbMs: 80,
-        loadTimeMs: 400,
-        consentFound: false,
-        consentStrategy: null,
-        error: null,
-      },
-    ]);
+    await insertVisit(db, runId, {
+      url: 'https://a.com',
+      statusCode: 200,
+      finalUrl: 'https://a.com',
+      ttfbMs: 80,
+      loadTimeMs: 400,
+      consentFound: false,
+      consentStrategy: null,
+      error: null,
+      redirectCount: 0,
+      retryCount: 0,
+    });
     const v = await getVisitsByRunId(db, runId);
     expect(v).toHaveLength(1);
     expect(v[0].url).toBe('https://a.com');
@@ -232,21 +202,19 @@ describe('visits queries', () => {
 
   it('persists error field correctly', async () => {
     const { insertRun } = await import('./queries/runs');
-    const { insertVisits, getVisitsByRunId } = await import('./queries/visits');
+    const { insertVisit, getVisitsByRunId } = await import('./queries/visits');
 
     const runId = await insertRun(db, { groupName: 'homepage', totalUrls: 1 });
-    await insertVisits(db, runId, [
-      {
-        url: 'https://fail.com',
-        statusCode: null,
-        finalUrl: null,
-        ttfbMs: null,
-        loadTimeMs: 0,
-        consentFound: false,
-        consentStrategy: null,
-        error: 'Navigation timeout',
-      },
-    ]);
+    await insertVisit(db, runId, {
+      url: 'https://fail.com',
+      statusCode: null,
+      finalUrl: null,
+      ttfbMs: null,
+      loadTimeMs: 0,
+      consentFound: false,
+      consentStrategy: null,
+      error: 'Navigation timeout',
+    });
     const v = await getVisitsByRunId(db, runId);
     expect(v[0].error).toBe('Navigation timeout');
   });

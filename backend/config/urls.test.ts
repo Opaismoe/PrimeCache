@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { parseConfig } from './urls';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
+import { handleConfigChange, parseConfig } from './urls';
 
 const VALID_YAML = `
 groups:
@@ -207,5 +210,28 @@ groups:
     expect(() => parseConfig(withUrl('file:///etc/passwd'))).toThrow(/http/);
     expect(() => parseConfig(withUrl('ftp://example.com/'))).toThrow(/http/);
     expect(() => parseConfig(withUrl('javascript:alert(1)'))).toThrow();
+  });
+});
+
+describe('handleConfigChange', () => {
+  const tmp = path.join(os.tmpdir(), `primecache-urls-test-${process.pid}.yaml`);
+
+  it('reports an invalid file through onError instead of the console', () => {
+    fs.writeFileSync(tmp, 'groups: []', 'utf-8');
+    const onChange = vi.fn();
+    const onError = vi.fn();
+    handleConfigChange(tmp, onChange, onError);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
+  });
+
+  it('passes a valid file to onChange', () => {
+    fs.writeFileSync(tmp, VALID_YAML, 'utf-8');
+    const onChange = vi.fn();
+    const onError = vi.fn();
+    handleConfigChange(tmp, onChange, onError);
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onError).not.toHaveBeenCalled();
   });
 });

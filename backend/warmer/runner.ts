@@ -107,7 +107,8 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
       visited.add(url);
 
       log.info({ url, depth }, 'visiting');
-      let result = await visitUrl(url, group.options, signal);
+      const visitLog = log.child({ url });
+      let result = await visitUrl(url, group.options, signal, visitLog);
       let usedRetries = 0;
 
       for (
@@ -123,7 +124,7 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
           'visit failed — retrying',
         );
         await randomDelay(1000, 2000);
-        result = await visitUrl(url, group.options, signal);
+        result = await visitUrl(url, group.options, signal, visitLog);
         usedRetries = attempt;
       }
 

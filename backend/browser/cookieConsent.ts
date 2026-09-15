@@ -1,5 +1,8 @@
 import type { Page } from 'playwright';
 
+/** Each strategy gets at most this long to click; a CMP that has changed its DOM must not stall the visit. */
+const CLICK_TIMEOUT_MS = 3_000;
+
 export interface ConsentResult {
   found: boolean;
   strategy: string | null;
@@ -22,7 +25,7 @@ async function tryClick(page: Page, selector: string): Promise<boolean> {
     const locator = page.locator(selector).first();
     const visible = await locator.isVisible();
     if (visible) {
-      await locator.click();
+      await locator.click({ timeout: CLICK_TIMEOUT_MS });
       return true;
     }
   } catch {
@@ -46,7 +49,7 @@ export async function dismissCookieConsent(page: Page): Promise<ConsentResult> {
   try {
     const locator = page.locator(GENERIC_SELECTOR).first();
     if (await locator.isVisible()) {
-      await locator.click();
+      await locator.click({ timeout: CLICK_TIMEOUT_MS });
       await page.waitForTimeout(500 + Math.floor(Math.random() * 500));
       return { found: true, strategy: 'generic', durationMs: Date.now() - start };
     }
@@ -86,7 +89,7 @@ export async function dismissCookieConsent(page: Page): Promise<ConsentResult> {
       if (!url.includes('consent') && !url.includes('cookie')) continue;
       const locator = frame.locator('button').first();
       if (await locator.isVisible()) {
-        await locator.click();
+        await locator.click({ timeout: CLICK_TIMEOUT_MS });
         await page.waitForTimeout(500 + Math.floor(Math.random() * 500));
         return { found: true, strategy: 'iframe', durationMs: Date.now() - start };
       }

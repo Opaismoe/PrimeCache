@@ -306,4 +306,24 @@ describe('visitUrl', () => {
     const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false });
     expect(result.errorKind).toBe('visit');
   });
+
+  it('logs failures through the caller-provided logger so runId context is kept', async () => {
+    const { createContext } = await import('../browser/context');
+    const page = makeMockPage();
+    page.goto = vi.fn().mockRejectedValue(new Error('boom'));
+    vi.mocked(createContext).mockResolvedValue(makeMockContext(page));
+    const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
+    const { visitUrl } = await import('./visitor');
+    await visitUrl(
+      'https://example.com/',
+      { scrollToBottom: false, crawl: false },
+      undefined,
+      log as never,
+    );
+    expect(log.error).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://example.com/', error: 'boom' }),
+      'visit failed',
+    );
+  });
 });

@@ -4,7 +4,7 @@ import { createContext } from '../browser/context';
 import { dismissCookieConsent } from '../browser/cookieConsent';
 import { simulateMouseMovement, simulateReading, simulateScroll } from '../browser/stealth';
 import type { WarmGroup } from '../config/urls';
-import { logger } from '../utils/logger';
+import { type Logger, logger } from '../utils/logger';
 
 export interface SeoSnapshot {
   title: string | null;
@@ -119,6 +119,7 @@ export async function visitUrl(
   url: string,
   options: WarmGroup['options'],
   signal?: AbortSignal,
+  log: Logger = logger,
 ): Promise<VisitResult> {
   const start = Date.now();
   let context: Awaited<ReturnType<typeof createContext>> | null = null;
@@ -382,7 +383,7 @@ export async function visitUrl(
       if (buf) screenshotBase64 = buf.toString('base64');
     }
 
-    logger.info(
+    log.info(
       {
         url,
         finalUrl,
@@ -463,7 +464,7 @@ export async function visitUrl(
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     const errorKind = err instanceof BrowserConnectionError ? 'connection' : 'visit';
-    logger.error({ url, error, errorKind }, 'visit failed');
+    log.error({ url, error, errorKind }, 'visit failed');
     return {
       url,
       finalUrl: null,
