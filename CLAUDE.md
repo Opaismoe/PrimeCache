@@ -202,6 +202,8 @@ After clicking, always wait 500–1000ms before continuing — CMPs fire XHR aft
 ### Database
 Drizzle ORM with `postgres-js` (PostgreSQL 17). Migrations in `backend/db/migrations/` run automatically at startup via `drizzle-orm/postgres-js/migrator`. All queries go through `backend/db/queries/` helpers — never raw SQL in business logic.
 
+**Migration journal timestamps matter.** The migrator applies only entries whose `when` in `meta/_journal.json` is greater than the `created_at` of the last migration recorded in the database. A hand-written entry with a made-up or backdated `when` is silently skipped in production (this bit 0011, 0012 and 0013). Always use the real current epoch-millis (`date +%s%3d`), or let `drizzle-kit generate` write the entry.
+
 ### Logging
 Always use pino child loggers (`logger.child({ runId, url })`). The runner passes its child logger into `visitUrl` so every visit line carries `runId`, `group` and `url`. Never `console.log`. Log level via `LOG_LEVEL` env var. Output is JSON on stdout (Coolify captures it).
 
