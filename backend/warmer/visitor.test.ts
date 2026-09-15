@@ -326,4 +326,33 @@ describe('visitUrl', () => {
       'visit failed',
     );
   });
+
+  it('reads TTFB and load time from Navigation Timing, not from wall clock around context setup', async () => {
+    const { createContext } = await import('../browser/context');
+    const page = makeMockPage();
+    // Simulate slow Browserless setup: context creation takes a while before goto runs
+    vi.mocked(createContext).mockImplementation(
+      () => new Promise((r) => setTimeout(() => r(makeMockContext(page)), 150)),
+    );
+    page.evaluate = vi
+      .fn()
+      .mockResolvedValueOnce({ loadTimeMs: 777, ttfbMs: 93 }) // navigation timing
+      .mockResolvedValue([]);
+
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false });
+    expect(result.ttfbMs).toBe(93);
+    expect(result.loadTimeMs).toBe(777);
+  });
+
+  it('falls back to wall-clock TTFB only when Navigation Timing is unavailable', async () => {
+    const { createContext } = await import('../browser/context');
+    const page = makeMockPage();
+    vi.mocked(createContext).mockResolvedValue(makeMockContext(page));
+    page.evaluate = vi.fn().mockResolvedValueOnce(null).mockResolvedValue([]);
+
+    const { visitUrl } = await import('./visitor');
+    const result = await visitUrl('https://example.com/', { scrollToBottom: false, crawl: false });
+    expect(typeof result.ttfbMs).toBe('number');
+  });
 });

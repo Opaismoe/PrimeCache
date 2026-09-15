@@ -239,12 +239,16 @@ export async function visitUrl(
       }
     });
 
-    // Wall-clock TTFB fallback from the first response for the requested URL.
-    // Status and headers come from the final navigation response below, so a
-    // redirect chain does not leave them null.
-    let ttfbMs: number | null = null;
+    // Wall-clock TTFB fallback, measured from just before navigation starts so
+    // Browserless connect / context setup is excluded. Used only when the
+    // Navigation Timing entry is unavailable (see below). Status and headers
+    // come from the final navigation response, so a redirect chain does not
+    // leave them null.
+    const navStart = Date.now();
+    let wallClockTtfbMs: number | null = null;
     page.on('response', (response) => {
-      if (response.url() === url && ttfbMs === null) ttfbMs = Date.now() - start;
+      if (response.url() === url && wallClockTtfbMs === null)
+        wallClockTtfbMs = Date.now() - navStart;
     });
 
     const response = await page.goto(url, {
@@ -270,21 +274,28 @@ export async function visitUrl(
       await page.waitForSelector(options.waitForSelector, { timeout: 5_000 }).catch(() => {});
     }
 
-    // Read load time from the browser's Navigation Timing API (load event, relative to navigationStart).
-    // Falls back to wall-clock only when the timing entry is unavailable (e.g. cross-origin navigation).
+    // Read load time and TTFB from the browser's Navigation Timing API, both
+    // relative to navigationStart — the same numbers DevTools and Lighthouse
+    // show. TTFB is responseStart (web-vitals definition). Falls back to wall
+    // clock only when the timing entry is unavailable (e.g. cross-origin navigation).
     const navTiming = (await page
-      .evaluate((): number | null => {
+      .evaluate((): { loadTimeMs: number | null; ttfbMs: number | null } | null => {
         const nav = performance.getEntriesByType('navigation')[0] as
           | PerformanceNavigationTiming
           | undefined;
-        if (nav) {
-          if (nav.loadEventEnd > 0) return Math.round(nav.loadEventEnd);
-          if (nav.domContentLoadedEventEnd > 0) return Math.round(nav.domContentLoadedEventEnd);
-        }
-        return null;
+        if (!nav) return null;
+        const loadTimeMs =
+          nav.loadEventEnd > 0
+            ? Math.round(nav.loadEventEnd)
+            : nav.domContentLoadedEventEnd > 0
+              ? Math.round(nav.domContentLoadedEventEnd)
+              : null;
+        const ttfbMs = nav.responseStart > 0 ? Math.round(nav.responseStart) : null;
+        return { loadTimeMs, ttfbMs };
       })
-      .catch(() => null)) as number | null;
-    const loadTimeMs = navTiming ?? Date.now() - start;
+      .catch(() => null)) as { loadTimeMs: number | null; ttfbMs: number | null } | null;
+    const loadTimeMs = navTiming?.loadTimeMs ?? Date.now() - navStart;
+    const ttfbMs: number | null = navTiming?.ttfbMs ?? wallClockTtfbMs;
 
     // Collect SEO metadata — never throws, failure returns null
     const seo: SeoSnapshot | null = await page
