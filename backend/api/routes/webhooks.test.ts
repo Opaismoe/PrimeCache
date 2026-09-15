@@ -10,10 +10,14 @@ vi.stubEnv('ADMIN_USERNAME', 'admin');
 vi.stubEnv('ADMIN_PASSWORD', 'password123');
 vi.stubEnv('SECRET_ENCRYPTION_KEY', 'a'.repeat(64));
 
-vi.mock('../../warmer/runner', () => ({
-  runGroup: vi.fn().mockResolvedValue(42),
-  startRunGroup: vi.fn().mockResolvedValue({ runId: 42, promise: Promise.resolve() }),
-}));
+vi.mock('../../warmer/runner', async () => {
+  const actual = await vi.importActual<typeof import('../../warmer/runner')>('../../warmer/runner');
+  return {
+    RunAlreadyActiveError: actual.RunAlreadyActiveError,
+    runGroup: vi.fn().mockResolvedValue(42),
+    startRunGroup: vi.fn().mockResolvedValue({ runId: 42, promise: Promise.resolve() }),
+  };
+});
 vi.mock('../../scheduler/index', () => ({ registerJobs: vi.fn() }));
 vi.mock('../../db/queries/runs', () => ({
   getRuns: vi.fn().mockResolvedValue([]),
@@ -290,6 +294,16 @@ describe('POST /webhook/trigger/:token', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().queued).toBe(true);
     expect(typeof res.json().runId).toBe('number');
+  });
+
+  it('returns the active runId with queued:false when the group is already running', async () => {
+    const { findWebhookToken } = await import('../../db/queries/webhookTokens');
+    vi.mocked(findWebhookToken).mockResolvedValueOnce(mockToken);
+    const { startRunGroup, RunAlreadyActiveError } = await import('../../warmer/runner');
+    vi.mocked(startRunGroup).mockRejectedValueOnce(new RunAlreadyActiveError('homepage', 9));
+    const res = await app.inject({ method: 'POST', url: '/webhook/trigger/abc123token' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ queued: false, runId: 9, alreadyRunning: true });
   });
 
   it('does not require X-API-Key header', async () => {

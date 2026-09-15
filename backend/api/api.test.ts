@@ -26,10 +26,14 @@ vi.mock('node:fs', () => ({
   writeFileSync: vi.fn(),
 }));
 
-vi.mock('../warmer/runner', () => ({
-  runGroup: vi.fn().mockResolvedValue(42),
-  startRunGroup: vi.fn().mockResolvedValue({ runId: 42, promise: Promise.resolve() }),
-}));
+vi.mock('../warmer/runner', async () => {
+  const actual = await vi.importActual<typeof import('../warmer/runner')>('../warmer/runner');
+  return {
+    RunAlreadyActiveError: actual.RunAlreadyActiveError,
+    runGroup: vi.fn().mockResolvedValue(42),
+    startRunGroup: vi.fn().mockResolvedValue({ runId: 42, promise: Promise.resolve() }),
+  };
+});
 vi.mock('../scheduler/index', () => ({ registerJobs: vi.fn(), registerSessionSweep: vi.fn() }));
 vi.mock('../db/queries/sessions', () => ({
   createSession: vi.fn().mockResolvedValue(undefined),
@@ -212,6 +216,19 @@ describe('GET /runs/latest', () => {
 // ── /trigger ──────────────────────────────────────────────────────────────────
 
 describe('POST /trigger', () => {
+  it('returns 409 with the active runId when the group is already running', async () => {
+    const { runGroup, RunAlreadyActiveError } = await import('../warmer/runner');
+    vi.mocked(runGroup).mockRejectedValueOnce(new RunAlreadyActiveError('homepage', 9));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/trigger',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({ group: 'homepage' }),
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().runId).toBe(9);
+  });
+
   it('returns 400 for unknown group', async () => {
     const res = await app.inject({
       method: 'POST',
@@ -237,7 +254,7 @@ describe('POST /trigger', () => {
 // ── /webhook/warm ─────────────────────────────────────────────────────────────
 
 describe('POST /webhook/warm', () => {
-  it('triggers a specific group and returns runIds', async () => {
+  it('triggers a specific group and returns the real runIds', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/webhook/warm',
@@ -246,7 +263,21 @@ describe('POST /webhook/warm', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().queued).toBe(true);
-    expect(Array.isArray(res.json().runIds)).toBe(true);
+    expect(res.json().runIds).toEqual([42]);
+  });
+
+  it('reports groups that were already running instead of starting a duplicate', async () => {
+    const { startRunGroup, RunAlreadyActiveError } = await import('../warmer/runner');
+    vi.mocked(startRunGroup).mockRejectedValueOnce(new RunAlreadyActiveError('homepage', 9));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webhook/warm',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({ group: 'homepage' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().runIds).toEqual([]);
+    expect(res.json().alreadyRunning).toEqual([{ group: 'homepage', runId: 9 }]);
   });
 
   it('triggers all groups when group is "all"', async () => {
@@ -494,11 +525,60 @@ describe('POST /runs/:id/cancel', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().ok).toBe(true);
   });
+
+  it('leaves finalisation to the runner when the run is active in this process', async () => {
+    const { getRunById, finalizeRun } = await import('../db/queries/runs');
+    const { cancelRun } = await import('../warmer/registry');
+    vi.mocked(cancelRun).mockReturnValueOnce(true);
+    vi.mocked(getRunById).mockResolvedValueOnce({ id: 1, status: 'running' } as RunRow);
+    await app.inject({
+      method: 'POST',
+      url: '/api/runs/1/cancel',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(finalizeRun).not.toHaveBeenCalled();
+  });
+
+  it('finalises an orphaned run itself when no active run is registered', async () => {
+    const { getRunById, finalizeRun } = await import('../db/queries/runs');
+    const { cancelRun } = await import('../warmer/registry');
+    vi.mocked(cancelRun).mockReturnValueOnce(false);
+    vi.mocked(getRunById).mockResolvedValueOnce({
+      id: 7,
+      status: 'running',
+      success_count: 2,
+      failure_count: 1,
+    } as RunRow);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/runs/7/cancel',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(finalizeRun).toHaveBeenCalledWith(expect.anything(), 7, {
+      status: 'cancelled',
+      successCount: 2,
+      failureCount: 1,
+    });
+  });
 });
 
 // ── POST /trigger/async ───────────────────────────────────────────────────────
 
 describe('POST /trigger/async', () => {
+  it('returns 409 with the active runId when the group is already running', async () => {
+    const { startRunGroup, RunAlreadyActiveError } = await import('../warmer/runner');
+    vi.mocked(startRunGroup).mockRejectedValueOnce(new RunAlreadyActiveError('homepage', 9));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/trigger/async',
+      headers: { 'x-api-key': 'supersecretapikey1234', 'content-type': 'application/json' },
+      body: JSON.stringify({ group: 'homepage' }),
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().runId).toBe(9);
+  });
+
   it('returns 400 for unknown group', async () => {
     const res = await app.inject({
       method: 'POST',

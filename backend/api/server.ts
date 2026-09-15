@@ -26,7 +26,7 @@ import { getVisitsByRunId } from '../db/queries/visits';
 import { safeEqual } from '../utils/crypto';
 import { logger } from '../utils/logger';
 import { cancelRun } from '../warmer/registry';
-import { runGroup, startRunGroup } from '../warmer/runner';
+import { RunAlreadyActiveError, runGroup, startRunGroup } from '../warmer/runner';
 import { rateLimitTracker } from './rateLimits';
 import { authRoutes } from './routes/auth';
 import { putConfigRoute } from './routes/config';
@@ -242,8 +242,14 @@ export async function buildServer({
           const { group: groupName } = request.body;
           const group = getResolvedConfig().groups.find((g) => g.name === groupName);
           if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
-          const runId = await runGroup(db, group);
-          return { runId };
+          try {
+            const runId = await runGroup(db, group);
+            return { runId };
+          } catch (err) {
+            if (err instanceof RunAlreadyActiveError)
+              return reply.code(409).send({ error: err.message, runId: err.runId });
+            throw err;
+          }
         },
       );
 
@@ -257,7 +263,15 @@ export async function buildServer({
           const { group: groupName } = request.body;
           const group = getResolvedConfig().groups.find((g) => g.name === groupName);
           if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
-          const { runId, promise } = await startRunGroup(db, group);
+          let started: Awaited<ReturnType<typeof startRunGroup>>;
+          try {
+            started = await startRunGroup(db, group);
+          } catch (err) {
+            if (err instanceof RunAlreadyActiveError)
+              return reply.code(409).send({ error: err.message, runId: err.runId });
+            throw err;
+          }
+          const { runId, promise } = started;
           promise
             .then(() => logger.info({ group: groupName, runId }, 'async trigger run complete'))
             .catch((err) =>
@@ -281,16 +295,25 @@ export async function buildServer({
           if (!targets.length)
             return reply.code(400).send({ error: `Unknown group "${groupName}"` });
 
-          // Fire async — respond immediately
+          // Create the run records now (so we can return real ids), execute async
           const runIds: number[] = [];
+          const alreadyRunning: Array<{ group: string; runId: number }> = [];
           for (const group of targets) {
-            runGroup(db, group)
-              .then((id) => logger.info({ group: group.name, runId: id }, 'webhook run complete'))
-              .catch((err) => logger.error({ group: group.name, err }, 'webhook run failed'));
-            runIds.push(-1); // placeholder; real id resolves async
+            try {
+              const { runId, promise } = await startRunGroup(db, group);
+              runIds.push(runId);
+              promise
+                .then(() => logger.info({ group: group.name, runId }, 'webhook run complete'))
+                .catch((err) =>
+                  logger.error({ group: group.name, runId, err }, 'webhook run failed'),
+                );
+            } catch (err) {
+              if (!(err instanceof RunAlreadyActiveError)) throw err;
+              alreadyRunning.push({ group: group.name, runId: err.runId });
+            }
           }
 
-          return { queued: true, runIds };
+          return { queued: runIds.length > 0, runIds, alreadyRunning };
         },
       );
 
@@ -305,13 +328,18 @@ export async function buildServer({
           if (!run) return reply.code(404).send({ error: 'Run not found' });
           if (run.status !== 'running')
             return reply.code(400).send({ error: 'Run is not in running state' });
-          cancelRun(id);
-          await finalizeRun(db, id, {
-            status: 'cancelled',
-            successCount: run.success_count ?? 0,
-            failureCount: run.failure_count ?? 0,
-          });
-          return { ok: true };
+          // An active run finalises itself once the abort lands (with accurate
+          // counts). Only an orphan — e.g. left 'running' by a restart — needs
+          // to be closed out here.
+          const signalled = cancelRun(id);
+          if (!signalled) {
+            await finalizeRun(db, id, {
+              status: 'cancelled',
+              successCount: run.success_count ?? 0,
+              failureCount: run.failure_count ?? 0,
+            });
+          }
+          return { ok: true, signalled };
         },
       );
 

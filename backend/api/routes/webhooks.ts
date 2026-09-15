@@ -10,7 +10,7 @@ import {
   touchWebhookToken,
 } from '../../db/queries/webhookTokens';
 import { logger } from '../../utils/logger';
-import { startRunGroup } from '../../warmer/runner';
+import { RunAlreadyActiveError, startRunGroup } from '../../warmer/runner';
 
 function parseId(raw: string): number | null {
   const n = Number(raw);
@@ -125,7 +125,16 @@ export function webhookTriggerRoute(db: Db, getConfig: () => Config): FastifyPlu
           logger.warn({ err, tokenId: row.id }, 'failed to update webhook token last_used_at'),
         );
 
-        const { runId, promise } = await startRunGroup(db, group);
+        let started: Awaited<ReturnType<typeof startRunGroup>>;
+        try {
+          started = await startRunGroup(db, group);
+        } catch (err) {
+          // Same group already warming — tell the caller which run, don't stack another
+          if (err instanceof RunAlreadyActiveError)
+            return { queued: false, runId: err.runId, alreadyRunning: true };
+          throw err;
+        }
+        const { runId, promise } = started;
         promise
           .then(() =>
             logger.info(

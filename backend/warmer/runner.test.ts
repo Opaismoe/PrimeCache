@@ -41,6 +41,10 @@ vi.mock('../browser/stealth', () => ({
   randomDelay: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../services/lighthouseAudit', () => ({
+  runLighthouseAudit: vi.fn().mockResolvedValue({ url: 'x', formFactor: 'desktop', failed: true }),
+}));
+
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 let db: Db;
 
@@ -518,6 +522,97 @@ describe('runGroup', () => {
       const [run] = await db.select().from(runs).where(eq(runs.id, runId));
       expect(run.status).toBe('failed');
       expect(run.failure_count).toBe(1);
+    });
+  });
+
+  describe('cancellation', () => {
+    it('does not start the post-run Lighthouse audit when the run was cancelled', async () => {
+      const { visitUrl } = await import('./visitor');
+      vi.mocked(visitUrl).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  url: 'https://example.com/',
+                  finalUrl: 'https://example.com/',
+                  statusCode: 200,
+                  ttfbMs: 100,
+                  loadTimeMs: 100,
+                  consentFound: false,
+                  consentStrategy: null,
+                  error: null,
+                  errorKind: null,
+                  visitedAt: new Date(),
+                  discoveredLinks: [],
+                  extractedCookies: [],
+                } as never),
+              50,
+            ),
+          ),
+      );
+      const { startRunGroup } = await import('./runner');
+      const { cancelRun } = await import('./registry');
+      const { runLighthouseAudit } = await import('../services/lighthouseAudit');
+
+      const { runId, promise } = await startRunGroup(db, {
+        name: 'g',
+        schedule: '* * * * *',
+        urls: ['https://example.com/a', 'https://example.com/b'],
+        options: { ...BASE_OPTIONS, checkLighthouse: true },
+      });
+      expect(cancelRun(runId)).toBe(true);
+      await promise;
+      await new Promise((r) => setTimeout(r, 20));
+
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId));
+      expect(run.status).toBe('cancelled');
+      expect(runLighthouseAudit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('per-group concurrency guard', () => {
+    it('refuses to start a second run for a group that is already running', async () => {
+      const { visitUrl } = await import('./visitor');
+      let release: (() => void) | undefined;
+      vi.mocked(visitUrl).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            release = () =>
+              resolve({
+                url: 'https://example.com/',
+                finalUrl: 'https://example.com/',
+                statusCode: 200,
+                ttfbMs: 1,
+                loadTimeMs: 1,
+                consentFound: false,
+                consentStrategy: null,
+                error: null,
+                errorKind: null,
+                visitedAt: new Date(),
+                discoveredLinks: [],
+                extractedCookies: [],
+              } as never);
+          }),
+      );
+      const { startRunGroup, RunAlreadyActiveError } = await import('./runner');
+      const group = {
+        name: 'busy',
+        schedule: '* * * * *',
+        urls: ['https://example.com/'],
+        options: BASE_OPTIONS,
+      };
+      const first = await startRunGroup(db, group);
+      await expect(startRunGroup(db, group)).rejects.toBeInstanceOf(RunAlreadyActiveError);
+      await expect(startRunGroup(db, group)).rejects.toMatchObject({ runId: first.runId });
+
+      release?.();
+      await first.promise;
+      // Finished runs release the guard
+      const again = await startRunGroup(db, group);
+      release?.();
+      await again.promise;
+      expect(again.runId).not.toBe(first.runId);
     });
   });
 

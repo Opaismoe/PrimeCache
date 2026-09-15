@@ -14,26 +14,48 @@ import { insertVisitSeo } from '../db/queries/visitSeo';
 import { insertVisit } from '../db/queries/visits';
 import { runLighthouseAudit } from '../services/lighthouseAudit';
 import { logger } from '../utils/logger';
-import { cancelRun, registerRun, unregisterRun } from './registry';
+import { cancelRun, registerRun, releaseGroup, reserveGroup, unregisterRun } from './registry';
 import { visitUrl } from './visitor';
+
+/** Thrown when a run is requested for a group that already has one in flight. */
+export class RunAlreadyActiveError extends Error {
+  constructor(
+    public readonly groupName: string,
+    public readonly runId: number,
+  ) {
+    super(`Group "${groupName}" already has an active run (${runId})`);
+    this.name = 'RunAlreadyActiveError';
+  }
+}
+
+async function createRun(db: Db, group: WarmGroup): Promise<number> {
+  const active = reserveGroup(group.name);
+  if (active !== null) throw new RunAlreadyActiveError(group.name, active);
+  try {
+    return await insertRun(db, { groupName: group.name, totalUrls: group.urls.length });
+  } catch (err) {
+    releaseGroup(group.name);
+    throw err;
+  }
+}
 
 export async function startRunGroup(
   db: Db,
   group: WarmGroup,
 ): Promise<{ runId: number; promise: Promise<void> }> {
-  const runId = await insertRun(db, { groupName: group.name, totalUrls: group.urls.length });
+  const runId = await createRun(db, group);
   const promise = _executeRun(runId, db, group);
   return { runId, promise };
 }
 
 export async function runGroup(db: Db, group: WarmGroup): Promise<number> {
-  const runId = await insertRun(db, { groupName: group.name, totalUrls: group.urls.length });
+  const runId = await createRun(db, group);
   await _executeRun(runId, db, group);
   return runId;
 }
 
 async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<void> {
-  const signal = registerRun(runId);
+  const signal = registerRun(runId, group.name);
   const log = logger.child({ runId, group: group.name });
   log.info({ totalUrls: group.urls.length }, 'warm run started');
 
@@ -179,12 +201,15 @@ async function _executeRun(runId: number, db: Db, group: WarmGroup): Promise<voi
   await finalizeRun(db, runId, { status, successCount, failureCount });
   log.info({ status, successCount, failureCount, totalVisited: visited.size }, 'warm run finished');
 
-  // Lighthouse audit — run after warm run if enabled (fire-and-forget per URL)
-  if (group.options.checkLighthouse) {
+  // Lighthouse audit — run after warm run if enabled (fire-and-forget per URL).
+  // Skipped entirely when the run was cancelled: the operator asked us to stop
+  // hitting the site, and the audit is not cancellable once handed to Browserless.
+  if (group.options.checkLighthouse && !signal.aborted) {
     const uniqueUrls = [...visited];
     // Run in series to avoid 429 from Browserless rate limiting
     (async () => {
       for (const visitedUrl of uniqueUrls) {
+        if (signal.aborted) break;
         try {
           const result = await runLighthouseAudit(
             visitedUrl,
