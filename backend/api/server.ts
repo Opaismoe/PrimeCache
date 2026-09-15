@@ -42,10 +42,17 @@ function parseId(raw: string): number | null {
 
 interface ServerDeps {
   db: Db;
+  /** Config as written on disk — `secret:name` references intact. Safe to expose. */
   getConfig: () => Config;
+  /** Config with secrets decrypted — only for running visits. Never serialise this. */
+  getResolvedConfig?: () => Config;
 }
 
-export async function buildServer({ db, getConfig }: ServerDeps): Promise<FastifyInstance> {
+export async function buildServer({
+  db,
+  getConfig,
+  getResolvedConfig = getConfig,
+}: ServerDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
 
   // ── Cookie support ────────────────────────────────────────────────────────
@@ -234,7 +241,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
         },
         async (request, reply) => {
           const { group: groupName } = request.body;
-          const group = getConfig().groups.find((g) => g.name === groupName);
+          const group = getResolvedConfig().groups.find((g) => g.name === groupName);
           if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
           const runId = await runGroup(db, group);
           return { runId };
@@ -249,7 +256,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
         },
         async (request, reply) => {
           const { group: groupName } = request.body;
-          const group = getConfig().groups.find((g) => g.name === groupName);
+          const group = getResolvedConfig().groups.find((g) => g.name === groupName);
           if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
           const { runId, promise } = await startRunGroup(db, group);
           promise
@@ -269,7 +276,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
         },
         async (request, reply) => {
           const { group: groupName } = request.body;
-          const groups = getConfig().groups;
+          const groups = getResolvedConfig().groups;
           const targets = groupName === 'all' ? groups : groups.filter((g) => g.name === groupName);
 
           if (!targets.length)
@@ -350,7 +357,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
       protected_.register(putConfigRoute(db));
 
       // GET /groups/:name/overview|performance|uptime
-      protected_.register(groupRoutes(db, getConfig));
+      protected_.register(groupRoutes(db, getResolvedConfig));
 
       // Secrets CRUD
       protected_.register(secretsRoutes(db));
@@ -362,7 +369,7 @@ export async function buildServer({ db, getConfig }: ServerDeps): Promise<Fastif
   );
 
   // Inbound webhook trigger (no auth — token in URL is the credential)
-  app.register(webhookTriggerRoute(db, getConfig));
+  app.register(webhookTriggerRoute(db, getResolvedConfig));
 
   // SPA catch-all: serve index.html for any unmatched non-API path
   app.setNotFoundHandler((_request, reply: FastifyReply) => {

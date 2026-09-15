@@ -59,4 +59,41 @@ describe('boot sequence', () => {
     });
     expect(order.indexOf('migrate')).toBeLessThan(order.indexOf('listen'));
   });
+
+  it('serves the raw config (secret: references intact) to the API but the resolved config to the scheduler', async () => {
+    vi.resetModules();
+    mockRegisterJobs.mockClear();
+    const rawConfig = {
+      groups: [
+        {
+          name: 'g',
+          schedule: '* * * * *',
+          urls: ['https://example.com/'],
+          options: { basicAuth: { username: 'u', password: 'secret:pw' } },
+        },
+      ],
+    };
+    const { loadConfig } = await import('./config/urls');
+    vi.mocked(loadConfig).mockReturnValue(rawConfig as never);
+    const { resolveConfigSecrets } = await import('./config/secrets');
+    vi.mocked(resolveConfigSecrets).mockImplementation(async (cfg) => {
+      const clone = structuredClone(cfg);
+      clone.groups[0].options.basicAuth = { username: 'u', password: 'PLAINTEXT' };
+      return clone;
+    });
+    const { buildServer } = await import('./api/server');
+
+    await import('./index');
+    await vi.waitFor(() => expect(mockRegisterJobs).toHaveBeenCalled());
+
+    const serverDeps = vi.mocked(buildServer).mock.calls.at(-1)?.[0] as never as {
+      getConfig: () => typeof rawConfig;
+      getResolvedConfig: () => typeof rawConfig;
+    };
+    expect(serverDeps.getConfig().groups[0].options.basicAuth?.password).toBe('secret:pw');
+    expect(serverDeps.getResolvedConfig().groups[0].options.basicAuth?.password).toBe('PLAINTEXT');
+    expect(mockRegisterJobs.mock.calls.at(-1)?.[0][0].options.basicAuth?.password).toBe(
+      'PLAINTEXT',
+    );
+  });
 });

@@ -58,25 +58,34 @@ async function main() {
   `);
   logger.info('critical tables verified');
 
-  // 2. Load and validate config, then resolve secret: references
-  let config = await resolveConfigSecrets(loadConfig(env.CONFIG_PATH), db);
-  logger.info({ groups: config.groups.length }, 'config loaded');
+  // 2. Load and validate config, then resolve secret: references.
+  // rawConfig keeps `secret:name` references and is what the API exposes;
+  // resolvedConfig holds decrypted values and is only handed to the warmer.
+  let rawConfig = loadConfig(env.CONFIG_PATH);
+  let resolvedConfig = await resolveConfigSecrets(rawConfig, db);
+  logger.info({ groups: rawConfig.groups.length }, 'config loaded');
 
   // 3. Start API server
-  const server = await buildServer({ db, getConfig: () => config });
+  const server = await buildServer({
+    db,
+    getConfig: () => rawConfig,
+    getResolvedConfig: () => resolvedConfig,
+  });
   await server.listen({ port: env.PORT, host: '0.0.0.0' });
   logger.info({ port: env.PORT }, 'API server listening');
 
   // 4. Register cron jobs
-  registerJobs(config.groups, db);
+  registerJobs(resolvedConfig.groups, db);
   registerSessionSweep(db);
 
   // 5. Watch config for live changes
   const stopWatcher = watchConfig(env.CONFIG_PATH, async (newConfig) => {
     try {
-      config = await resolveConfigSecrets(newConfig, db);
+      const nextResolved = await resolveConfigSecrets(newConfig, db);
+      rawConfig = newConfig;
+      resolvedConfig = nextResolved;
       logger.info('config reloaded — re-registering cron jobs');
-      registerJobs(config.groups, db);
+      registerJobs(resolvedConfig.groups, db);
     } catch (err) {
       logger.error({ err }, 'config reload failed — keeping previous config');
     }

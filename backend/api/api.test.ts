@@ -296,6 +296,40 @@ describe('GET /stats', () => {
 // ── /config ───────────────────────────────────────────────────────────────────
 
 describe('GET /config', () => {
+  it('returns the raw config, never the resolved one with decrypted secrets', async () => {
+    const raw = {
+      groups: [
+        {
+          ...mockConfig.groups[0],
+          options: { basicAuth: { username: 'u', password: 'secret:pw' } },
+        },
+      ],
+    };
+    const resolved = {
+      groups: [
+        {
+          ...mockConfig.groups[0],
+          options: { basicAuth: { username: 'u', password: 'PLAINTEXT' } },
+        },
+      ],
+    };
+    const { buildServer } = await import('./server');
+    const srv = await buildServer({
+      db: {} as unknown as Db,
+      getConfig: () => raw as never,
+      getResolvedConfig: () => resolved as never,
+    });
+    const res = await srv.inject({
+      method: 'GET',
+      url: '/api/config',
+      headers: { 'x-api-key': 'supersecretapikey1234' },
+    });
+    await srv.close();
+    expect(res.statusCode).toBe(200);
+    expect(res.body).not.toContain('PLAINTEXT');
+    expect(res.json().groups[0].options.basicAuth.password).toBe('secret:pw');
+  });
+
   it('returns current URL groups', async () => {
     const res = await app.inject({
       method: 'GET',
