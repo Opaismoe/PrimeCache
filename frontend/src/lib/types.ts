@@ -88,9 +88,18 @@ export interface Config {
   groups: Group[];
 }
 
+export interface ConsentStrategyStat {
+  group: string;
+  /** Strategy name, or 'none' when no banner was dismissed */
+  strategy: string;
+  last7d: number;
+  prior7d: number;
+}
+
 export interface Stats {
   statusCounts: Record<string, number>;
   visitsByDay: Array<{ date: string; group: string; count: number }>;
+  consentStrategies: ConsentStrategyStat[];
 }
 
 // ── Group detail page types ───────────────────────────────────────────────────
@@ -324,6 +333,10 @@ export interface WebhookToken {
   active: boolean;
   created_at: string;
   last_used_at: string | null;
+  /** Runs this token has started */
+  fire_count: number;
+  /** Of those, runs that finished with status 'completed' */
+  success_count: number;
 }
 
 /** Returned only on creation — includes the raw token value */

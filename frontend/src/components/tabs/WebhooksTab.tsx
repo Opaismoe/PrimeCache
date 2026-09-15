@@ -184,6 +184,19 @@ export function WebhooksTab({ groupName }: { groupName: string }) {
         <span className="text-sm text-muted-foreground">{formatDate(info.getValue())}</span>
       ),
     }),
+    columnHelper.accessor('fire_count', {
+      header: 'Runs',
+      cell: (info) => {
+        const t = info.row.original;
+        if (t.fire_count === 0) return <span className="text-sm text-muted-foreground">—</span>;
+        const pct = Math.round((t.success_count / t.fire_count) * 100);
+        return (
+          <span className="text-sm text-muted-foreground" title={`${t.success_count} completed`}>
+            {t.fire_count} · {pct}% ok
+          </span>
+        );
+      },
+    }),
     columnHelper.accessor('last_used_at', {
       header: 'Last used',
       cell: (info) => (

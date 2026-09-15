@@ -450,9 +450,10 @@ function WebhooksSection({ groups }: { groups: Group[] }) {
                         {token.description || `Token #${token.id}`}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {token.last_used_at
-                          ? `last used ${formatDate(token.last_used_at)}`
+                        {token.fire_count > 0
+                          ? `${token.fire_count} runs · ${Math.round((token.success_count / token.fire_count) * 100)}% ok`
                           : 'never used'}
+                        {token.last_used_at ? ` · last ${formatDate(token.last_used_at)}` : ''}
                       </span>
                       <Button
                         size="sm"
