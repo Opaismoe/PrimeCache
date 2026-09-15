@@ -145,3 +145,84 @@ describe('Rate limiting — server integration', () => {
     expect(res.json().trigger.used).toBeGreaterThan(0);
   });
 });
+
+describe('Rate limiting — bucket keying', () => {
+  let app: FastifyInstance;
+
+  afterEach(async () => {
+    await app?.close();
+  });
+
+  async function build(trustProxy: 'true' | 'false') {
+    vi.resetModules();
+    vi.clearAllMocks();
+    vi.stubEnv('TRUST_PROXY', trustProxy);
+    const { buildServer } = await import('./server');
+    app = await buildServer({ db: {} as unknown as Db, getConfig: () => mockConfig });
+    await app.ready();
+  }
+
+  it('login attempts share one bucket even when each sends a different X-API-Key header', async () => {
+    await build('false');
+    for (let i = 0; i < 10; i++) {
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        headers: { 'x-api-key': `random-${i}`, 'content-type': 'application/json' },
+        payload: { username: 'admin', password: 'wrong' },
+      });
+    }
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'x-api-key': 'random-final', 'content-type': 'application/json' },
+      payload: { username: 'admin', password: 'wrong' },
+    });
+    expect(res.statusCode).toBe(429);
+  });
+
+  it('ignores X-Forwarded-For when TRUST_PROXY is false', async () => {
+    await build('false');
+    for (let i = 0; i < 10; i++) {
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        headers: { 'x-forwarded-for': `10.0.0.${i}`, 'content-type': 'application/json' },
+        payload: { username: 'admin', password: 'wrong' },
+      });
+    }
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'x-forwarded-for': '10.0.0.99', 'content-type': 'application/json' },
+      payload: { username: 'admin', password: 'wrong' },
+    });
+    expect(res.statusCode).toBe(429);
+  });
+
+  it('buckets by X-Forwarded-For client IP when TRUST_PROXY is true', async () => {
+    await build('true');
+    for (let i = 0; i < 10; i++) {
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        headers: { 'x-forwarded-for': '10.0.0.1', 'content-type': 'application/json' },
+        payload: { username: 'admin', password: 'wrong' },
+      });
+    }
+    const blocked = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'x-forwarded-for': '10.0.0.1', 'content-type': 'application/json' },
+      payload: { username: 'admin', password: 'wrong' },
+    });
+    expect(blocked.statusCode).toBe(429);
+    const other = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'x-forwarded-for': '10.0.0.2', 'content-type': 'application/json' },
+      payload: { username: 'admin', password: 'wrong' },
+    });
+    expect(other.statusCode).toBe(401);
+  });
+});

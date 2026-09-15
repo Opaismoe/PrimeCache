@@ -53,7 +53,7 @@ export async function buildServer({
   getConfig,
   getResolvedConfig = getConfig,
 }: ServerDeps): Promise<FastifyInstance> {
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, trustProxy: env.TRUST_PROXY });
 
   // ── Cookie support ────────────────────────────────────────────────────────
   await app.register(cookie);
@@ -61,10 +61,9 @@ export async function buildServer({
   // ── Rate limiting ─────────────────────────────────────────────────────────
   await app.register(rateLimit, {
     global: false,
-    keyGenerator: (request) => {
-      const key = request.headers['x-api-key'];
-      return typeof key === 'string' ? key : (request.ip ?? 'unknown');
-    },
+    // Always bucket by client IP. Keying on the X-API-Key header would let an
+    // unauthenticated caller pick a fresh bucket per request (login brute force).
+    keyGenerator: (request) => request.ip ?? 'unknown',
     errorResponseBuilder: (_request, context) => {
       const retryAfter = Math.ceil(context.ttl / 1000);
       const err = new Error(`Rate limit exceeded. Try again in ${retryAfter}s.`) as Error & {
