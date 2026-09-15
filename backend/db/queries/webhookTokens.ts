@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../client';
 import { webhook_tokens } from '../schema';
@@ -6,6 +6,11 @@ import { webhook_tokens } from '../schema';
 export type WebhookTokenRow = typeof webhook_tokens.$inferSelect;
 
 export type WebhookTokenPublic = Omit<WebhookTokenRow, 'token'>;
+
+/** Tokens are stored as sha256(hex) so a DB read never yields a usable credential. */
+export function hashWebhookToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 export async function listWebhookTokens(db: Db, groupName: string): Promise<WebhookTokenPublic[]> {
   return db
@@ -30,11 +35,12 @@ export async function createWebhookToken(
     .insert(webhook_tokens)
     .values({
       group_name: params.groupName,
-      token,
+      token: hashWebhookToken(token),
       description: params.description ?? null,
     })
     .returning();
-  return row;
+  // Return the plaintext exactly once — it is never recoverable from the DB.
+  return { ...row, token };
 }
 
 export async function deleteWebhookToken(db: Db, id: number): Promise<boolean> {
@@ -58,7 +64,7 @@ export async function findWebhookToken(db: Db, token: string): Promise<WebhookTo
   const [row] = await db
     .select()
     .from(webhook_tokens)
-    .where(eq(webhook_tokens.token, token))
+    .where(eq(webhook_tokens.token, hashWebhookToken(token)))
     .limit(1);
   return row ?? null;
 }

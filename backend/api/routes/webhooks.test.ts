@@ -321,3 +321,14 @@ describe('POST /webhook/trigger/:token', () => {
     expect(res.headers['access-control-allow-origin']).toBe('*');
   });
 });
+
+describe('POST /webhook/trigger/:token — rate limiting', () => {
+  it('returns 429 after 30 requests per minute from one IP', async () => {
+    for (let i = 0; i < 30; i++) {
+      const r = await app.inject({ method: 'POST', url: '/webhook/trigger/unknown' });
+      expect(r.statusCode).toBe(404);
+    }
+    const res = await app.inject({ method: 'POST', url: '/webhook/trigger/unknown' });
+    expect(res.statusCode).toBe(429);
+  });
+});

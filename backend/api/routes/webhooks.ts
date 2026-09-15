@@ -98,6 +98,9 @@ export function webhookTriggerRoute(db: Db, getConfig: () => Config): FastifyPlu
   return async (app) => {
     app.post<{ Params: { token: string } }>(
       '/webhook/trigger/:token',
+      // Public route: limit per client IP so a leaked token (or a guessing
+      // client) cannot spawn unbounded browser work.
+      { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } },
       async (request: FastifyRequest<{ Params: { token: string } }>, reply: FastifyReply) => {
         // Called cross-origin from the CMS (browser JS on think.ing.com),
         // with the token itself as the credential — not a cookie or an
