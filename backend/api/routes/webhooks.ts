@@ -127,7 +127,10 @@ export function webhookTriggerRoute(db: Db, getConfig: () => Config): FastifyPlu
 
         let started: Awaited<ReturnType<typeof startRunGroup>>;
         try {
-          started = await startRunGroup(db, group);
+          started = await startRunGroup(db, group, {
+            triggeredBy: 'webhook',
+            webhookTokenId: row.id,
+          });
         } catch (err) {
           // Same group already warming — tell the caller which run, don't stack another
           if (err instanceof RunAlreadyActiveError)

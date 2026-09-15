@@ -243,7 +243,7 @@ export async function buildServer({
           const group = getResolvedConfig().groups.find((g) => g.name === groupName);
           if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
           try {
-            const runId = await runGroup(db, group);
+            const runId = await runGroup(db, group, { triggeredBy: 'api' });
             return { runId };
           } catch (err) {
             if (err instanceof RunAlreadyActiveError)
@@ -265,7 +265,7 @@ export async function buildServer({
           if (!group) return reply.code(400).send({ error: `Unknown group "${groupName}"` });
           let started: Awaited<ReturnType<typeof startRunGroup>>;
           try {
-            started = await startRunGroup(db, group);
+            started = await startRunGroup(db, group, { triggeredBy: 'api' });
           } catch (err) {
             if (err instanceof RunAlreadyActiveError)
               return reply.code(409).send({ error: err.message, runId: err.runId });
@@ -300,7 +300,7 @@ export async function buildServer({
           const alreadyRunning: Array<{ group: string; runId: number }> = [];
           for (const group of targets) {
             try {
-              const { runId, promise } = await startRunGroup(db, group);
+              const { runId, promise } = await startRunGroup(db, group, { triggeredBy: 'api' });
               runIds.push(runId);
               promise
                 .then(() => logger.info({ group: group.name, runId }, 'webhook run complete'))

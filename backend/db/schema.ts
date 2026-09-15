@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -11,34 +12,52 @@ import {
 } from 'drizzle-orm/pg-core';
 import type { AccessibilityViolation } from '../warmer/visitor';
 
-export const runs = pgTable('runs', {
-  id: serial('id').primaryKey(),
-  group_name: varchar('group_name', { length: 255 }).notNull(),
-  started_at: timestamp('started_at').notNull(),
-  ended_at: timestamp('ended_at'),
-  status: varchar('status', { length: 255 }).notNull(),
-  total_urls: integer('total_urls'),
-  success_count: integer('success_count'),
-  failure_count: integer('failure_count'),
-});
+export type RunTrigger = 'schedule' | 'api' | 'webhook' | 'manual' | 'unknown';
 
-export const visits = pgTable('visits', {
-  id: serial('id').primaryKey(),
-  run_id: integer('run_id')
-    .notNull()
-    .references(() => runs.id, { onDelete: 'cascade' }),
-  url: varchar('url', { length: 2048 }).notNull(),
-  status_code: integer('status_code'),
-  final_url: varchar('final_url', { length: 2048 }),
-  ttfb_ms: integer('ttfb_ms'),
-  load_time_ms: integer('load_time_ms').notNull(),
-  consent_found: boolean('consent_found').notNull().default(false),
-  consent_strategy: varchar('consent_strategy', { length: 255 }),
-  error: text('error'),
-  visited_at: timestamp('visited_at').notNull(),
-  redirect_count: integer('redirect_count').notNull().default(0),
-  retry_count: integer('retry_count').notNull().default(0),
-});
+export const runs = pgTable(
+  'runs',
+  {
+    id: serial('id').primaryKey(),
+    group_name: varchar('group_name', { length: 255 }).notNull(),
+    started_at: timestamp('started_at').notNull(),
+    ended_at: timestamp('ended_at'),
+    status: varchar('status', { length: 255 }).notNull(),
+    total_urls: integer('total_urls'),
+    success_count: integer('success_count'),
+    failure_count: integer('failure_count'),
+    triggered_by: varchar('triggered_by', { length: 50 })
+      .notNull()
+      .default('unknown')
+      .$type<RunTrigger>(),
+    webhook_token_id: integer('webhook_token_id'),
+  },
+  (t) => [
+    index('runs_group_started_idx').on(t.group_name, t.started_at.desc()),
+    index('runs_webhook_token_id_idx').on(t.webhook_token_id),
+  ],
+);
+
+export const visits = pgTable(
+  'visits',
+  {
+    id: serial('id').primaryKey(),
+    run_id: integer('run_id')
+      .notNull()
+      .references(() => runs.id, { onDelete: 'cascade' }),
+    url: varchar('url', { length: 2048 }).notNull(),
+    status_code: integer('status_code'),
+    final_url: varchar('final_url', { length: 2048 }),
+    ttfb_ms: integer('ttfb_ms'),
+    load_time_ms: integer('load_time_ms').notNull(),
+    consent_found: boolean('consent_found').notNull().default(false),
+    consent_strategy: varchar('consent_strategy', { length: 255 }),
+    error: text('error'),
+    visited_at: timestamp('visited_at').notNull(),
+    redirect_count: integer('redirect_count').notNull().default(0),
+    retry_count: integer('retry_count').notNull().default(0),
+  },
+  (t) => [index('visits_run_id_idx').on(t.run_id), index('visits_url_idx').on(t.url)],
+);
 
 export const visit_headers = pgTable('visit_headers', {
   id: serial('id').primaryKey(),

@@ -12,6 +12,7 @@ import { insertVisitHeaders } from '../db/queries/visitHeaders';
 import { insertVisitScreenshot } from '../db/queries/visitScreenshot';
 import { insertVisitSeo } from '../db/queries/visitSeo';
 import { insertVisit } from '../db/queries/visits';
+import type { RunTrigger } from '../db/schema';
 import { runLighthouseAudit } from '../services/lighthouseAudit';
 import { logger } from '../utils/logger';
 import { cancelRun, registerRun, releaseGroup, reserveGroup, unregisterRun } from './registry';
@@ -28,11 +29,23 @@ export class RunAlreadyActiveError extends Error {
   }
 }
 
-async function createRun(db: Db, group: WarmGroup): Promise<number> {
+export interface RunTriggerInfo {
+  triggeredBy: RunTrigger;
+  webhookTokenId?: number;
+}
+
+const MANUAL: RunTriggerInfo = { triggeredBy: 'manual' };
+
+async function createRun(db: Db, group: WarmGroup, trigger: RunTriggerInfo): Promise<number> {
   const active = reserveGroup(group.name);
   if (active !== null) throw new RunAlreadyActiveError(group.name, active);
   try {
-    return await insertRun(db, { groupName: group.name, totalUrls: group.urls.length });
+    return await insertRun(db, {
+      groupName: group.name,
+      totalUrls: group.urls.length,
+      triggeredBy: trigger.triggeredBy,
+      webhookTokenId: trigger.webhookTokenId ?? null,
+    });
   } catch (err) {
     releaseGroup(group.name);
     throw err;
@@ -42,14 +55,19 @@ async function createRun(db: Db, group: WarmGroup): Promise<number> {
 export async function startRunGroup(
   db: Db,
   group: WarmGroup,
+  trigger: RunTriggerInfo = MANUAL,
 ): Promise<{ runId: number; promise: Promise<void> }> {
-  const runId = await createRun(db, group);
+  const runId = await createRun(db, group, trigger);
   const promise = _executeRun(runId, db, group);
   return { runId, promise };
 }
 
-export async function runGroup(db: Db, group: WarmGroup): Promise<number> {
-  const runId = await createRun(db, group);
+export async function runGroup(
+  db: Db,
+  group: WarmGroup,
+  trigger: RunTriggerInfo = MANUAL,
+): Promise<number> {
+  const runId = await createRun(db, group, trigger);
   await _executeRun(runId, db, group);
   return runId;
 }

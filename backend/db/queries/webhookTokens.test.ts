@@ -59,4 +59,28 @@ describe('webhook tokens at rest', () => {
     const [row] = await listWebhookTokens(db, 'homepage');
     expect(row).not.toHaveProperty('token');
   });
+
+  it('listWebhookTokens reports how many runs each token fired and how many completed', async () => {
+    const { insertRun, finalizeRun } = await import('./runs');
+    const t = await createWebhookToken(db, { groupName: 'homepage' });
+    const ok = await insertRun(db, {
+      groupName: 'homepage',
+      totalUrls: 1,
+      triggeredBy: 'webhook',
+      webhookTokenId: t.id,
+    });
+    await finalizeRun(db, ok, { status: 'completed', successCount: 1, failureCount: 0 });
+    const bad = await insertRun(db, {
+      groupName: 'homepage',
+      totalUrls: 1,
+      triggeredBy: 'webhook',
+      webhookTokenId: t.id,
+    });
+    await finalizeRun(db, bad, { status: 'failed', successCount: 0, failureCount: 1 });
+    await insertRun(db, { groupName: 'homepage', totalUrls: 1, triggeredBy: 'schedule' });
+
+    const [row] = await listWebhookTokens(db, 'homepage');
+    expect(row.fire_count).toBe(2);
+    expect(row.success_count).toBe(1);
+  });
 });

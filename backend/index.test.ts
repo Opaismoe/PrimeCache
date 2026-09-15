@@ -134,4 +134,14 @@ describe('boot sequence', () => {
     gates.B();
     await vi.waitFor(() => expect(serverDeps.getConfig().groups[0].name).toBe('B'));
   });
+
+  it('does not run ad-hoc DDL outside the migration runner', async () => {
+    vi.resetModules();
+    mockRegisterJobs.mockClear();
+    const { db } = await import('./db/client');
+    vi.mocked(db.execute).mockClear();
+    await import('./index');
+    await vi.waitFor(() => expect(mockRegisterJobs).toHaveBeenCalled());
+    expect(db.execute).not.toHaveBeenCalled();
+  });
 });

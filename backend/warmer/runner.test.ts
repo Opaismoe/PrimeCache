@@ -525,6 +525,39 @@ describe('runGroup', () => {
     });
   });
 
+  describe('trigger provenance', () => {
+    it('records what triggered the run on the run row', async () => {
+      const { startRunGroup } = await import('./runner');
+      const group = {
+        name: 'g',
+        schedule: '* * * * *',
+        urls: ['https://example.com/'],
+        options: BASE_OPTIONS,
+      };
+      const { runId, promise } = await startRunGroup(db, group, {
+        triggeredBy: 'webhook',
+        webhookTokenId: 5,
+      });
+      await promise;
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId));
+      expect(run.triggered_by).toBe('webhook');
+      expect(run.webhook_token_id).toBe(5);
+    });
+
+    it('defaults to "manual" when no trigger is given', async () => {
+      const { runGroup } = await import('./runner');
+      const runId = await runGroup(db, {
+        name: 'g',
+        schedule: '* * * * *',
+        urls: ['https://example.com/'],
+        options: BASE_OPTIONS,
+      });
+      const [run] = await db.select().from(runs).where(eq(runs.id, runId));
+      expect(run.triggered_by).toBe('manual');
+      expect(run.webhook_token_id).toBeNull();
+    });
+  });
+
   describe('cancellation', () => {
     it('does not start the post-run Lighthouse audit when the run was cancelled', async () => {
       const { visitUrl } = await import('./visitor');

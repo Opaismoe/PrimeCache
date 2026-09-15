@@ -1,11 +1,16 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Db } from '../client';
-import { webhook_tokens } from '../schema';
+import { runs, webhook_tokens } from '../schema';
 
 export type WebhookTokenRow = typeof webhook_tokens.$inferSelect;
 
-export type WebhookTokenPublic = Omit<WebhookTokenRow, 'token'>;
+export type WebhookTokenPublic = Omit<WebhookTokenRow, 'token'> & {
+  /** Runs this token has started. */
+  fire_count: number;
+  /** Of those, runs that finished with status 'completed'. */
+  success_count: number;
+};
 
 /** Tokens are stored as sha256(hex) so a DB read never yields a usable credential. */
 export function hashWebhookToken(token: string): string {
@@ -13,7 +18,7 @@ export function hashWebhookToken(token: string): string {
 }
 
 export async function listWebhookTokens(db: Db, groupName: string): Promise<WebhookTokenPublic[]> {
-  return db
+  const rows = await db
     .select({
       id: webhook_tokens.id,
       group_name: webhook_tokens.group_name,
@@ -21,9 +26,19 @@ export async function listWebhookTokens(db: Db, groupName: string): Promise<Webh
       active: webhook_tokens.active,
       created_at: webhook_tokens.created_at,
       last_used_at: webhook_tokens.last_used_at,
+      fire_count: sql<number>`count(${runs.id})`,
+      success_count: sql<number>`count(${runs.id}) filter (where ${runs.status} = 'completed')`,
     })
     .from(webhook_tokens)
-    .where(eq(webhook_tokens.group_name, groupName));
+    .leftJoin(runs, eq(runs.webhook_token_id, webhook_tokens.id))
+    .where(eq(webhook_tokens.group_name, groupName))
+    .groupBy(webhook_tokens.id)
+    .orderBy(webhook_tokens.id);
+  return rows.map((r) => ({
+    ...r,
+    fire_count: Number(r.fire_count),
+    success_count: Number(r.success_count),
+  }));
 }
 
 export async function createWebhookToken(

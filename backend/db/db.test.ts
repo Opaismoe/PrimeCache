@@ -273,3 +273,20 @@ describe('visits queries', () => {
     expect(v[0].url).toBe('https://single.com');
   });
 });
+
+describe('schema indexes', () => {
+  beforeEach(async () => {
+    db = await createTestDb();
+  });
+
+  it('has the indexes the per-group aggregate queries rely on', async () => {
+    const { sql } = await import('drizzle-orm');
+    const { sqlExecuteRows } = await import('./sqlExecuteRows');
+    const rows = sqlExecuteRows(
+      await db.execute(sql`SELECT indexname FROM pg_indexes WHERE schemaname = 'public'`),
+    ).map((r) => r.indexname as string);
+    expect(rows).toEqual(
+      expect.arrayContaining(['visits_run_id_idx', 'visits_url_idx', 'runs_group_started_idx']),
+    );
+  });
+});

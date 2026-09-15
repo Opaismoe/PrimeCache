@@ -1,12 +1,17 @@
 import { desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../client';
-import { runs } from '../schema';
+import { type RunTrigger, runs } from '../schema';
 
 export type RunRow = typeof runs.$inferSelect;
 
 export async function insertRun(
   db: Db,
-  params: { groupName: string; totalUrls: number },
+  params: {
+    groupName: string;
+    totalUrls: number;
+    triggeredBy?: RunTrigger;
+    webhookTokenId?: number | null;
+  },
 ): Promise<number> {
   const [row] = await db
     .insert(runs)
@@ -15,6 +20,8 @@ export async function insertRun(
       total_urls: params.totalUrls,
       status: 'running',
       started_at: new Date(),
+      triggered_by: params.triggeredBy ?? 'unknown',
+      webhook_token_id: params.webhookTokenId ?? null,
     })
     .returning({ id: runs.id });
   return row.id;

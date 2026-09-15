@@ -18,7 +18,7 @@ export function registerJobs(groups: WarmGroup[], db: Db): void {
       group.schedule,
       () => {
         logger.info({ group: group.name }, 'cron triggered warm run');
-        runGroup(db, group).catch((err) =>
+        runGroup(db, group, { triggeredBy: 'schedule' }).catch((err) =>
           logger.error({ group: group.name, err }, 'scheduled run failed'),
         );
       },

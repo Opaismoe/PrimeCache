@@ -294,6 +294,11 @@ describe('POST /webhook/trigger/:token', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().queued).toBe(true);
     expect(typeof res.json().runId).toBe('number');
+    const { startRunGroup } = await import('../../warmer/runner');
+    expect(startRunGroup).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+      triggeredBy: 'webhook',
+      webhookTokenId: mockToken.id,
+    });
   });
 
   it('returns the active runId with queued:false when the group is already running', async () => {

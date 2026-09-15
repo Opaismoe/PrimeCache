@@ -71,6 +71,8 @@ describe('scheduler', () => {
     // Extract and invoke the cron callback
     const callback = vi.mocked(cron.schedule).mock.calls[0][1] as () => void;
     await callback();
-    expect(runGroup).toHaveBeenCalledWith(db, expect.objectContaining({ name: 'homepage' }));
+    expect(runGroup).toHaveBeenCalledWith(db, expect.objectContaining({ name: 'homepage' }), {
+      triggeredBy: 'schedule',
+    });
   });
 });
