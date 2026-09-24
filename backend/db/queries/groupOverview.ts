@@ -1,4 +1,4 @@
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { Db } from '../client';
 import { runs, visits } from '../schema';
 import { sqlExecuteRows } from '../sqlExecuteRows';
@@ -29,18 +29,38 @@ export interface GroupOverview {
     total_urls: number | null;
     success_count: number | null;
     failure_count: number | null;
+    avg_load_time_ms: number | null;
   }[];
   stats: GroupOverviewStats;
   series: GroupRunSeries[];
 }
 
 export async function getGroupOverview(db: Db, groupName: string): Promise<GroupOverview> {
-  const recentRuns = await db
+  const recentRunRows = await db
     .select()
     .from(runs)
     .where(eq(runs.group_name, groupName))
     .orderBy(desc(runs.started_at))
     .limit(10);
+
+  // Same average the run detail page shows ("Avg load"): mean over all visits of the run
+  const loadRows = recentRunRows.length
+    ? await db
+        .select({
+          runId: visits.run_id,
+          avgLoadTimeMs: sql<number>`ROUND(AVG(${visits.load_time_ms}))::int`,
+        })
+        .from(visits)
+        .where(
+          inArray(
+            visits.run_id,
+            recentRunRows.map((r) => r.id),
+          ),
+        )
+        .groupBy(visits.run_id)
+    : [];
+  const loadByRunId = new Map(loadRows.map((r) => [r.runId, r.avgLoadTimeMs]));
+  const recentRuns = recentRunRows;
 
   // Overall stats: aggregate over visits joined to this group's runs
   const [visitStats] = await db
@@ -125,6 +145,7 @@ export async function getGroupOverview(db: Db, groupName: string): Promise<Group
       ...r,
       started_at: r.started_at.toISOString(),
       ended_at: r.ended_at?.toISOString() ?? null,
+      avg_load_time_ms: loadByRunId.get(r.id) ?? null,
     })),
     stats: {
       totalRuns: runStats?.totalRuns ?? 0,

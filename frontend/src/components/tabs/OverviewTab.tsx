@@ -2,12 +2,11 @@ import { useNavigate } from '@tanstack/react-router';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { DataTable } from '@/components/ui/data-table';
-import { formatDate, formatDuration, formatMs } from '@/lib/formatters';
+import { formatDate, formatMs } from '@/lib/formatters';
 import type {
   GroupOverview,
   GroupPerformance,
   GroupUptime,
-  Run,
   UrlPerformance,
   UrlUptime,
 } from '@/lib/types';
@@ -165,7 +164,7 @@ const uptimeColumns = [
   }),
 ];
 
-const runColumnHelper = createColumnHelper<Run>();
+const runColumnHelper = createColumnHelper<GroupOverview['recentRuns'][number]>();
 const runColumns = [
   runColumnHelper.accessor('id', {
     header: 'Run ID',
@@ -175,11 +174,9 @@ const runColumns = [
     header: 'Started',
     cell: (info) => formatDate(info.getValue()),
   }),
-  runColumnHelper.display({
-    id: 'duration',
-    header: 'Duration',
-    enableSorting: false,
-    cell: (info) => formatDuration(info.row.original.started_at, info.row.original.ended_at),
+  runColumnHelper.accessor('avg_load_time_ms', {
+    header: 'Avg load',
+    cell: (info) => formatMs(info.getValue()),
   }),
   runColumnHelper.accessor('status', {
     header: 'Status',

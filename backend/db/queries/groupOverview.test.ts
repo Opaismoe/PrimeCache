@@ -209,3 +209,53 @@ describe('getGroupOverview — cancelled run exclusion', () => {
     expect(result.recentRuns).toHaveLength(2); // cancelled still visible in history
   });
 });
+
+describe('getGroupOverview — per-run avg load time', () => {
+  it('exposes avg_load_time_ms per recent run, matching the run detail average', async () => {
+    const db = await createTestDb();
+    const { getGroupOverview } = await import('./groupOverview');
+
+    const [run] = await db
+      .insert(runs)
+      .values({
+        group_name: 'overview-load',
+        started_at: new Date('2025-01-01T10:00:00Z'),
+        ended_at: new Date('2025-01-01T10:00:09Z'),
+        status: 'completed',
+        total_urls: 2,
+        success_count: 2,
+        failure_count: 0,
+      })
+      .returning();
+    await db.insert(visits).values([
+      {
+        run_id: run.id,
+        url: 'https://l.com/a',
+        load_time_ms: 300,
+        visited_at: new Date(),
+        error: null,
+      },
+      {
+        run_id: run.id,
+        url: 'https://l.com/b',
+        load_time_ms: 500,
+        visited_at: new Date(),
+        error: null,
+      },
+    ]);
+    const [empty] = await db
+      .insert(runs)
+      .values({
+        group_name: 'overview-load',
+        started_at: new Date('2025-01-02T10:00:00Z'),
+        status: 'running',
+        total_urls: 1,
+      })
+      .returning();
+
+    const result = await getGroupOverview(db, 'overview-load');
+    const byId = new Map(result.recentRuns.map((r) => [r.id, r]));
+    expect(byId.get(run.id)?.avg_load_time_ms).toBe(400);
+    expect(byId.get(empty.id)?.avg_load_time_ms).toBeNull();
+  });
+});

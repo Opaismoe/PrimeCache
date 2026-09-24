@@ -121,7 +121,7 @@ export interface GroupRunSeries {
 }
 
 export interface GroupOverview {
-  recentRuns: Run[];
+  recentRuns: (Run & { avg_load_time_ms: number | null })[];
   stats: GroupOverviewStats;
   series: GroupRunSeries[];
 }
