@@ -1,8 +1,44 @@
 import { desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../client';
-import { type RunTrigger, runs } from '../schema';
+import { type RunTrigger, runs, visits } from '../schema';
 
 export type RunRow = typeof runs.$inferSelect;
+
+export interface RunVisitAverages {
+  avg_load_time_ms: number | null;
+  avg_ttfb_ms: number | null;
+}
+
+/** Per-run mean load/TTFB over all visits — the same averages the run detail page shows. */
+export async function getRunVisitAverages(
+  db: Db,
+  runIds: number[],
+): Promise<Map<number, RunVisitAverages>> {
+  if (runIds.length === 0) return new Map();
+  const rows = await db
+    .select({
+      runId: visits.run_id,
+      avgLoad: sql<number>`ROUND(AVG(${visits.load_time_ms}))::int`,
+      avgTtfb: sql<number | null>`ROUND(AVG(${visits.ttfb_ms}))::int`,
+    })
+    .from(visits)
+    .where(inArray(visits.run_id, runIds))
+    .groupBy(visits.run_id);
+  return new Map(
+    rows.map((r) => [r.runId, { avg_load_time_ms: r.avgLoad, avg_ttfb_ms: r.avgTtfb }]),
+  );
+}
+
+export function withVisitAverages<T extends { id: number }>(
+  rows: T[],
+  averages: Map<number, RunVisitAverages>,
+): (T & RunVisitAverages)[] {
+  return rows.map((r) => ({
+    ...r,
+    avg_load_time_ms: averages.get(r.id)?.avg_load_time_ms ?? null,
+    avg_ttfb_ms: averages.get(r.id)?.avg_ttfb_ms ?? null,
+  }));
+}
 
 export async function insertRun(
   db: Db,
@@ -47,10 +83,16 @@ export async function finalizeRun(
 export async function getRuns(
   db: Db,
   params: { limit: number; offset: number; group?: string },
-): Promise<RunRow[]> {
+): Promise<(RunRow & RunVisitAverages)[]> {
   const q = db.select().from(runs).orderBy(desc(runs.id)).limit(params.limit).offset(params.offset);
-  if (params.group) return q.where(eq(runs.group_name, params.group));
-  return q;
+  const rows = params.group ? await q.where(eq(runs.group_name, params.group)) : await q;
+  return withVisitAverages(
+    rows,
+    await getRunVisitAverages(
+      db,
+      rows.map((r) => r.id),
+    ),
+  );
 }
 
 export async function getRunById(db: Db, id: number): Promise<RunRow | null> {

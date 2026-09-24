@@ -256,6 +256,8 @@ describe('getGroupOverview — per-run avg load time', () => {
     const result = await getGroupOverview(db, 'overview-load');
     const byId = new Map(result.recentRuns.map((r) => [r.id, r]));
     expect(byId.get(run.id)?.avg_load_time_ms).toBe(400);
+    expect(byId.get(run.id)?.avg_ttfb_ms).toBeNull(); // no TTFB recorded
     expect(byId.get(empty.id)?.avg_load_time_ms).toBeNull();
+    expect(byId.get(empty.id)?.avg_ttfb_ms).toBeNull();
   });
 });

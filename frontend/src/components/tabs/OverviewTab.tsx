@@ -175,7 +175,11 @@ const runColumns = [
     cell: (info) => formatDate(info.getValue()),
   }),
   runColumnHelper.accessor('avg_load_time_ms', {
-    header: 'Avg load',
+    header: 'Load',
+    cell: (info) => formatMs(info.getValue()),
+  }),
+  runColumnHelper.accessor('avg_ttfb_ms', {
+    header: 'TTFB',
     cell: (info) => formatMs(info.getValue()),
   }),
   runColumnHelper.accessor('status', {

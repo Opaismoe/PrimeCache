@@ -11,6 +11,12 @@ export interface Run {
   failure_count: number | null;
 }
 
+/** Run as returned by the list endpoints, with per-run visit averages. */
+export interface RunWithAverages extends Run {
+  avg_load_time_ms: number | null;
+  avg_ttfb_ms: number | null;
+}
+
 export interface Visit {
   id: number;
   run_id: number;
@@ -121,7 +127,7 @@ export interface GroupRunSeries {
 }
 
 export interface GroupOverview {
-  recentRuns: (Run & { avg_load_time_ms: number | null })[];
+  recentRuns: RunWithAverages[];
   stats: GroupOverviewStats;
   series: GroupRunSeries[];
 }
