@@ -5,15 +5,15 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { getRuns } from '@/lib/api';
-import { formatDate, formatDuration } from '@/lib/formatters';
+import { formatDate, formatMs } from '@/lib/formatters';
 import { queryKeys } from '@/lib/queryKeys';
-import type { Run } from '@/lib/types';
+import type { RunWithAverages } from '@/lib/types';
 import { RunResults } from '../RunResults';
 import { StatusBadge } from '../StatusBadge';
 
 const PAGE_SIZE = 20;
 
-const columnHelper = createColumnHelper<Run>();
+const columnHelper = createColumnHelper<RunWithAverages>();
 const columns = [
   columnHelper.accessor('id', {
     header: 'Run #',
@@ -23,11 +23,13 @@ const columns = [
     header: 'Started',
     cell: (info) => formatDate(info.getValue()),
   }),
-  columnHelper.display({
-    id: 'duration',
-    header: 'Duration',
-    enableSorting: false,
-    cell: (info) => formatDuration(info.row.original.started_at, info.row.original.ended_at),
+  columnHelper.accessor('avg_load_time_ms', {
+    header: 'Load',
+    cell: (info) => formatMs(info.getValue()),
+  }),
+  columnHelper.accessor('avg_ttfb_ms', {
+    header: 'TTFB',
+    cell: (info) => formatMs(info.getValue()),
   }),
   columnHelper.accessor('status', {
     header: 'Status',

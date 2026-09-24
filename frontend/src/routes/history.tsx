@@ -33,13 +33,13 @@ import {
 import { RunResults } from '../components/RunResults';
 import { StatusBadge } from '../components/StatusBadge';
 import { getConfig, getRuns, isAuthenticated } from '../lib/api';
-import { formatDate, formatDuration } from '../lib/formatters';
+import { formatDate, formatMs } from '../lib/formatters';
 import { queryKeys } from '../lib/queryKeys';
-import type { Run } from '../lib/types';
+import type { RunWithAverages } from '../lib/types';
 
 const PAGE_SIZE = 20;
 
-const columnHelper = createColumnHelper<Run>();
+const columnHelper = createColumnHelper<RunWithAverages>();
 
 const configQueryOptions = queryOptions({ queryKey: queryKeys.config.all(), queryFn: getConfig });
 
@@ -66,7 +66,7 @@ export const Route = createFileRoute('/history')({
   component: HistoryPage,
 });
 
-const SKELETON_HEADERS = ['Run ID', 'Group', 'Started', 'Duration', 'Status', 'Results', ''];
+const SKELETON_HEADERS = ['Run ID', 'Group', 'Started', 'Load', 'TTFB', 'Status', 'Results', ''];
 
 function HistorySkeleton() {
   return (
@@ -152,11 +152,13 @@ function HistoryPage() {
       header: 'Started',
       cell: (info) => formatDate(info.getValue()),
     }),
-    columnHelper.display({
-      id: 'duration',
-      header: 'Duration',
-      cell: (info) => formatDuration(info.row.original.started_at, info.row.original.ended_at),
-      enableSorting: false,
+    columnHelper.accessor('avg_load_time_ms', {
+      header: 'Load',
+      cell: (info) => formatMs(info.getValue()),
+    }),
+    columnHelper.accessor('avg_ttfb_ms', {
+      header: 'TTFB',
+      cell: (info) => formatMs(info.getValue()),
     }),
     columnHelper.accessor('status', {
       header: 'Status',

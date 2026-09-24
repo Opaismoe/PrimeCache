@@ -14,6 +14,7 @@ import type {
   Run,
   RunDetail,
   RunScreenshot,
+  RunWithAverages,
   Stats,
   WebhookToken,
   WebhookTokenCreated,
@@ -121,7 +122,7 @@ export const getRuns = (params: { limit?: number; offset?: number; group?: strin
     offset: String(params.offset ?? 0),
     ...(params.group ? { group: params.group } : {}),
   });
-  return request<Run[]>('GET', `/api/runs?${qs}`);
+  return request<RunWithAverages[]>('GET', `/api/runs?${qs}`);
 };
 
 export const getLatestRuns = () => request<Run[]>('GET', '/api/runs/latest');
