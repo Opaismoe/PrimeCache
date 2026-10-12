@@ -9,27 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as StatusRouteImport } from './routes/status'
-import { Route as HistoryRouteImport } from './routes/history'
-import { Route as GroupsRouteImport } from './routes/groups'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as HistoryRunIdRouteImport } from './routes/history_.$runId'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as GroupsRouteImport } from './routes/groups'
+import { Route as HistoryRouteImport } from './routes/history'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as GroupsGroupNameRouteImport } from './routes/groups_.$groupName'
+import { Route as HistoryRunIdRouteImport } from './routes/history_.$runId'
 
-const StatusRoute = StatusRouteImport.update({
-  id: '/status',
-  path: '/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GroupsRoute = GroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -37,19 +27,29 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const GroupsRoute = GroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HistoryRunIdRoute = HistoryRunIdRouteImport.update({
-  id: '/history_/$runId',
-  path: '/history/$runId',
+const HistoryRoute = HistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GroupsGroupNameRoute = GroupsGroupNameRouteImport.update({
   id: '/groups_/$groupName',
   path: '/groups/$groupName',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryRunIdRoute = HistoryRunIdRouteImport.update({
+  id: '/history_/$runId',
+  path: '/history/$runId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -123,25 +123,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/groups': {
-      id: '/groups'
-      path: '/groups'
-      fullPath: '/groups'
-      preLoaderRoute: typeof GroupsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -151,18 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/groups': {
+      id: '/groups'
+      path: '/groups'
+      fullPath: '/groups'
+      preLoaderRoute: typeof GroupsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/history_/$runId': {
-      id: '/history_/$runId'
-      path: '/history/$runId'
-      fullPath: '/history/$runId'
-      preLoaderRoute: typeof HistoryRunIdRouteImport
+    '/history': {
+      id: '/history'
+      path: '/history'
+      fullPath: '/history'
+      preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/groups_/$groupName': {
@@ -170,6 +163,13 @@ declare module '@tanstack/react-router' {
       path: '/groups/$groupName'
       fullPath: '/groups/$groupName'
       preLoaderRoute: typeof GroupsGroupNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history_/$runId': {
+      id: '/history_/$runId'
+      path: '/history/$runId'
+      fullPath: '/history/$runId'
+      preLoaderRoute: typeof HistoryRunIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
