@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@electric-sql/pglite": "^0.4.6",
+    "@electric-sql/pglite": "^0.5.10",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.9.9",
     "@types/node-cron": "^3.0.11",

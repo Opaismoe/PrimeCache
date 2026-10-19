@@ -33,7 +33,7 @@ importers:
         version: 18.0.8
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@electric-sql/pglite@0.4.6)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@3.4.9)
+        version: 0.45.4(@electric-sql/pglite@0.5.10)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@3.4.9)
       fastify:
         specifier: ^5.12.7
         version: 5.12.7
@@ -69,8 +69,8 @@ importers:
         specifier: 2.5.15
         version: 2.5.15
       '@electric-sql/pglite':
-        specifier: ^0.4.6
-        version: 0.4.6
+        specifier: ^0.5.10
+        version: 0.5.10
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -430,8 +430,8 @@ packages:
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
 
-  '@electric-sql/pglite@0.4.6':
-    resolution: {integrity: sha512-qmlmfN8UyKCee35qkV0r/MBp+Znl8FjBz7OpoglNvww3GJpw0/DLP0o1ZymvLNmcD5DTLOQdzKPtF8Hd3mdl1w==}
+  '@electric-sql/pglite@0.5.10':
+    resolution: {integrity: sha512-tXc/25U3ulOkiRQuTFdwIv+JhBqtMdAF7Gvo6CfZZWtSB4+hgC4Wr2vwK5ngvvN5PJfAAEGIsfyCVy1JhCOBYw==}
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
@@ -4431,7 +4431,7 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@electric-sql/pglite@0.4.6': {}
+  '@electric-sql/pglite@0.5.10': {}
 
   '@esbuild-kit/core-utils@3.3.2':
     dependencies:
@@ -5818,9 +5818,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@electric-sql/pglite@0.4.6)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@3.4.9):
+  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.10)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@3.4.9):
     optionalDependencies:
-      '@electric-sql/pglite': 0.4.6
+      '@electric-sql/pglite': 0.5.10
       '@types/better-sqlite3': 7.6.13
       better-sqlite3: 12.8.0
       knex: 3.1.0(better-sqlite3@12.8.0)
