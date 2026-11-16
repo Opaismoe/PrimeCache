@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import chokidar from 'chokidar';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { z } from 'zod';
 
 const GroupOptionsSchema = z

@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { z } from 'zod';
 import { env } from '../../config/env';
 import { findMissingSecretRefs } from '../../config/secrets';
