@@ -33,7 +33,7 @@ importers:
         version: 18.0.10
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@electric-sql/pglite@0.5.17)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@3.4.9)
+        version: 0.45.4(@electric-sql/pglite@0.5.17)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@4.1.1)
       fastify:
         specifier: ^5.12.8
         version: 5.12.8
@@ -56,8 +56,8 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6(playwright-core@1.65.1)(playwright@1.65.1)
       postgres:
-        specifier: ^3.4.9
-        version: 3.4.9
+        specifier: ^4.1.1
+        version: 4.1.1
       puppeteer-extra-plugin-stealth:
         specifier: ^2.11.2
         version: 2.11.2(playwright-extra@4.3.6(playwright-core@1.65.1)(playwright@1.65.1))
@@ -3048,9 +3048,9 @@ packages:
     resolution: {integrity: sha512-RVHEU9/Pp1Fnjr/MpAJsZoADukCKhfIi15OunEYiGktIkYLkPVvC1sioWolGDS7XByMTx9m/IGbro0Js13zhnQ==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postgres@3.4.9:
-    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
-    engines: {node: '>=12'}
+  postgres@4.1.1:
+    resolution: {integrity: sha512-1kJDojqNZC+iTHHXh6eif0J98LUtyLAePe/qkW1GK35eh2JixlsAiIKq3FGI+xqI+SUGTNodzf7TScVeIIyUug==}
+    engines: {node: '>=18'}
 
   powershell-utils@0.2.1:
     resolution: {integrity: sha512-C+y9x90UElAddDZmV4qOx9W53B61PO7cIqWz2dQsWlwswuq4mr8NEwytdGKboYbQlGZ3awrkTeNvcZiZNHnQ8A==}
@@ -5485,13 +5485,13 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.17)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@3.4.9):
+  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.17)(@types/better-sqlite3@7.6.13)(better-sqlite3@12.8.0)(knex@3.1.0(better-sqlite3@12.8.0))(postgres@4.1.1):
     optionalDependencies:
       '@electric-sql/pglite': 0.5.17
       '@types/better-sqlite3': 7.6.13
       better-sqlite3: 12.8.0
       knex: 3.1.0(better-sqlite3@12.8.0)
-      postgres: 3.4.9
+      postgres: 4.1.1
 
   dynamic-dedupe@0.3.0:
     dependencies:
@@ -6371,7 +6371,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.4
 
-  postgres@3.4.9: {}
+  postgres@4.1.1: {}
 
   powershell-utils@0.2.1: {}
 
