@@ -108,8 +108,8 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0
       '@tanstack/match-sorter-utils':
-        specifier: ^8.19.4
-        version: 8.19.4
+        specifier: ^9.2.6
+        version: 9.2.6
       '@tanstack/react-query':
         specifier: ^5.108.3
         version: 5.108.3(@types/react@19.3.0)(react@19.3.1)
@@ -1385,10 +1385,6 @@ packages:
   '@tanstack/history@1.162.5':
     resolution: {integrity: sha512-w1+YvwmTkwt5n8yUqEH3IWZ9DsmorCZW/EQ3KYHnqEgIkOZpH54NvW6/Epq3Dzb8H0ifIeYX8PExvrNLIH5FIA==}
     engines: {node: '>=20.19'}
-
-  '@tanstack/match-sorter-utils@8.19.4':
-    resolution: {integrity: sha512-Wo1iKt2b9OT7d+YGhvEPD3DXvPv2etTusIMhMUoG7fbhmxcXCtIjJDEygy91Y2JFlwGyjqiBPRozme7UD8hoqg==}
-    engines: {node: '>=12'}
 
   '@tanstack/match-sorter-utils@9.2.6':
     resolution: {integrity: sha512-DIpUSOhPfQ7u/qfUi/Wgm0wBO56MyBYXGvnlI0NcauDRPqdBUlAZZjW2Dxm92m+k1UWVhKw8YJ4f47+75Aujyw==}
@@ -4873,10 +4869,6 @@ snapshots:
       vite: 8.3.8(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
   '@tanstack/history@1.162.5': {}
-
-  '@tanstack/match-sorter-utils@8.19.4':
-    dependencies:
-      remove-accents: 0.5.0
 
   '@tanstack/match-sorter-utils@9.2.6':
     dependencies:
